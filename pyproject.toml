@@ -1,9 +1,9 @@
 [project]
-name = "david-work-2024"
+name = "ogd-autocoder"
 version = "0.1.0"
-description = "Add your description here"
+description = "Tool for human coding of Event data, with integration to feature extraction and automated building of models to apply codes to new data."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "ipykernel>=6.29.5",
     "matplotlib>=3.10.3",
