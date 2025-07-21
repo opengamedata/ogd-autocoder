@@ -11,22 +11,6 @@ document.getElementById('tsvFile').addEventListener('change', function () {
     }
 });
 
-function colorConsecutiveJobs() {
-    const colors = ['#ffffff', '#f0f8ff']; // white and light blue (or choose your own)
-    let colorIndex = 0;
-    let lastJobName = null;
-
-    $('#eventsTable tbody tr').each(function () {
-    const jobName = $(this).find('td').eq(2).text().trim(); // 3rd column: Job Name
-
-    if (jobName !== lastJobName) {
-        colorIndex = 1 - colorIndex; // toggle between 0 and 1
-        lastJobName = jobName;
-    }
-
-    $(this).css('background-color', colors[colorIndex]);
-    });
-}
 
 function uploadFile() {
     const fileInput = document.getElementById('tsvFile');
@@ -34,6 +18,9 @@ function uploadFile() {
     const formData = new FormData();
     formData.append("file", file);
 
+    $('#spinner').show();
+    //const fileSizeMB = file.size / (1024 * 1024);
+    //let estimatedTime = 0.042 * fileSizeMB + 1.79; // linear regression made from 2 points :)
     $.ajax({
         url: "/upload",
         method: "POST",
@@ -41,6 +28,8 @@ function uploadFile() {
         processData: false,
         contentType: false,
         success: function(response) {
+            $('#spinner').hide();
+
             filename = response.filename;
             $('#userDropdown').empty().append('<option></option>');
             response.user_ids.forEach(user_id => {
@@ -66,20 +55,17 @@ function uploadFile() {
 
 function loadEvents() {
     const user_id = $('#userDropdown').val();
+    $('#spinner').show();
     $.ajax({
         url: `/events/${user_id}`,
         method: "POST",
         data: JSON.stringify({ filename: filename }),
         contentType: "application/json",
         success: function(response) {
-
-            next_segment_id = response.max_segment_id + 1;
-            $("#segmentIdDisplay").text(next_segment_id);
-            
             let data = response.data;
             if (table) {
-            table.destroy();
-            $('#eventsTable tbody').empty();
+                table.destroy();
+                $('#eventsTable tbody').empty();
             }
 
             data.forEach(row => {
@@ -102,8 +88,12 @@ function loadEvents() {
                 scrollY: '400px',
                 scrollCollapse: true
             });
-            colorConsecutiveJobs();
+
+            $('#spinner').hide();
+
             $('#eventsTableDiv').show();
+            next_segment_id = response.max_segment_id + 1;
+            $("#segmentIdDisplay").text(next_segment_id);
         },
         error: function(xhr, status, error) {
             console.error("Event data load failed:", status, error);
@@ -117,7 +107,9 @@ function segmentRows() {
     const selectedRows = table.rows({ selected: true }).data().toArray();
     if (selectedRows.length == 0) {
         alert("Please, select at least one row!")
+        return;
     }
+    $('#spinner').show();
     $.ajax({
         url: `/segmentation/${user_id}`,
         method: "POST",
