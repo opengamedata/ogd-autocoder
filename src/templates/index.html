@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <h2 class="mb-4 text-center">SE6MEN7AT0R</h2>
+
+  <div class="d-flex align-items-center gap-2 mb-4">
+    <button class="btn btn-sm btn-primary" style="min-width: 90px;" onclick="triggerFilePicker()">Load TSV</button>
+    <input type="file" id="tsvFile" accept=".tsv" style="display: none;">
+    <select 
+      class="form-select form-select-sm" 
+      id="userDropdown" 
+      onchange="loadEvents()" 
+      style="min-width: 200px; display:none;">
+    </select>
+  </div>
+  
+
+
+  <!-- Events Table -->
+  <div id="eventsTableDiv" style="display:none;">
+    <div class="d-flex justify-content-start gap-3 mb-3">
+      <button class="btn btn-outline-primary" onclick="segmentRows()">
+        <i class="bi bi-graph-up-arrow me-1"></i> Segmentation
+      </button>
+      <div>
+        <label for="segmentIdDisplay" class="form-label mb-1">Segment ID</label>
+        <div id="segmentIdDisplay" class="form-control form-control-sm bg-light border-0 ps-2"></div>
+      </div>        
+    
+      <div>
+        <label for="segmentLabelsInput" class="form-label mb-1">Segment Labels</label>
+        <input type="text" class="form-control form-control-sm" id="segmentLabelsInput" placeholder="Struggle, Bored...">
+      </div>
+      <button class="btn btn-outline-primary" id="downloadBtn">
+        <i class="bi bi-download me-1"></i> Download
+      </button>
+    </div>
+    <table id="eventsTable" class="table table-striped table-bordered" style="width:100%">
+      <thead>
+        <tr>
+          <th>Index</th>
+          <th>Event Name</th>
+          <th>Job Name</th>
+          <th>Time</th>
+          <th>Segment ID</th>
+          <th>Segment labels</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="/static/js/index.js"></script>
+{% endblock %}

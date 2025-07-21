@@ -1,3 +1,8 @@
+# Custom
+/uploads/*
+/data_may_2024/*
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
