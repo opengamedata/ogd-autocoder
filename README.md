@@ -3,3 +3,18 @@ Repository for our tool for human coding of Event data, with integration to feat
 
 # Dependencies
 - https://github.com/astral-sh/uv
+
+# Startup
+(execute from root)
+
+Activate venv
+
+`$ . .venv/bin/activate`
+
+Install dependencies
+
+`$ uv sync`
+
+Start server
+
+`$ uv run src/segmentator.py`
