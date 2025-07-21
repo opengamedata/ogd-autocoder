@@ -62,8 +62,8 @@ def events(user_id):
     # segment_id should start from 1
     return jsonify({"data": user_events.fillna("-").to_dict(orient="records"), "max_segment_id": user_events["segment_id"].fillna(0).max()})
 
-@app.route("/segmentation/<user_id>", methods=["POST"])
-def segmentation(user_id):
+@app.route("/update/<user_id>", methods=["POST"])
+def update(user_id):
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
     df = dd.read_csv(filepath, sep="\t", dtype=meta)
 
@@ -74,11 +74,14 @@ def segmentation(user_id):
     segment_id = request.json.get("segment_id")
     segment_labels = request.json.get("segment_labels")
 
-    if segment_id:
-        df["segment_id"] = df["segment_id"].mask(update_filter, int(segment_id))
-
-    if segment_labels:
-        df["segment_labels"] = df["segment_labels"].mask(update_filter, segment_labels)
+    if request.json["upd_id_instead_label"]:
+        # update segment_id
+        update_val = np.nan if segment_id == "" else int(segment_id)
+        df["segment_id"] = df["segment_id"].mask(update_filter, update_val)
+    else:
+        # update segment_labels
+        update_val = np.nan if segment_labels == "" else segment_labels
+        df["segment_labels"] = df["segment_labels"].mask(update_filter, update_val)
 
     df.drop(columns=["row_id"]).to_csv(filepath, compute=True, index=False, sep="\t", single_file=True)
     # fixme - make this faster by returning updated rows...
@@ -87,7 +90,6 @@ def segmentation(user_id):
 
 @app.route('/download', methods=['GET'])
 def download_file():
-    print("aaa")
     # Get file path from query string, e.g. /download?file=somefile.csv
     filename = request.args.get('file')
 
