@@ -3,6 +3,9 @@
 {% block content %}
 <div class="container py-5">
   <div class="d-flex justify-content-end gap-3 mb-3">
+    <button class="btn btn-success" id="autoSegmentBtn" style="display:none;" data-bs-toggle="modal" data-bs-target="#confirmSegmentModal" title="Automatically assign segment IDs based on job changes.">
+      <i class="bi bi-magic me-1"></i> Auto Segment
+    </button>
     <button class="btn btn-primary" id="downloadBtn" style="display:none;">
       <i class="bi bi-download me-1"></i> Download
     </button>
@@ -52,6 +55,24 @@
       </thead>
       <tbody></tbody>
     </table>
+  </div>
+</div>
+
+<div class="modal fade" id="confirmSegmentModal" tabindex="-1" aria-labelledby="confirmSegmentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmSegmentModalLabel">Confirm Auto Segmentation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        This will overwrite the existing <code>segment_id</code> column for this user. Are you sure you want to continue?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="autoSegment()">Yes, Continue</button>
+      </div>
+    </div>
   </div>
 </div>
 

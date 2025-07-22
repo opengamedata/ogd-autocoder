@@ -21,7 +21,9 @@ def extract_job_name(game_state_str):
     return game_state.get('job_name', None)
   except (json.JSONDecodeError, AttributeError):
     return None
+
 meta = {'app_branch': 'object', 'user_id': 'object', 'log_version': 'object', 'session_id': 'object', 'app_version': 'object', 'index': 'object', 'segment_labels': 'object'}
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     return render_template("index.html")
@@ -86,6 +88,25 @@ def update(user_id):
     df.drop(columns=["row_id"]).to_csv(filepath, compute=True, index=False, sep="\t", single_file=True)
     # fixme - make this faster by returning updated rows...
     # fixme - store filepath in headers
+    return jsonify({"success": True})
+
+@app.route("/autosegment/<user_id>", methods=["POST"])
+def autosegment(user_id):
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
+    df = dd.read_csv(filepath, sep="\t", dtype=meta)
+    
+    # execute the operation in pandas
+    absent_df = df[df['user_id'] == user_id].compute()
+    # absent_df = absent_df.sort_values('timestamp') # originally its also sorted like that
+    absent_df['segment_id'] = (absent_df['job_name'] != absent_df['job_name'].shift()).fillna(False).astype(int).cumsum()
+    absent_df = absent_df[['segment_id', 'session_id', 'index']]
+
+    df = df.merge(dd.from_pandas(absent_df, npartitions=1), on=['session_id', 'index'], how='left', suffixes=('', '_new'))
+
+    df['segment_id'] = df['segment_id_new'].where(df['user_id'] == user_id, df['segment_id'])
+    df = df.drop(columns=['segment_id_new'])
+
+    df.to_csv(filepath, compute=True, index=False, sep="\t", single_file=True)
     return jsonify({"success": True})
 
 @app.route('/download', methods=['GET'])

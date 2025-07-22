@@ -42,13 +42,14 @@ function uploadFile() {
 
             // Initialize or reinitialize Select2
             $('#userDropdown').select2({
-            placeholder: "Select a user",
-            width: '100%',
-            allowClear: true
+                placeholder: "Select a user",
+                width: '100%',
+                allowClear: true
             });
 
             $('#userDropdown').show();
             $('#downloadBtn').show();
+            $('#autoSegmentBtn').hide();
         },
         error: function(xhr, status, error) {
             console.error("Upload failed:", status, error);
@@ -94,6 +95,7 @@ function loadEvents() {
             });
 
             $('#spinner').addClass("d-none");
+            $('#autoSegmentBtn').show();
             $('#eventsTableDiv').show();
 
             if ($("#segmentIdInput").val() == "") {
@@ -142,6 +144,29 @@ function updateRows(upd_id_instead_label) {
         },
         error: function(xhr, status, error) {
             console.error("Segmentation failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
+}
+
+function autoSegment() {
+    // hide modal
+    bootstrap.Modal.getInstance($('#confirmSegmentModal')[0]).hide();
+
+    const user_id = $('#userDropdown').val();
+
+    $('#spinner').removeClass("d-none");
+    $.ajax({
+        url: `/autosegment/${user_id}`,
+        method: "POST",
+        data: JSON.stringify({ filename: filename,}),
+        contentType: "application/json",
+        success: function(response) {
+            // reload data
+            loadEvents();
+        },
+        error: function(xhr, status, error) {
+            console.error("Auto Segmentation failed:", status, error);
             console.log("Server response:", xhr.responseText);
         }
     });
