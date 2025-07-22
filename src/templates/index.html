@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container py-5">
   <div class="d-flex justify-content-end gap-3 mb-3">
-    <button class="btn btn-outline-primary" id="downloadBtn" style="display:none;">
+    <button class="btn btn-primary" id="downloadBtn" style="display:none;">
       <i class="bi bi-download me-1"></i> Download
     </button>
   </div>
@@ -19,24 +19,25 @@
       style="min-width: 200px; display:none;">
     </select>
   </div>
-  
-  <div id="spinner" class="text-center my-3" style="display: none;">
+
+  <div id="spinner" class="d-none position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-50" style="z-index: 10;">
     <div class="spinner-border text-primary" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
-  </div>
-
+  </div> 
   <!-- Events Table -->
   <div id="eventsTableDiv" style="display:none;">
-    <div class="d-flex justify-content-start gap-3 mb-3">
+    <div class="d-flex justify-content-start gap-4 mb-3">
       <div class="input-group mb-3">
-        <button class="btn btn-outline-primary" type="button" onclick="updateRows(true)">Segmentation</button>
-        <input type="number" class="form-control" id="segmentIdInput" placeholder="Segment ID" aria-label="" aria-describedby="basic-addon1">
+        <span class="input-group-text">Segmentation</span>
+        <input type="number" class="form-control" id="segmentIdInput" placeholder="Segment ID" aria-label="Segment ID">
+        <button class="btn btn-primary" type="button" onclick="updateRows(true)">Apply</button>
       </div>
       <div class="input-group mb-3">
-        <button class="btn btn-outline-primary" type="button" onclick="updateRows(false)">Labeling</button>
-        <input type="text" class="form-control" id="segmentLabelsInput" placeholder="Struggle, Bored..." aria-label="" aria-describedby="basic-addon1">
-      </div>      
+        <span class="input-group-text">Labeling</span>
+        <input type="text" class="form-control" id="segmentLabelsInput" placeholder="Struggle, Bored..." aria-label="Labels">
+        <button class="btn btn-primary" type="button" onclick="updateRows(false)">Apply</button>
+      </div>
     </div>
     <table id="eventsTable" class="table table-striped table-bordered" style="width:100%">
       <thead>

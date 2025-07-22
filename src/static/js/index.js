@@ -22,7 +22,9 @@ function uploadFile() {
     const formData = new FormData();
     formData.append("file", file);
 
-    $('#spinner').show();
+    $('#spinner').removeClass("d-none");
+    $('#eventsTableDiv').hide();
+    $('#userDropdown').empty().append('<option></option>');
     //const fileSizeMB = file.size / (1024 * 1024);
     //let estimatedTime = 0.042 * fileSizeMB + 1.79; // linear regression made from 2 points :)
     $.ajax({
@@ -32,10 +34,8 @@ function uploadFile() {
         processData: false,
         contentType: false,
         success: function(response) {
-            $('#spinner').hide();
-
+            $('#spinner').addClass("d-none");
             filename = response.filename;
-            $('#userDropdown').empty().append('<option></option>');
             response.user_ids.forEach(user_id => {
             $('#userDropdown').append(`<option value="${user_id}">${user_id}</option>`);
             });
@@ -49,7 +49,6 @@ function uploadFile() {
 
             $('#userDropdown').show();
             $('#downloadBtn').show();
-            $('#eventsTableDiv').hide();
         },
         error: function(xhr, status, error) {
             console.error("Upload failed:", status, error);
@@ -60,7 +59,7 @@ function uploadFile() {
 
 function loadEvents() {
     const user_id = $('#userDropdown').val();
-    $('#spinner').show();
+    $('#spinner').removeClass("d-none");
     $.ajax({
         url: `/events/${user_id}`,
         method: "POST",
@@ -94,7 +93,7 @@ function loadEvents() {
                 scrollCollapse: true
             });
 
-            $('#spinner').hide();
+            $('#spinner').addClass("d-none");
             $('#eventsTableDiv').show();
 
             if ($("#segmentIdInput").val() == "") {
@@ -118,7 +117,7 @@ function updateRows(upd_id_instead_label) {
         alert("Please, select at least one row!")
         return;
     }
-    $('#spinner').show();
+    $('#spinner').removeClass("d-none");
     $.ajax({
         url: `/update/${user_id}`,
         method: "POST",
