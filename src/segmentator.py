@@ -26,7 +26,7 @@ def upload_file():
     file.save(filepath)
 
     df = add_new_columns(filepath)
-    return jsonify({"user_ids": df.user_id.dropna().unique().compute().tolist(), "filename": filename})
+    return jsonify({"user_ids": df.user_id.dropna().unique().tolist(), "filename": filename})
 
 @app.route("/events/<user_id>", methods=["POST"])
 def events(user_id):
