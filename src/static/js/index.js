@@ -24,6 +24,7 @@ function uploadFile() {
 
     $('#spinner').removeClass("d-none");
     $('#eventsTableDiv').hide();
+    $('#autoSegmentBtn').hide();
     $('#userDropdown').empty().append('<option></option>');
     //const fileSizeMB = file.size / (1024 * 1024);
     //let estimatedTime = 0.042 * fileSizeMB + 1.79; // linear regression made from 2 points :)
@@ -49,7 +50,7 @@ function uploadFile() {
 
             $('#userDropdown').show();
             $('#downloadBtn').show();
-            $('#autoSegmentBtn').hide();
+            $('#trainModelBtn').show();
         },
         error: function(xhr, status, error) {
             console.error("Upload failed:", status, error);
@@ -167,6 +168,24 @@ function autoSegment() {
         },
         error: function(xhr, status, error) {
             console.error("Auto Segmentation failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
+}
+
+function trainModel() {
+    $('#spinner').removeClass("d-none");
+    $.ajax({
+        url: `/train_model`,
+        method: "POST",
+        data: JSON.stringify({ filename: filename,}),
+        contentType: "application/json",
+        success: function(response) {
+            $('#spinner').addClass("d-none");
+            alert(response["output"]);
+        },
+        error: function(xhr, status, error) {
+            console.error("Model Training failed:", status, error);
             console.log("Server response:", xhr.responseText);
         }
     });

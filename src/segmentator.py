@@ -1,6 +1,6 @@
 import os
 import time
-from utils import autosegment_by_job, update_rows, get_events_for_user, add_new_columns
+from utils import *
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort
 
@@ -54,6 +54,11 @@ def autosegment(user_id):
     autosegment_by_job(filepath, user_id)
 
     return jsonify({"success": True})
+
+@app.route("/train_model", methods=["POST"])
+def train():
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
+    return jsonify({"output": train_model(filepath)})
 
 @app.route('/download', methods=['GET'])
 def download_file():

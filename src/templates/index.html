@@ -3,8 +3,11 @@
 {% block content %}
 <div class="container py-5">
   <div class="d-flex justify-content-end gap-3 mb-3">
+    <button class="btn btn-success" id="trainModelBtn" onclick="trainModel()" style="display:none;" title="Train ML model on trained data and show results">
+      <i class="bi bi-cpu me-1"></i> Train
+    </button>
     <button class="btn btn-success" id="autoSegmentBtn" style="display:none;" data-bs-toggle="modal" data-bs-target="#confirmSegmentModal" title="Automatically assign segment IDs based on job changes.">
-      <i class="bi bi-magic me-1"></i> Auto Segment
+      <i class="bi bi-magic me-1"></i> Autosegment
     </button>
     <button class="btn btn-primary" id="downloadBtn" style="display:none;">
       <i class="bi bi-download me-1"></i> Download
