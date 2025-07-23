@@ -34,6 +34,13 @@ def list_segment_ids(user_id):
 
     return jsonify({"data": segment_ids_for_user(filepath, user_id)})
 
+@app.route("/list_labels", methods=["POST"])
+def list_labels():
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
+
+    return jsonify({"data": list_seg_labels(filepath)})
+
+
 
 @app.route("/events/<user_id>", methods=["POST"])
 def events(user_id):

@@ -86,41 +86,73 @@ function prevSegment() {
     select.prop('selectedIndex', next).trigger('change');
 }
 
+function fillSegmentDropdown() {
+    $('#segmentDropdown').empty();
+    $('#segmentDropdown').select2({
+        placeholder: "...",
+        width: '40%',
+    });
+    const user_id = $('#userDropdown').val();
+    if (user_id) {
+        $('#spinner').removeClass("d-none");
+        $.ajax({
+            url: `/list_segment_ids/${user_id}`,
+            method: "POST",
+            data: JSON.stringify({filename: filename}),
+            contentType: "application/json",
+            success: function(response) {
+                response.data.forEach(seg_id => {
+                    $('#segmentDropdown').append(`<option value="${seg_id}">${seg_id}</option>`);
+                });
+                $('#spinner').addClass("d-none");
+
+                const segment_id = $('#segmentDropdown').val();
+                loadEvents("#labelTable", segment_id);
+            },
+            error: function(xhr, status, error) {
+                console.error("Segment options loading failed:", status, error);
+                console.log("Server response:", xhr.responseText);
+            }
+        });
+    }
+}
+
+function fillLabelDropdown() {
+    $('#labelsDropdown').empty();
+    $('#labelsDropdown').select2({
+        tags: true,
+        placeholder: '...',
+        width: '100%',
+      });
+    const user_id = $('#userDropdown').val();
+    if (user_id) {
+        $('#spinner').removeClass("d-none");
+        $.ajax({
+            url: "/list_labels",
+            method: "POST",
+            data: JSON.stringify({filename: filename}),
+            contentType: "application/json",
+            success: function(response) {
+                response.data.forEach(label => {
+                    $('#labelsDropdown').append(`<option value="${label}">${label}</option>`);
+                });
+                $('#spinner').addClass("d-none");
+            },
+            error: function(xhr, status, error) {
+                console.error("Label options loading failed:", status, error);
+                console.log("Server response:", xhr.responseText);
+            }
+        });
+    }
+}
+
 function userChanged() {
     const tabId = $('#nav-tab .nav-link.active').attr('id');
     if (tabId == "nav-segment-tab") {
         loadEvents("#segmentTable");
     } else if (tabId == "nav-label-tab") {
-        $('#segmentDropdown').empty();
-        $('#segmentDropdown').select2({
-            placeholder: "Select a segment",
-            width: '40%',
-        });
-        const user_id = $('#userDropdown').val();
-        if (user_id) {
-            $('#spinner').removeClass("d-none");
-            $.ajax({
-                url: `/list_segment_ids/${user_id}`,
-                method: "POST",
-                data: JSON.stringify({filename: filename}),
-                contentType: "application/json",
-                success: function(response) {
-                    response.data.forEach(seg_id => {
-                        $('#segmentDropdown').append(`<option value="${seg_id}">${seg_id}</option>`);
-                    });
-                    $('#spinner').addClass("d-none");
-
-                    const segment_id = $('#segmentDropdown').val();
-                    loadEvents("#labelTable", segment_id);
-                },
-                error: function(xhr, status, error) {
-                    console.error("Upload failed:", status, error);
-                    console.log("Server response:", xhr.responseText);
-                }
-            });
-        }
-
-        
+        fillSegmentDropdown();
+        fillLabelDropdown();
     }
 }
 
@@ -225,12 +257,13 @@ function labelRows() {
         data: JSON.stringify({ 
             filename: filename,
             segment_id: $("#segmentDropdown").val(),
-            segment_labels: $('#segmentLabelsInput').val(),
+            segment_labels: $('#labelsDropdown').val().join(', '),
             label_justification: $('#labelJustificationInput').val()
         }),
         contentType: "application/json",
         success: function(response) {    
             // reload data
+            fillLabelDropdown();
             loadEvents(table_id);
         },
         error: function(xhr, status, error) {

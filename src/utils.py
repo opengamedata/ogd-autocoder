@@ -49,6 +49,13 @@ def segment_ids_for_user(filepath, user_id):
 
     return sorted(df[df["user_id"] == user_id].segment_id.dropna().astype("int").unique().tolist())
 
+def list_seg_labels(filepath):
+    df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
+    unique_labels = df.segment_labels.dropna().unique().tolist()
+    flattened = sorted(set(item.strip() for part in unique_labels for item in part.split(', ')))
+    return flattened
+
+
 def get_events_for_user(filepath, user_id, segment_id):
     df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
     df["timestamp"] = pd.to_datetime(df["timestamp"], format='mixed')
