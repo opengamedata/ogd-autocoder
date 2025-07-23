@@ -1,0 +1,12 @@
+*__pycache__/*
+.DS_Store
+.gitignore
+.gitmodules
+.git
+Makefile
+LICENSE
+README.md
+pyproject.toml
+rsync-exclude
+uv.lock
+*.log
