@@ -34,6 +34,9 @@ def add_new_columns(filepath):
 
     if "segment_labels" not in df.columns:
         df["segment_labels"] = np.nan
+    
+    if "label_justification" not in df.columns:
+        df["label_justification"] = np.nan
 
     df["job_name"] = df["game_state"].apply(extract_job_name)
 
@@ -55,20 +58,23 @@ def get_events_for_user(filepath, user_id, segment_id):
     else:
         df = df[df["user_id"] == user_id]
 
-    user_events = df[["index", "event_name", "job_name", "timestamp", "segment_id", "segment_labels"]]
+    user_events = df[["index", "event_name", "job_name", "timestamp", "segment_id", "segment_labels", "label_justification"]]
     user_events = user_events.sort_values(by="timestamp", ascending=True)
 
     user_events["timestamp"] = user_events["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
     
     return user_events
 
-def label_rows(filepath, user_id, segment_id, segment_labels):
-    # set segment_id
+def label_rows(filepath, user_id, segment_id, segment_labels, label_justification):
+    # set segment_labels and label_justification
     df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
 
     update_filter = df["segment_id"].notna() & (df["user_id"] == user_id) & (df["segment_id"].astype(pd.Int64Dtype()) == int(segment_id))
     update_val = np.nan if segment_labels == "" else segment_labels
     df["segment_labels"] = df["segment_labels"].mask(update_filter, update_val)
+
+    update_val = np.nan if label_justification == "" else label_justification
+    df["label_justification"] = df["label_justification"].mask(update_filter, update_val)
 
     df.to_csv(filepath, index=False, sep="\t")
 
@@ -173,7 +179,6 @@ def train_model(filepath):
     model.add(Dense(1000, activation='relu'))
     model.add(Dense(1000, activation='relu'))
     model.add(Dense(100, activation='relu'))
-    model.add(Dense(1, activation='sigmoid'))
     model.add(Dense(len(le.classes_), activation='softmax'))
     adam = keras.optimizers.Adam(learning_rate=0.001)
     model.compile(optimizer=adam, loss="categorical_crossentropy", metrics=['accuracy'])

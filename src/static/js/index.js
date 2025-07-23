@@ -77,6 +77,15 @@ function nextSegment() {
     select.prop('selectedIndex', next).trigger('change');
 }
 
+function prevSegment() {
+    const select = $('#segmentDropdown');
+    const options = select.find('option');
+    const current = select.prop('selectedIndex');
+    const next = (options.length + (current - 1)) % options.length;
+
+    select.prop('selectedIndex', next).trigger('change');
+}
+
 function userChanged() {
     const tabId = $('#nav-tab .nav-link.active').attr('id');
     if (tabId == "nav-segment-tab") {
@@ -100,8 +109,9 @@ function userChanged() {
                         $('#segmentDropdown').append(`<option value="${seg_id}">${seg_id}</option>`);
                     });
                     $('#spinner').addClass("d-none");
-                    //const segment_id = $('#segmentDropdown').val();
-                    //loadEvents("#labelTable", segment_id);
+
+                    const segment_id = $('#segmentDropdown').val();
+                    loadEvents("#labelTable", segment_id);
                 },
                 error: function(xhr, status, error) {
                     console.error("Upload failed:", status, error);
@@ -148,6 +158,7 @@ function loadEvents(table_id) {
                 <td>${row.timestamp}</td>
                 <td>${row.segment_id}</td>
                 <td>${row.segment_labels}</td>
+                <td>${row.label_justification}</td>
                 </tr>`
             );
             });
@@ -214,7 +225,8 @@ function labelRows() {
         data: JSON.stringify({ 
             filename: filename,
             segment_id: $("#segmentDropdown").val(),
-            segment_labels: $('#segmentLabelsInput').val()
+            segment_labels: $('#segmentLabelsInput').val(),
+            label_justification: $('#labelJustificationInput').val()
         }),
         contentType: "application/json",
         success: function(response) {    

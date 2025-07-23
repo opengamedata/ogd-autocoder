@@ -58,8 +58,9 @@ def label(user_id):
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
     segment_id = request.json.get("segment_id")
     segment_labels = request.json.get("segment_labels")
+    label_justification = request.json.get("label_justification")
 
-    label_rows(filepath, user_id, segment_id, segment_labels)
+    label_rows(filepath, user_id, segment_id, segment_labels, label_justification)
     return jsonify({"success": True})
 
 @app.route("/autosegment/<user_id>", methods=["POST"])
