@@ -82,7 +82,7 @@ function userChanged() {
     if (tabId == "nav-segment-tab") {
         loadEvents("#segmentTable");
     } else if (tabId == "nav-label-tab") {
-        $('#segmentDropdown').empty().append('<option></option>');
+        $('#segmentDropdown').empty();
         $('#segmentDropdown').select2({
             placeholder: "Select a segment",
             width: '40%',

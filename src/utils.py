@@ -134,16 +134,18 @@ def train_model(filepath):
     #train_df = dd.get_dummies(train_df, columns=["job_name"], dtype=float)
 
     le = LabelEncoder()
-    train_df['target'] = le.fit_transform(train_df['segment_labels'])
+    target_col = le.fit_transform(train_df['segment_labels']) # converts to ints
+    target_col = keras.utils.to_categorical(target_col, num_classes = len(le.classes_)) # converts to dummies
+
     output = (f"Row count: {len(train_df)}\n")
     output += (f"Classes count: {train_df['segment_labels'].value_counts()}\n")
-    train_df = train_df.drop(columns=['segment_labels', 'segment_id'])
+    
     x_train_full, x_test, y_train_full, y_test = train_test_split(
-        train_df.drop(columns="target"),
-        train_df["target"],
+        train_df.drop(columns=['segment_labels', 'segment_id']),
+        target_col,
         test_size=0.25,
         random_state=42,
-        stratify=train_df["target"] # same proportion in both splits
+        stratify=train_df['segment_labels'] # same proportion in both splits
         # fixme - maybe try bootstrap
     )
 
@@ -164,7 +166,7 @@ def train_model(filepath):
     x_test_tensor = tf.convert_to_tensor(x_test)
     y_test_tensor = tf.convert_to_tensor(y_test)
 
-    class_weight = {0: 1., 1: 1.4}
+    #class_weight = {0: 1., 1: 1.4}
 
     model = Sequential()
     model.add(Input(shape=(x_train_tensor.shape[1],)))
@@ -172,8 +174,9 @@ def train_model(filepath):
     model.add(Dense(1000, activation='relu'))
     model.add(Dense(100, activation='relu'))
     model.add(Dense(1, activation='sigmoid'))
+    model.add(Dense(len(le.classes_), activation='softmax'))
     adam = keras.optimizers.Adam(learning_rate=0.001)
-    model.compile(optimizer=adam, loss="binary_crossentropy", metrics=['accuracy'])
+    model.compile(optimizer=adam, loss="categorical_crossentropy", metrics=['accuracy'])
 
 
     early_stopping = EarlyStopping(
@@ -183,7 +186,8 @@ def train_model(filepath):
         restore_best_weights=True
     )
 
-    model.fit(x_train_tensor, y_train_tensor, epochs=75, batch_size=32, class_weight=class_weight, validation_data=(x_test_tensor, y_test_tensor), callbacks=[early_stopping])
+    # class_weight=class_weight
+    model.fit(x_train_tensor, y_train_tensor, epochs=75, batch_size=32, validation_data=(x_test_tensor, y_test_tensor), callbacks=[early_stopping])
     loss, accuracy = model.evaluate(x_test_tensor, y_test_tensor)
     output += (f"Test Loss: {loss}\n")
     output += (f"Test Accuracy: {accuracy}\n\n")
@@ -194,7 +198,7 @@ def train_model(filepath):
 
     y_pred_probs = model.predict(x_test_tensor)
     y_pred = np.argmax(y_pred_probs, axis=1)
-    y_true = np.array(y_test)
+    y_true = np.argmax(y_test, axis=1)
 
     output += classification_report(y_true, y_pred, target_names=le.classes_)
     
