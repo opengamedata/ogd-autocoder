@@ -1,0 +1,21 @@
+name: "Configure app.wsgi file for a deploy"
+author: Luke Swanson
+description: "Given a set of appropriate inputs, this action prepares the app.wsgi file for an API deploy."
+branding:
+  icon: 'clipboard'
+  color: 'blue'
+inputs:
+  app_path:
+    description: "Local path to the wsgi app being deployed"
+    required: true
+    default: 'src/app.wsgi'
+  api_base:
+    description: "The remote folder where the wsgi app will be deployed"
+    required: false
+    default: 'wsgi-bin/ogd-autocoder'
+runs:
+  using: "composite"
+  steps:
+    - name: Set API Base Path
+      run: sed -i 's@placeholder home@${{inputs.api_base}}@g'       ${{ inputs.app_path }}
+      shell: bash
