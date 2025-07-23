@@ -41,34 +41,48 @@ def add_new_columns(filepath):
 
     return df
 
-def get_events_for_user(filepath, user_id):
+def segment_ids_for_user(filepath, user_id):
     df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
 
+    return sorted(df[df["user_id"] == user_id].segment_id.dropna().astype("int").unique().tolist())
+
+def get_events_for_user(filepath, user_id, segment_id):
+    df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
     df["timestamp"] = pd.to_datetime(df["timestamp"], format='mixed')
-    user_events = df[df["user_id"] == user_id][["index", "event_name", "job_name", "timestamp", "segment_id", "segment_labels"]]
+    
+    if segment_id:
+        df = df[df["segment_id"].notna() & (df["user_id"] == user_id) & (df["segment_id"].astype('Int64') == int(segment_id))]
+    else:
+        df = df[df["user_id"] == user_id]
+
+    user_events = df[["index", "event_name", "job_name", "timestamp", "segment_id", "segment_labels"]]
     user_events = user_events.sort_values(by="timestamp", ascending=True)
 
     user_events["timestamp"] = user_events["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
     
     return user_events
 
-def update_rows(filepath, user_id, upd_id_instead_label, segment_id, segment_labels, selected_rows):
+def label_rows(filepath, user_id, segment_id, segment_labels):
+    # set segment_id
+    df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
+
+    update_filter = df["segment_id"].notna() & (df["user_id"] == user_id) & (df["segment_id"].astype(pd.Int64Dtype()) == int(segment_id))
+    update_val = np.nan if segment_labels == "" else segment_labels
+    df["segment_labels"] = df["segment_labels"].mask(update_filter, update_val)
+
+    df.to_csv(filepath, index=False, sep="\t")
+
+def segment_rows(filepath, user_id, segment_id, selected_rows):
+    # set segment_id
     df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
 
     df["row_id"] = df["index"].astype(str) + "_" + pd.to_datetime(df["timestamp"], format='mixed').dt.strftime("%Y-%m-%d %H:%M:%S")
     df["row_id"] = df["row_id"].astype(str)
     selected_row_ids = list(map(lambda x: f"{x[0]}_{x[1]}", selected_rows))
     update_filter = (df["user_id"] == user_id) & df["row_id"].isin(selected_row_ids)
-    
 
-    if upd_id_instead_label:
-        # update segment_id
-        update_val = np.nan if segment_id == "" else int(segment_id)
-        df["segment_id"] = df["segment_id"].mask(update_filter, update_val)
-    else:
-        # update segment_labels
-        update_val = np.nan if segment_labels == "" else segment_labels
-        df["segment_labels"] = df["segment_labels"].mask(update_filter, update_val)
+    update_val = np.nan if segment_id == "" else int(segment_id)
+    df["segment_id"] = df["segment_id"].mask(update_filter, update_val)
 
     df = df.drop(columns=["row_id"])
     df.to_csv(filepath, index=False, sep="\t")
@@ -89,13 +103,14 @@ def autosegment_by_job(filepath, user_id):
 
 
 def train_model(filepath):
-    # fixme - the ID is the segment_id + user_id
 
     # segment_id is the new task_id, segment_labels is the target
     df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
     # fixme - add support for multiple labels
     # fixme - job_name dummies
     df["timestamp"] = pd.to_datetime(df["timestamp"], format='mixed')
+    # fixme - the ID is the segment_id + user_id
+    df["segment_id"] = df["user_id"] + "-" + df["segment_id"].astype(str)
     clean_df = df[["event_name", "segment_id", "segment_labels"]] #, "job_name"
     # remove NA's
     clean_df = clean_df.dropna()

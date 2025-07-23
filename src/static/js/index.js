@@ -1,4 +1,4 @@
-let table = null;
+let tables = {};
 let filename = null;
 
 $('#tsvFile').on('change', function () {
@@ -12,6 +12,18 @@ $('#downloadBtn').on('click', function () {
     window.location.href = url;
 });
 
+$('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
+    // when tab was switched
+    const tabId = $('#nav-tab .nav-link.active').attr('id');
+    if (["nav-segment-tab", "nav-label-tab"].includes(tabId)) {
+        $("#load_and_user_panel").removeClass("d-none");
+        userChanged();
+    } else {
+        // https://stackoverflow.com/questions/8266662/add-class-via-jquery-but-only-when-not-exists
+        $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none")
+     }
+});
+
 function triggerFilePicker() {
     $('#tsvFile').click();
 }
@@ -23,7 +35,6 @@ function uploadFile() {
     formData.append("file", file);
 
     $('#spinner').removeClass("d-none");
-    $('#eventsTableDiv').hide();
     $('#autoSegmentBtn').hide();
     $('#userDropdown').empty().append('<option></option>');
     //const fileSizeMB = file.size / (1024 * 1024);
@@ -38,14 +49,13 @@ function uploadFile() {
             $('#spinner').addClass("d-none");
             filename = response.filename;
             response.user_ids.forEach(user_id => {
-            $('#userDropdown').append(`<option value="${user_id}">${user_id}</option>`);
+                $('#userDropdown').append(`<option value="${user_id}">${user_id}</option>`);
             });
 
             // Initialize or reinitialize Select2
             $('#userDropdown').select2({
                 placeholder: "Select a user",
                 width: '100%',
-                allowClear: true
             });
 
             $('#userDropdown').show();
@@ -58,24 +68,79 @@ function uploadFile() {
         }
     });
 }
+function nextSegment() {
+    const select = $('#segmentDropdown');
+    const options = select.find('option');
+    const current = select.prop('selectedIndex');
+    const next = (current + 1) % options.length;
 
-function loadEvents() {
+    select.prop('selectedIndex', next).trigger('change');
+}
+
+function userChanged() {
+    const tabId = $('#nav-tab .nav-link.active').attr('id');
+    if (tabId == "nav-segment-tab") {
+        loadEvents("#segmentTable");
+    } else if (tabId == "nav-label-tab") {
+        $('#segmentDropdown').empty().append('<option></option>');
+        $('#segmentDropdown').select2({
+            placeholder: "Select a segment",
+            width: '40%',
+        });
+        const user_id = $('#userDropdown').val();
+        if (user_id) {
+            $('#spinner').removeClass("d-none");
+            $.ajax({
+                url: `/list_segment_ids/${user_id}`,
+                method: "POST",
+                data: JSON.stringify({filename: filename}),
+                contentType: "application/json",
+                success: function(response) {
+                    response.data.forEach(seg_id => {
+                        $('#segmentDropdown').append(`<option value="${seg_id}">${seg_id}</option>`);
+                    });
+                    $('#spinner').addClass("d-none");
+                    //const segment_id = $('#segmentDropdown').val();
+                    //loadEvents("#labelTable", segment_id);
+                },
+                error: function(xhr, status, error) {
+                    console.error("Upload failed:", status, error);
+                    console.log("Server response:", xhr.responseText);
+                }
+            });
+        }
+
+        
+    }
+}
+
+
+function loadEvents(table_id) {
+    // table_id: #segmentTable | #labelTable
+    let segment_id = null;
+    if (table_id == "#labelTable") {
+        segment_id = $('#segmentDropdown').val()
+        if (!segment_id) return; // needs a segment_id
+    }
+
     const user_id = $('#userDropdown').val();
+    if (!user_id) return;
+
     $('#spinner').removeClass("d-none");
     $.ajax({
         url: `/events/${user_id}`,
         method: "POST",
-        data: JSON.stringify({ filename: filename }),
+        data: JSON.stringify({ filename: filename, segment_id: segment_id }),
         contentType: "application/json",
         success: function(response) {
             let data = response.data;
-            if (table) {
-                table.destroy();
-                $('#eventsTable tbody').empty();
+            if (tables[table_id]) {
+                tables[table_id].destroy();
+                $(`${table_id} tbody`).empty();
             }
 
             data.forEach(row => {
-            $('#eventsTable tbody').append(
+            $(`${table_id} tbody`).append(
                 `<tr>
                 <td>${row.index}</td>
                 <td>${row.event_name}</td>
@@ -86,8 +151,7 @@ function loadEvents() {
                 </tr>`
             );
             });
-        
-            table = $('#eventsTable').DataTable({
+            tables[table_id] = $(table_id).DataTable({
                 select: { style: 'multi' },
                 order: [[3, 'asc']],
                 paging: false,
@@ -97,11 +161,6 @@ function loadEvents() {
 
             $('#spinner').addClass("d-none");
             $('#autoSegmentBtn').show();
-            $('#eventsTableDiv').show();
-
-            if ($("#segmentIdInput").val() == "") {
-                $("#segmentIdInput").val(1);
-            }
         },
         error: function(xhr, status, error) {
             console.error("Event data load failed:", status, error);
@@ -110,41 +169,60 @@ function loadEvents() {
     });
 }
 
-/**
- * Update rows column based on upd_id_instead_label param (if true -> update segment id, otherwise -> update labels)
- */
-function updateRows(upd_id_instead_label) {
+function segmentRows() {
+    let table_id = "#segmentTable";
     const user_id = $('#userDropdown').val();
-    const selectedRows = table.rows({ selected: true }).data().toArray();
+    const selectedRows = tables[table_id].rows({ selected: true }).data().toArray();
     if (selectedRows.length == 0) {
         alert("Please, select at least one row!")
         return;
     }
     $('#spinner').removeClass("d-none");
     $.ajax({
-        url: `/update/${user_id}`,
+        url: `/segment/${user_id}`,
         method: "POST",
         // select the index and the time column (will be the row identifier)
         data: JSON.stringify({ 
             filename: filename,
             selected_rows: selectedRows.map(row => [row[0], row[3]]),
-            upd_id_instead_label: upd_id_instead_label,
             segment_id: $("#segmentIdInput").val(),
-            segment_labels: $('#segmentLabelsInput').val()
         }),
         contentType: "application/json",
         success: function(response) {
-            if (upd_id_instead_label) {
-                // autoincrement
-                let next_segment_id = parseInt($("#segmentIdInput").val()) + 1
-                $("#segmentIdInput").val(next_segment_id);
-            }
-        
+            // autoincrement
+            let next_segment_id = parseInt($("#segmentIdInput").val()) + 1
+            $("#segmentIdInput").val(next_segment_id);
+    
             // reload data
-            loadEvents();
+            loadEvents(table_id);
         },
         error: function(xhr, status, error) {
             console.error("Segmentation failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
+}
+
+function labelRows() {
+    let table_id = "#labelTable";
+    const user_id = $('#userDropdown').val();
+    $('#spinner').removeClass("d-none");
+    $.ajax({
+        url: `/label/${user_id}`,
+        method: "POST",
+        // select the index and the time column (will be the row identifier)
+        data: JSON.stringify({ 
+            filename: filename,
+            segment_id: $("#segmentDropdown").val(),
+            segment_labels: $('#segmentLabelsInput').val()
+        }),
+        contentType: "application/json",
+        success: function(response) {    
+            // reload data
+            loadEvents(table_id);
+        },
+        error: function(xhr, status, error) {
+            console.error("Labeling failed:", status, error);
             console.log("Server response:", xhr.responseText);
         }
     });
@@ -155,6 +233,7 @@ function autoSegment() {
     bootstrap.Modal.getInstance($('#confirmSegmentModal')[0]).hide();
 
     const user_id = $('#userDropdown').val();
+    let table_id = "#segmentTable"
 
     $('#spinner').removeClass("d-none");
     $.ajax({
@@ -164,7 +243,7 @@ function autoSegment() {
         contentType: "application/json",
         success: function(response) {
             // reload data
-            loadEvents();
+            loadEvents(table_id);
         },
         error: function(xhr, status, error) {
             console.error("Auto Segmentation failed:", status, error);
@@ -182,7 +261,7 @@ function trainModel() {
         contentType: "application/json",
         success: function(response) {
             $('#spinner').addClass("d-none");
-            alert(response["output"]);
+            $('#modelSummary').text(response["output"]);
         },
         error: function(xhr, status, error) {
             console.error("Model Training failed:", status, error);

@@ -28,24 +28,38 @@ def upload_file():
     df = add_new_columns(filepath)
     return jsonify({"user_ids": df.user_id.dropna().unique().tolist(), "filename": filename})
 
+@app.route("/list_segment_ids/<user_id>", methods=["POST"])
+def list_segment_ids(user_id):
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
+
+    return jsonify({"data": segment_ids_for_user(filepath, user_id)})
+
+
 @app.route("/events/<user_id>", methods=["POST"])
 def events(user_id):
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
-    user_events = get_events_for_user(filepath, user_id)
+    user_events = get_events_for_user(filepath, user_id, request.json.get("segment_id"))
 
     return jsonify({"data": user_events.fillna("-").to_dict(orient="records")}) # "max_segment_id": user_events["segment_id"].fillna(0).max()
 
-@app.route("/update/<user_id>", methods=["POST"])
-def update(user_id):
+@app.route("/segment/<user_id>", methods=["POST"])
+def segment(user_id):
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
-    upd_id_instead_label = request.json["upd_id_instead_label"]
     selected_rows = request.json["selected_rows"]
+    segment_id = request.json.get("segment_id")
+
+    segment_rows(filepath, user_id, segment_id, selected_rows)
+    # fixme - make this faster by returning updated rows...
+    # fixme - store filepath in headers
+    return jsonify({"success": True})
+
+@app.route("/label/<user_id>", methods=["POST"])
+def label(user_id):
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
     segment_id = request.json.get("segment_id")
     segment_labels = request.json.get("segment_labels")
 
-    update_rows(filepath, user_id, upd_id_instead_label, segment_id, segment_labels, selected_rows)
-    # fixme - make this faster by returning updated rows...
-    # fixme - store filepath in headers
+    label_rows(filepath, user_id, segment_id, segment_labels)
     return jsonify({"success": True})
 
 @app.route("/autosegment/<user_id>", methods=["POST"])
