@@ -13,7 +13,7 @@ on:
 env:
   DEPLOY_HOST: ${{ vars.OGD_STAGING_HOST }}
   DEPLOY_DIR:                              ${{ vars.WSGI_PATH }}/${{ github.event.repository.name }}/${{ github.ref_name }}
-  DEPLOY_URL:  ${{ vars.OGD_STAGING_HOST }}/${{ vars.WSGI_PATH }}/${{ github.event.repository.name }}/${{ github.ref_name }}/app.wsgi
+  DEPLOY_URL:  ${{ vars.OGD_STAGING_HOST }}/wsgi-bin/${{ github.event.repository.name }}/${{ github.ref_name }}/app.wsgi
 
 jobs:
   ci_deploy:
