@@ -117,12 +117,54 @@ function fillSegmentDropdown() {
     }
 }
 
+$('#importLabelsBtn').on('click', function () {
+    $('#importLabelsFile').click();
+});
+
+$('#importLabelsFile').on('change', function (event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+        try {
+        const rows = JSON.parse(e.target.result);
+        const $dropdown = $('#labelsDropdown');
+
+        $.each(rows, function (i, row) {
+            if (row.code && row.definition) {
+                const $option = $('<option>')
+                    .val(row.code)
+                    .text(row.code)
+                    .attr('title', row.definition);
+
+                $dropdown.append($option);
+            }
+        });
+        } catch (err) {
+            alert('Invalid JSON file, please check the format, e.g. {"code": "struggle", "definition": "player does not understand sth"}.');
+        }
+    };
+
+    reader.readAsText(file);
+});
+
 function fillLabelDropdown() {
-    $('#labelsDropdown').empty();
+    // don't remove the uploaded options from codebook.csv
+    $('#labelsDropdown').val("");
+    $('#labelsDropdown').children(':not([title])').remove();
     $('#labelsDropdown').select2({
         tags: true,
         placeholder: '...',
         width: '100%',
+        templateResult: function formatOption (option) {
+            let template = '<div><strong>' + option.text + '</strong></div>';
+            if (option.title) {
+                template += '<div>' + option.title + '</div>'
+            }
+            return $(template);
+        }
       });
     const user_id = $('#userDropdown').val();
     if (user_id) {
@@ -134,7 +176,9 @@ function fillLabelDropdown() {
             contentType: "application/json",
             success: function(response) {
                 response.data.forEach(label => {
-                    $('#labelsDropdown').append(`<option value="${label}">${label}</option>`);
+                    if ($(`#labelsDropdown option[value="${label}"]`).length === 0) { // don't repeat codebook options
+                        $('#labelsDropdown').append(`<option value="${label}">${label}</option>`);
+                    }
                 });
                 $('#spinner').addClass("d-none");
             },
@@ -264,6 +308,7 @@ function labelRows() {
         success: function(response) {    
             // reload data
             fillLabelDropdown();
+            $('#labelJustificationInput').val("")
             loadEvents(table_id);
         },
         error: function(xhr, status, error) {

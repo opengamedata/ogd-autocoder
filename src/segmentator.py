@@ -97,7 +97,7 @@ def download_file():
         return abort(404, description="File not found.")
 
     return send_file(
-        "../" + filepath,
+        filepath,
         as_attachment=True,
         download_name=filename.split("_", maxsplit=1)[1]
     )

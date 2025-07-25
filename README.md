@@ -5,7 +5,6 @@ Repository for our tool for human coding of Event data, with integration to feat
 - https://github.com/astral-sh/uv
 
 # Startup
-(execute from root)
 
 Activate venv
 
@@ -15,6 +14,10 @@ Install dependencies
 
 `$ uv sync`
 
+Change dir to `src`
+
+`$ cd src`
+
 Start server
 
-`$ uv run src/segmentator.py`
+`$ uv run segmentator.py`
