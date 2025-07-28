@@ -1,6 +1,7 @@
 import os
 import time
 from utils import *
+from train import train_model
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort
 
@@ -80,7 +81,7 @@ def autosegment(user_id):
 @app.route("/train_model", methods=["POST"])
 def train():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
-    return jsonify({"output": train_model(filepath)})
+    return jsonify({"output": train_model(filepath, request.json["model_type"])})
 
 @app.route('/download', methods=['GET'])
 def download_file():

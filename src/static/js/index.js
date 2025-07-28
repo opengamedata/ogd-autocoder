@@ -347,7 +347,7 @@ function trainModel() {
     $.ajax({
         url: `/train_model`,
         method: "POST",
-        data: JSON.stringify({ filename: filename,}),
+        data: JSON.stringify({ filename: filename, model_type: $('#modelTypeSelect').val()}),
         contentType: "application/json",
         success: function(response) {
             $('#spinner').addClass("d-none");
