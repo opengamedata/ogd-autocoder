@@ -23,6 +23,15 @@ def train_model(filepath, model_type):
     df["timestamp"] = pd.to_datetime(df["timestamp"], format='mixed')
     # fixme - the ID is the segment_id + user_id
     df["segment_id"] = df["user_id"] + "-" + df["segment_id"].astype(str)
+
+    # additional feature: segment duration in seconds
+    duration_df = (
+        df.groupby("segment_id")["timestamp"]
+        .agg(segment_start="min", segment_end="max")
+        .assign(segment_duration=lambda x: (x["segment_end"] - x["segment_start"]).dt.total_seconds())
+        .reset_index()[["segment_id", "segment_duration"]]
+    )
+
     clean_df = df[["event_name", "segment_id", "segment_labels"]] #, "job_name"
     # remove NA's
     clean_df = clean_df.dropna()
@@ -39,6 +48,7 @@ def train_model(filepath, model_type):
         .reset_index()
         .merge(sum_df.reset_index(), on=["segment_id", "segment_labels"], suffixes=('_percent', '_sum'))
         .merge(count_df.reset_index(), on=["segment_id", "segment_labels"])
+        .merge(duration_df, on="segment_id", how="left")
     )
 
     train_df = clean_agg_df
