@@ -85,7 +85,8 @@ def autosegment(user_id):
 @app.route("/train_model", methods=["POST"])
 def train():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
-    return jsonify({"output": train_model(filepath, request.json["model_type"], request.json["include_features"])})
+    output, metrics = train_model(filepath, request.json["model_type"], request.json["include_features"])
+    return jsonify({"output": output, "metrics": metrics})
 
 @app.route('/download', methods=['GET'])
 def download_file():

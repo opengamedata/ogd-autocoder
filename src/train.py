@@ -1,7 +1,7 @@
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, log_loss
+from sklearn.metrics import classification_report, log_loss, f1_score
 from sklearn.linear_model import LogisticRegression
 import tensorflow as tf
 from tensorflow import keras
@@ -59,17 +59,19 @@ def train_model(filepath, model_type, include_features):
     # print("x Validation Shape: " + str(x_val.shape))
     # print("x Test Shape: " + str(x_test.shape))
 
+    metrics = {} # stores the metrics (used in the bar chart)
     if (model_type == "logistic"):
-        output += train_logistic(x_train_full, x_test, y_train_full, y_test, le.classes_)
+        output += train_logistic(x_train_full, x_test, y_train_full, y_test, le.classes_, metrics)
     elif (model_type == "random_forest"):
-        output += train_random_forest(x_train_full, x_test, y_train_full, y_test, le.classes_)
+        output += train_random_forest(x_train_full, x_test, y_train_full, y_test, le.classes_, metrics)
     elif (model_type == "neural_net"):
-        output += train_neural_net(x_train_full, x_test, y_train_full, y_test, le.classes_)
+        # y is one-hot encoded here !!
+        output += train_neural_net(x_train_full, x_test, y_train_full, y_test, le.classes_, metrics)
     else:
         output += "Invalid Model Selected"
 
     output = f"Time taken:\t{time.time() - start_time} secs\n\n" + output
-    return output
+    return output, metrics
 
 def get_train_df(filepath):
     # segment_id is the new task_id, segment_labels is the target
@@ -108,7 +110,7 @@ def get_train_df(filepath):
     )
     return clean_agg_df
 
-def train_neural_net(x_train, x_test, y_train, y_test, classes):
+def train_neural_net(x_train, x_test, y_train, y_test, classes, metrics):
     output = "Neural Network\n\n"
     x_train_tensor = tf.convert_to_tensor(x_train)
     y_train_tensor = tf.convert_to_tensor(y_train)
@@ -137,49 +139,61 @@ def train_neural_net(x_train, x_test, y_train, y_test, classes):
     # class_weight=class_weight
     model.fit(x_train_tensor, y_train_tensor, epochs=75, batch_size=32, validation_data=(x_test_tensor, y_test_tensor), callbacks=[early_stopping])
     loss, accuracy = model.evaluate(x_test_tensor, y_test_tensor)
+    metrics["test_accuracy"] = accuracy
     output += (f"Test Accuracy:\t{accuracy}\n")
     #output += (f"Test Loss:\t{loss}\n\n")
 
     loss, accuracy = model.evaluate(x_train_tensor, y_train_tensor)
+    metrics["train_accuracy"] = accuracy
     output += (f"Train Accuracy:\t{accuracy}\n\n")
     #output += (f"Train Loss:\t{loss}\n\n")
 
     y_pred_probs = model.predict(x_test_tensor)
     y_pred = np.argmax(y_pred_probs, axis=1)
     y_true = np.argmax(y_test, axis=1)
-
+    metrics["train_f1"] = f1_score(np.argmax(y_train, axis=1), np.argmax(model.predict(x_train), axis=1), average='weighted')
+    metrics["test_f1"] = f1_score(y_true, y_pred, average='weighted')
     output += classification_report(y_true, y_pred, target_names=classes)
 
     return output
 
 
-def train_logistic(x_train, x_test, y_train, y_test, classes):
+def train_logistic(x_train, x_test, y_train, y_test, classes, metrics):
     output = "Logistic Regression\n\n"
     model = LogisticRegression(penalty='l2')
     model.fit(x_train, y_train)
 
-    output += (f"Test Accuracy:\t{model.score(x_test, y_test)}\n")
+    metrics["test_accuracy"] = model.score(x_test, y_test)
+    output += (f"Test Accuracy:\t{metrics["test_accuracy"]}\n")
     #output += (f"Test Loss: {log_loss(y_test, model.predict(x_test))}\n\n")
-
-    output += (f"Train Accuracy:\t{model.score(x_train, y_train)}\n\n")
+    
+    metrics["train_accuracy"] = model.score(x_train, y_train)
+    output += (f"Train Accuracy:\t{metrics["train_accuracy"]}\n\n")
     #output += (f"Train Loss: {log_loss(y_train, model.predict(x_train))}\n\n")
 
     y_pred = model.predict(x_test)
-
+    metrics["train_f1"] = f1_score(y_train, model.predict(x_train), average='weighted')
+    metrics["test_f1"] = f1_score(y_test, y_pred, average='weighted')
     output += classification_report(y_test, y_pred, target_names=classes)
 
     return output
 
 
-def train_random_forest(x_train, x_test, y_train, y_test, classes):
+def train_random_forest(x_train, x_test, y_train, y_test, classes, metrics):
     output = "Random Forest\n\n"
     model = RandomForestClassifier(random_state=RANDOM_STATE)
     model.fit(x_train, y_train)
 
-    output += (f"Test Accuracy:\t{model.score(x_test, y_test)}\n")
-    output += (f"Train Accuracy:\t{model.score(x_train, y_train)}\n\n")
+    metrics["test_accuracy"] = model.score(x_test, y_test)
+    metrics["train_accuracy"] = model.score(x_train, y_train)
+
+    output += (f"Test Accuracy:\t{metrics["test_accuracy"]}\n")
+    output += (f"Train Accuracy:\t{metrics["train_accuracy"]}\n\n")
+
 
     y_pred = model.predict(x_test)
+    metrics["train_f1"] = f1_score(y_train, model.predict(x_train), average='weighted')
+    metrics["test_f1"] = f1_score(y_test, y_pred, average='weighted')
     output += classification_report(y_test, y_pred, target_names=classes)
 
     return output

@@ -115,31 +115,94 @@
     </div>
     <!--TRAIN-->
     <div class="tab-pane fade" id="nav-train" role="tabpanel" aria-labelledby="nav-train-tab">
-      <div class="mb-3">
-        <label for="modelTypeSelect" class="form-label fw-bold">Select Model</label>
-        <select class="form-select" id="modelTypeSelect">
-          <option value="logistic">Logistic Regression</option>
-          <option value="random_forest">Random Forest</option>
-          <option value="neural_net">Neural Network</option>
-        </select>
-      </div>
-      <div class="mb-3">
-        <label class="form-label fw-bold">Select Features</label>
-        <input type="text" id="featureSearch" class="form-control mb-2" placeholder="Search features...">
-        <div id="featureSelector" class="border rounded p-2" style="height: 200px; overflow-y: auto;"></div>
-      </div>
-
-      <button class="btn btn-success" id="trainModelBtn" onclick="trainModel()" style="display:none;" title="Train ML model on trained data and show results">
-        <i class="bi bi-cpu me-1"></i> Train
-      </button>
-      <div class="card my-3">
-        <div class="card-header bg-light fw-bold">
-          Model Summary
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <div class="mb-3">
+            <label for="modelTypeSelect" class="form-label fw-bold">Select Model</label>
+            <select class="form-select" id="modelTypeSelect">
+              <option value="logistic">Logistic Regression</option>
+              <option value="random_forest">Random Forest</option>
+              <option value="neural_net">Neural Network</option>
+            </select>
+          </div>
+      
+          <div class="mb-3">
+            <label class="form-label fw-bold">Select Features</label>
+            <input type="text" id="featureSearch" class="form-control mb-2" placeholder="Search features...">
+            <div id="featureSelector" class="border rounded p-2" style="height: 400px; overflow-y: auto;"></div>
+          </div>
         </div>
-        <div class="card-body">
-          <pre id="modelSummary" class="bg-light p-3 rounded small mb-0" style="white-space:pre-wrap;"></pre>
+      
+        <div class="col-md-6">
+          <div class="d-flex gap-3 mb-3">
+            <button class="btn btn-success" id="trainModelBtn" onclick="trainModel()" style="display:none;" title="Train ML model on trained data and show results">
+              <i class="bi bi-cpu me-1"></i> Train
+            </button>
+        
+            <a href="#viewTabs" class="btn btn-primary">
+              Model History
+            </a>
+          </div>
+          <div class="card">
+            <div class="card-header bg-light fw-bold">Model Summary</div>
+            <div class="card-body">
+              <pre id="modelSummary" class="bg-light p-3 rounded small mb-0" style="white-space:pre-wrap;"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ul class="nav nav-tabs" id="viewTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="bar-tab" data-bs-toggle="tab" data-bs-target="#bar-view" type="button" role="tab">
+            Bar View
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="table-tab" data-bs-toggle="tab" data-bs-target="#table-view" type="button" role="tab">
+            Table View
+          </button>
+        </li>
+      </ul>
+      <div style="height: 75vh; display: flex; flex-direction: column;">
+
+        <div class="tab-content mt-3 flex-grow-1 overflow-hidden" id="viewTabsContent">
+          <div class="tab-pane fade show active h-100" id="bar-view" role="tabpanel">
+            <div class="card p-3 h-100">
+              <div class="row h-100">
+                <div class="col-md-4 border-end d-flex flex-column pe-3 h-100">
+                  <div class="fw-bold mb-2">Models</div>
+                  <div id="modelScroll" class="overflow-auto flex-grow-1 min-vh-0">
+                    <!-- Models go here -->
+                  </div>
+                </div>
+                <div class="col-md-8 d-flex flex-column">
+                  <canvas id="modelsBarChart" class="flex-grow-1"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+      
+          <div class="tab-pane fade h-100" id="table-view" role="tabpanel">
+            <div class="card p-3 h-100 overflow-auto">
+              <table id="modelMetricsTable" class="table table-bordered table-striped mb-0">
+                <thead>
+                  <tr>
+                    <th>Model</th>
+                    <th>Timestamp</th>
+                    <th>Test Accuracy</th>
+                    <th>Test F1</th>
+                    <th>Train Accuracy</th>
+                    <th>Train F1</th>
+                  </tr>
+                </thead>
+                <tbody id="modelTableBody">
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>      
+
     </div>
     <!--APPLY-->
     <div class="tab-pane fade" id="nav-apply" role="tabpanel" aria-labelledby="nav-apply-tab">

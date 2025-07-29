@@ -1,5 +1,6 @@
 let tables = {};
 let filename = null;
+let modelHistChart;
 
 $('#tsvFile').on('change', function () {
     if (this.files.length > 0) {
@@ -152,7 +153,132 @@ $('#importLabelsFile').on('change', function (event) {
     reader.readAsText(file);
 });
 
+// order models by timestamp
+$('#modelMetricsTable').DataTable({order: [[1, 'desc']]});
+
+function addModel(modelName, metrics) {
+    let accuracy = metrics["test_accuracy"];
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')} ` +
+                    `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+    
+    const modelIndex = modelHistChart.data.labels.length;
+    const $btn = $('<button></button>')
+        .addClass('btn btn-light w-100 text-start mb-2')
+        .text(`${modelName} (${Math.round(accuracy * 100)} %) ${timestamp}`)
+        .on('mouseenter', () => highlightBar(modelIndex))
+        .on('mouseleave', () => clearHighlight());
+    $('#modelScroll').append($btn);
+
+    modelHistChart.data.labels.push(modelName);
+    modelHistChart.data.datasets[0].data.push(metrics["test_accuracy"]);
+    modelHistChart.data.datasets[1].data.push(metrics["test_f1"]);
+    modelHistChart.data.datasets[2].data.push(metrics["train_accuracy"]);
+    modelHistChart.data.datasets[3].data.push(metrics["train_f1"]);
+    modelHistChart.update();
+
+    // updating table view
+    let table = $('#modelMetricsTable').DataTable();
+    
+    table.row.add([
+        modelName,
+        timestamp,
+        metrics["test_accuracy"].toFixed(2),
+        metrics["test_f1"].toFixed(2),
+        metrics["train_accuracy"].toFixed(2),
+        metrics["train_f1"].toFixed(2),
+    ]).draw(true);
+}
+
+function highlightBar(index) {
+    modelHistChart.setActiveElements([
+        { datasetIndex: 0, index },
+        { datasetIndex: 1, index },
+        { datasetIndex: 2, index },
+        { datasetIndex: 3, index }
+    ]);
+    modelHistChart.tooltip.setActiveElements([
+        { datasetIndex: 0, index },
+        { datasetIndex: 1, index },
+        { datasetIndex: 2, index },
+        { datasetIndex: 3, index }
+    ]);
+    modelHistChart.update();
+}
+
+function clearHighlight() {
+    modelHistChart.setActiveElements([]);
+    modelHistChart.tooltip.setActiveElements([]);
+    modelHistChart.update();
+}
+
+
+const ctx = $('#modelsBarChart')[0].getContext('2d');
+modelHistChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: [], // Fill this with model names dynamically
+        datasets: [
+        {
+            label: 'Test Accuracy',
+            data: [],
+            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1,
+        },
+        {
+            label: 'Test F1 Score',
+            data: [],
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1,
+            hidden: true
+        },
+        {
+            label: 'Train Accuracy',
+            data: [],
+            backgroundColor: 'rgba(255, 159, 64, 0.6)',
+            borderColor: 'rgba(255, 159, 64, 1)',
+            borderWidth: 1,
+            hidden: true
+        },
+        {
+            label: 'Train F1 Score',
+            data: [],
+            backgroundColor: 'rgba(153, 102, 255, 0.6)',
+            borderColor: 'rgba(153, 102, 255, 1)',
+            borderWidth: 1,
+            hidden: true
+        }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+        y: {
+            beginAtZero: true,
+            max: 1,
+            ticks: {
+            callback: val => val.toFixed(2)
+            }
+        }
+        },
+        plugins: {
+        legend: { display: true },
+        tooltip: {
+            callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${(ctx.raw * 100).toFixed(1)}%`
+            }
+        }
+        }
+    }
+});  
+
 function fillFeatureList() {
+    if (!filename) {
+        return;
+    }
     const container = $('#featureSelector');
     container.empty();
     $('#spinner').removeClass("d-none");
@@ -431,6 +557,7 @@ function trainModel() {
     $('#featureSelector input.feature-checkbox:checked').each(function () {
         features.push($(this).val());
     });
+    let modelTypeHumRead = $('#modelTypeSelect option:selected').text()
 
     $.ajax({
         url: `/train_model`,
@@ -440,6 +567,7 @@ function trainModel() {
         success: function(response) {
             $('#spinner').addClass("d-none");
             $('#modelSummary').text(response["output"]);
+            addModel(modelTypeHumRead, response["metrics"])
         },
         error: function(xhr, status, error) {
             console.error("Model Training failed:", status, error);
