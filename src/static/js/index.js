@@ -167,8 +167,9 @@ function fillFeatureList() {
                     group_content = $(`
                     <div class="mb-1">
                         <div class="form-check">
-                        <input class="form-check-input group-checkbox" type="checkbox" id="${group.name}" checked>
-                        <label class="form-check-label fw-bold" for="${group.name}">${group.name}</label>
+                            <input class="form-check-input group-checkbox" type="checkbox" id="${group.name}" checked>
+                            <label class="form-check-label fw-bold" for="${group.name}">${group.name}</label>
+                        </div>
                     </div>`);
                     features = $(`<div class="ms-3" id="${group.name}-features"></div>`)
                     group.children.forEach(feature => {
@@ -198,6 +199,28 @@ function fillFeatureList() {
             $('.group-checkbox').on('change', function () {
                 const groupId = $(this).attr('id');
                 $(`#${groupId}-features input[type=checkbox]`).prop('checked', this.checked);
+            });
+            
+            $('#featureSearch').on('input', function () {
+                const query = $(this).val().toLowerCase();
+              
+                $('.feature-checkbox').each(function () {
+                    // $(this).next() is the label element
+                    const featureName = $(this).next().text().toLowerCase();
+                    if (featureName.includes(query)) {
+                        $(this).parent().show();
+                    } else {
+                        $(this).parent().hide();
+                    }
+                });
+                
+                $('.group-checkbox').each(function () {
+                    const hasVisibleChild = $(this).parent().parent().find('.feature-checkbox:visible').length > 0;
+                    if (hasVisibleChild)
+                        $(this).parent().show();
+                    else
+                        $(this).parent().hide();
+                });
             });
 
             $('#spinner').addClass("d-none");
