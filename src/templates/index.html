@@ -123,6 +123,12 @@
           <option value="neural_net">Neural Network</option>
         </select>
       </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Select Features</label>
+        <input type="text" id="featureSearch" class="form-control mb-2" placeholder="Search features...">
+        <div id="featureSelector" class="border rounded p-2" style="height: 200px; overflow-y: auto;"></div>
+      </div>
+
       <button class="btn btn-success" id="trainModelBtn" onclick="trainModel()" style="display:none;" title="Train ML model on trained data and show results">
         <i class="bi bi-cpu me-1"></i> Train
       </button>

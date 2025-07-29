@@ -14,8 +14,64 @@ import time
 
 RANDOM_STATE = 13
 
-def train_model(filepath, model_type):
+def available_features(filepath):
+    columns = []
+    for c in get_train_df(filepath).drop(columns=['segment_labels', 'segment_id']).columns:
+        if (len(columns) == 0) or (c.split("_")[-1] != columns[-1]["name"]):
+            columns.append({"name": c.split("_")[-1], "children": [c]})
+        else:
+            columns[-1]["children"].append(c)
+
+    columns.sort(key=lambda x: len(x["children"])) # sort by number of children
+    return columns
+
+
+def train_model(filepath, model_type, include_features):
     start_time = time.time()
+
+    train_df = get_train_df(filepath)
+    #train_df = clean_agg_df.categorize(columns=["job_name"])
+    #train_df = dd.get_dummies(train_df, columns=["job_name"], dtype=float)
+
+    le = LabelEncoder()
+    target_col = le.fit_transform(train_df['segment_labels']) # converts to ints
+    if model_type == "neural_net":
+        target_col = keras.utils.to_categorical(target_col, num_classes = len(le.classes_)) # converts to dummies
+
+    x_train_full, x_test, y_train_full, y_test = train_test_split(
+        train_df[include_features], # train_df.drop(columns=['segment_labels', 'segment_id']),
+        target_col,
+        test_size=0.25,
+        random_state=RANDOM_STATE,
+        stratify=train_df['segment_labels'] # same proportion in both splits
+        # fixme - maybe try bootstrap
+    )
+
+    output = (f"Row count:\t{len(train_df)}\n")
+    output += (f"Input col count:\t{x_train_full.shape[1]}\n")
+    output += (f"Classes count:\n")
+    for label, count in train_df['segment_labels'].value_counts().items():
+        output += (f"{label}\t{count}\n")
+    output += "\n"
+
+    # add to (output +=)
+    # print("x Train Shape: " + str(x_train.shape))
+    # print("x Validation Shape: " + str(x_val.shape))
+    # print("x Test Shape: " + str(x_test.shape))
+
+    if (model_type == "logistic"):
+        output += train_logistic(x_train_full, x_test, y_train_full, y_test, le.classes_)
+    elif (model_type == "random_forest"):
+        output += train_random_forest(x_train_full, x_test, y_train_full, y_test, le.classes_)
+    elif (model_type == "neural_net"):
+        output += train_neural_net(x_train_full, x_test, y_train_full, y_test, le.classes_)
+    else:
+        output += "Invalid Model Selected"
+
+    output = f"Time taken:\t{time.time() - start_time} secs\n\n" + output
+    return output
+
+def get_train_df(filepath):
     # segment_id is the new task_id, segment_labels is the target
     df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
     # fixme - add support for multiple labels
@@ -50,47 +106,7 @@ def train_model(filepath, model_type):
         .merge(count_df.reset_index(), on=["segment_id", "segment_labels"])
         .merge(duration_df, on="segment_id", how="left")
     )
-
-    train_df = clean_agg_df
-    #train_df = clean_agg_df.categorize(columns=["job_name"])
-    #train_df = dd.get_dummies(train_df, columns=["job_name"], dtype=float)
-
-    le = LabelEncoder()
-    target_col = le.fit_transform(train_df['segment_labels']) # converts to ints
-    if model_type == "neural_net":
-        target_col = keras.utils.to_categorical(target_col, num_classes = len(le.classes_)) # converts to dummies
-
-    x_train_full, x_test, y_train_full, y_test = train_test_split(
-        train_df.drop(columns=['segment_labels', 'segment_id']),
-        target_col,
-        test_size=0.25,
-        random_state=RANDOM_STATE,
-        stratify=train_df['segment_labels'] # same proportion in both splits
-        # fixme - maybe try bootstrap
-    )
-
-    output = (f"Row count: {len(train_df)}\n")
-    output += (f"Classes count:\n")
-    for label, count in train_df['segment_labels'].value_counts().items():
-        output += (f"{label}\t{count}\n")
-    output += "\n"
-
-    # add to (output +=)
-    # print("x Train Shape: " + str(x_train.shape))
-    # print("x Validation Shape: " + str(x_val.shape))
-    # print("x Test Shape: " + str(x_test.shape))
-
-    if (model_type == "logistic"):
-        output += train_logistic(x_train_full, x_test, y_train_full, y_test, le.classes_)
-    elif (model_type == "random_forest"):
-        output += train_random_forest(x_train_full, x_test, y_train_full, y_test, le.classes_)
-    elif (model_type == "neural_net"):
-        output += train_neural_net(x_train_full, x_test, y_train_full, y_test, le.classes_)
-    else:
-        output += "Invalid Model Selected"
-
-    output = f"Time taken:\t{time.time() - start_time} secs\n\n" + output
-    return output
+    return clean_agg_df
 
 def train_neural_net(x_train, x_test, y_train, y_test, classes):
     output = "Neural Network\n\n"

@@ -1,7 +1,7 @@
 import os
 import time
 from utils import *
-from train import train_model
+from train import train_model, available_features
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort
 
@@ -41,6 +41,10 @@ def list_labels():
 
     return jsonify({"data": list_seg_labels(filepath)})
 
+@app.route("/list_available_features", methods=["POST"])
+def list_available_features():
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
+    return jsonify({"data": available_features(filepath)})
 
 
 @app.route("/events/<user_id>", methods=["POST"])
@@ -81,7 +85,7 @@ def autosegment(user_id):
 @app.route("/train_model", methods=["POST"])
 def train():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
-    return jsonify({"output": train_model(filepath, request.json["model_type"])})
+    return jsonify({"output": train_model(filepath, request.json["model_type"], request.json["include_features"])})
 
 @app.route('/download', methods=['GET'])
 def download_file():

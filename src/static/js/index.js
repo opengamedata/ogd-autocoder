@@ -18,10 +18,12 @@ $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
     if (["nav-segment-tab", "nav-label-tab"].includes(tabId)) {
         $("#load_and_user_panel").removeClass("d-none");
         userChanged();
+    } else if (tabId == "nav-train-tab") {
+        $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none"); // https://stackoverflow.com/questions/8266662/add-class-via-jquery-but-only-when-not-exists
+        fillFeatureList();
     } else {
-        // https://stackoverflow.com/questions/8266662/add-class-via-jquery-but-only-when-not-exists
         $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none")
-     }
+    }
 });
 
 function triggerFilePicker() {
@@ -149,6 +151,63 @@ $('#importLabelsFile').on('change', function (event) {
 
     reader.readAsText(file);
 });
+
+function fillFeatureList() {
+    const container = $('#featureSelector');
+    container.empty();
+    $('#spinner').removeClass("d-none");
+    $.ajax({
+        url: "/list_available_features",
+        method: "POST",
+        data: JSON.stringify({filename: filename}),
+        contentType: "application/json",
+        success: function(response) {
+            for (group of response.data) {
+                if (group.children.length > 1) {
+                    group_content = $(`
+                    <div class="mb-1">
+                        <div class="form-check">
+                        <input class="form-check-input group-checkbox" type="checkbox" id="${group.name}" checked>
+                        <label class="form-check-label fw-bold" for="${group.name}">${group.name}</label>
+                    </div>`);
+                    features = $(`<div class="ms-3" id="${group.name}-features"></div>`)
+                    group.children.forEach(feature => {
+                        features.append(`
+                            <div class="form-check">
+                                <input class="form-check-input feature-checkbox" type="checkbox" value="${feature}" id="feature-${feature}" checked>
+                                <label class="form-check-label" for="feature-${feature}">
+                                    ${feature}
+                                </label>
+                            </div>
+                        `);
+                    });
+                    features.appendTo(group_content);
+                    group_content.appendTo(container);
+                } else {
+                    feature = group.children[0]
+                    container.append($(
+                    `<div class="form-check">
+                        <input class="form-check-input feature-checkbox" type="checkbox" value="${feature}" id="feature-${feature}" checked>
+                        <label class="form-check-label" for="feature-${feature}">
+                            ${feature}
+                        </label>
+                    </div>`));
+                }
+            }
+            
+            $('.group-checkbox').on('change', function () {
+                const groupId = $(this).attr('id');
+                $(`#${groupId}-features input[type=checkbox]`).prop('checked', this.checked);
+            });
+
+            $('#spinner').addClass("d-none");
+        },
+        error: function(xhr, status, error) {
+            console.error("Feature list loading failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
+}
 
 function fillLabelDropdown() {
     // don't remove the uploaded options from codebook.csv
@@ -344,10 +403,16 @@ function autoSegment() {
 
 function trainModel() {
     $('#spinner').removeClass("d-none");
+
+    let features = [];
+    $('#featureSelector input.feature-checkbox:checked').each(function () {
+        features.push($(this).val());
+    });
+
     $.ajax({
         url: `/train_model`,
         method: "POST",
-        data: JSON.stringify({ filename: filename, model_type: $('#modelTypeSelect').val()}),
+        data: JSON.stringify({ filename: filename, model_type: $('#modelTypeSelect').val(), include_features: features}),
         contentType: "application/json",
         success: function(response) {
             $('#spinner').addClass("d-none");
