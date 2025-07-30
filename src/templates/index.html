@@ -26,6 +26,18 @@
   <div id="load_and_user_panel" class="d-flex align-items-center gap-3 mb-4 py-2">
     <button class="btn btn-primary" style="min-width: 100px;" onclick="triggerFilePicker()">Load TSV</button>
     <input type="file" id="tsvFile" accept=".tsv" style="display: none;">
+    {% if uploaded_files %}
+      <div class="dropdown">
+        <button class="btn btn-secondary" type="button" id="historyDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Recent Files">
+          <i class="bi bi-clock-history"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-right" aria-labelledby="historyDropdownBtn" id="recentFilesList" style="min-width: 200px;">
+          {% for file in uploaded_files %}
+            <li><a class="dropdown-item" href="#" onclick="load_existing('{{ file.fullname }}')">{{ file.formatted }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
     <select class="form-select" id="userDropdown" onchange="userChanged()" style="min-width: 200px; display:none;">
     </select>
   </div>

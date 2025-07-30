@@ -39,7 +39,6 @@ function uploadFile() {
 
     $('#spinner').removeClass("d-none");
     $('#autoSegmentBtn').hide();
-    $('#userDropdown').empty().append('<option></option>');
     //const fileSizeMB = file.size / (1024 * 1024);
     //let estimatedTime = 0.042 * fileSizeMB + 1.79; // linear regression made from 2 points :)
     $.ajax({
@@ -49,9 +48,40 @@ function uploadFile() {
         processData: false,
         contentType: false,
         success: function(response) {
-            $('#spinner').addClass("d-none");
             filename = response.filename;
-            response.user_ids.forEach(user_id => {
+            fill_users_list();
+
+            $('#downloadBtn').show();
+            $('#trainModelBtn').show();
+            $('#spinner').addClass("d-none");
+        },
+        error: function(xhr, status, error) {
+            console.error("Upload failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
+}
+
+function load_existing(existing_filename) {
+    filename = existing_filename;
+    $('#spinner').removeClass("d-none");
+    $('#autoSegmentBtn').hide();
+    fill_users_list();
+    $('#downloadBtn').show();
+    $('#trainModelBtn').show();
+    $('#spinner').addClass("d-none");
+}
+
+function fill_users_list() {
+    $('#userDropdown').empty().append('<option></option>');
+    $.ajax({
+        url: '/users_list',
+        method: "POST",
+        async: false,
+        data: JSON.stringify({filename: filename}),
+        contentType: "application/json",
+        success: function(response) {
+            response.users.forEach(user_id => {
                 $('#userDropdown').append(`<option value="${user_id}">${user_id}</option>`);
             });
 
@@ -62,11 +92,9 @@ function uploadFile() {
             });
 
             $('#userDropdown').show();
-            $('#downloadBtn').show();
-            $('#trainModelBtn').show();
         },
         error: function(xhr, status, error) {
-            console.error("Upload failed:", status, error);
+            console.error("User list loading failed:", status, error);
             console.log("Server response:", xhr.responseText);
         }
     });
@@ -567,7 +595,12 @@ function trainModel() {
         success: function(response) {
             $('#spinner').addClass("d-none");
             $('#modelSummary').text(response["output"]);
-            addModel(modelTypeHumRead, response["metrics"])
+            if (response["success"]) {
+                $('#modelSummary').removeClass("text-danger");
+                addModel(modelTypeHumRead, response["metrics"])
+            } else {
+                $("#modelSummary:not([class*='text-danger'])").addClass("text-danger");
+            }
         },
         error: function(xhr, status, error) {
             console.error("Model Training failed:", status, error);

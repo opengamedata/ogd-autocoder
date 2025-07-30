@@ -34,7 +34,10 @@ def add_new_columns(filepath):
 
     df.to_csv(filepath, index=False, sep="\t")
 
-    return df
+def get_users_list(filepath):
+    df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
+
+    return df.user_id.dropna().unique().tolist()
 
 def segment_ids_for_user(filepath, user_id):
     df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
