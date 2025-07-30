@@ -74,8 +74,7 @@ def get_events_for_user(filepath, user_id, segment_id):
     else:
         df = df[df["user_id"] == user_id]
 
-    user_events = df[["index", "event_name", "job_name", "timestamp", "segment_id", "segment_labels", "label_justification"]]
-    user_events = user_events.sort_values(by="timestamp", ascending=True)
+    user_events = df.sort_values(by="timestamp", ascending=True)
 
     user_events["timestamp"] = user_events["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
     

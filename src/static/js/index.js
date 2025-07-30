@@ -1,4 +1,3 @@
-let tables = {};
 let filename = null;
 let modelHistChart;
 
@@ -199,6 +198,22 @@ $('#importLabelsFile').on('change', function (event) {
 
     reader.readAsText(file);
 });
+
+for (let table_id of ["#labelTable", "#segmentTable"]) {
+    $(table_id).DataTable({
+        select: { style: 'multi' },
+        order: [[3, 'asc']],
+        paging: false,
+        scrollY: '400px',
+        scrollCollapse: true,
+        colReorder: true,
+        columnDefs: [
+            { targets: [7,8,9,10,11,12,13,14,15,16,17], visible: false },
+        ],
+        dom: '<"top d-flex justify-content-between align-items-center"fB>rt<"bottom"ip>',
+        buttons: ['colvis'],
+    });
+}
 
 // order models by timestamp
 $('#modelMetricsTable').DataTable({
@@ -498,7 +513,6 @@ function userChanged() {
     }
 }
 
-
 function loadEvents(table_id) {
     // table_id: #segmentTable | #labelTable
     let segment_id = null;
@@ -518,31 +532,33 @@ function loadEvents(table_id) {
         contentType: "application/json",
         success: function(response) {
             let data = response.data;
-            if (tables[table_id]) {
-                tables[table_id].destroy();
-                $(`${table_id} tbody`).empty();
-            }
-
+            const table = $(table_id).DataTable();
+            table.clear();
+            
             data.forEach(row => {
-            $(`${table_id} tbody`).append(
-                `<tr>
-                <td>${row.index}</td>
-                <td>${row.event_name}</td>
-                <td>${row.job_name}</td>
-                <td>${row.timestamp}</td>
-                <td>${row.segment_id}</td>
-                <td>${row.segment_labels}</td>
-                <td>${row.label_justification}</td>
-                </tr>`
-            );
+                table.row.add([
+                    row.index,
+                    row.event_name,
+                    row.job_name,
+                    row.timestamp,
+                    row.segment_id,
+                    row.segment_labels,
+                    row.label_justification,
+                    row.session_id,
+                    row.app_id,
+                    row.event_data,
+                    row.event_source,
+                    row.app_version,
+                    row.app_branch,
+                    row.log_version,
+                    row.offset,
+                    row.user_id,
+                    row.user_data,
+                    row.game_state
+                  ]);
             });
-            tables[table_id] = $(table_id).DataTable({
-                select: { style: 'multi' },
-                order: [[3, 'asc']],
-                paging: false,
-                scrollY: '400px',
-                scrollCollapse: true
-            });
+
+            table.draw();
 
             $('#spinner').addClass("d-none");
             $('#autoSegmentBtn').show();
@@ -557,7 +573,7 @@ function loadEvents(table_id) {
 function segmentRows() {
     let table_id = "#segmentTable";
     const user_id = $('#userDropdown').val();
-    const selectedRows = tables[table_id].rows({ selected: true }).data().toArray();
+    const selectedRows = $(table_id).DataTable().rows({ selected: true }).data().toArray();
     if (selectedRows.length == 0) {
         alert("Please, select at least one row!")
         return;
