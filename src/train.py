@@ -1,16 +1,23 @@
+import pandas as pd
+import numpy as np
+import time
+import os
+from datetime import datetime
+
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, log_loss, f1_score
 from sklearn.linear_model import LogisticRegression
+
 import tensorflow as tf
 from tensorflow import keras
 from keras.layers import Input, Dense
 from keras.models import Sequential
 from keras.callbacks import EarlyStopping
-import pandas as pd
-import numpy as np
-import time
+
+from utils import get_models_filename
+
 
 RANDOM_STATE = 13
 
@@ -58,19 +65,51 @@ def train_model(filepath, model_type, include_features):
     # print("x Train Shape: " + str(x_train.shape))
     # print("x Validation Shape: " + str(x_val.shape))
     # print("x Test Shape: " + str(x_test.shape))
-
-    metrics = {} # stores the metrics (used in the bar chart)
+    
+    metrics = {} # stores the metrics (to save model)
+    metrics["model_type"] = model_type
+    metrics["num_features"] = x_train_full.shape[1]
+    metrics["include_features"] = include_features
     if (model_type == "logistic"):
+        metrics["model_name"] = "Logistic Regression"
         output += train_logistic(x_train_full, x_test, y_train_full, y_test, le.classes_, metrics)
     elif (model_type == "random_forest"):
+        metrics["model_name"] = "Random Forest"
         output += train_random_forest(x_train_full, x_test, y_train_full, y_test, le.classes_, metrics)
     elif (model_type == "neural_net"):
+        metrics["model_name"] = "Neural Network"
         # y is one-hot encoded here !!
         output += train_neural_net(x_train_full, x_test, y_train_full, y_test, le.classes_, metrics)
     else:
         output += "Invalid Model Selected"
 
-    output = f"Time taken:\t{time.time() - start_time} secs\n\n" + output
+    time_taken = time.time() - start_time
+    output = f"Time taken:\t{time_taken} secs\n\n" + output
+
+    metrics["output"] = output
+    metrics["time_taken"] = time_taken
+    metrics["timestamp_end"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # for model comparison
+    models_filepath = get_models_filename(filepath)
+    if os.path.exists(models_filepath):
+        models_df = pd.read_json(models_filepath, orient="records")
+        if "timestamp_end" in models_df.columns:
+            models_df = models_df.astype({"timestamp_end": "string"})
+    else:
+        models_df = pd.DataFrame(columns=metrics.keys())
+
+    for k, v in metrics.items():
+        if k not in models_df.columns:
+            models_df[k] = np.nan
+
+    # insert new rows
+    row = {col: metrics.get(col, np.nan) for col in models_df.columns}
+    models_df.loc[len(models_df)] = row
+
+    models_df.to_json(models_filepath, orient="records")
+
+
     return output, metrics
 
 def get_train_df(filepath):

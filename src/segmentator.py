@@ -24,7 +24,7 @@ def index():
                 "formatted": f.split('_', 1)[1] + ' ' + f.split('_', 1)[0].replace("T", " ") # format the datetime
             }
             for f in os.listdir(UPLOAD_FOLDER)
-            if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))
+            if os.path.isfile(os.path.join(UPLOAD_FOLDER, f)) and not os.path.splitext(f)[0].endswith("_models")
         ]
 
         # timestamp descending order
@@ -46,6 +46,12 @@ def upload_file():
     add_new_columns(filepath)
 
     return jsonify({"filename": filename})
+
+@app.route("/models_list", methods=["POST"])
+def models_list():
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
+
+    return jsonify({"data": get_models_list(filepath)})
 
 @app.route("/users_list", methods=["POST"])
 def users_list():
@@ -113,6 +119,7 @@ def train():
     try:
         output, metrics = train_model(filepath, request.json["model_type"], request.json["include_features"])
     except Exception as e:
+        print(e)
         output = str(e)
         metrics = []
         success = False

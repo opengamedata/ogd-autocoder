@@ -1,4 +1,5 @@
 import json
+import os
 import numpy as np
 import pandas as pd
 
@@ -11,6 +12,11 @@ import pandas as pd
 #     'index': 'object',
 #     'segment_labels': 'object'
 # }
+
+def get_models_filename(filepath):
+    name, ext = os.path.splitext(filepath)
+    model_filename = f"{name}_models.json"
+    return model_filename
 
 def extract_job_name(game_state_str):
   try:
@@ -33,6 +39,14 @@ def add_new_columns(filepath):
     df["job_name"] = df["game_state"].apply(extract_job_name)
 
     df.to_csv(filepath, index=False, sep="\t")
+
+def get_models_list(filepath):
+    models_filepath = get_models_filename(filepath)
+    if os.path.exists(models_filepath):
+        with open(models_filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
+    else:
+        return []
 
 def get_users_list(filepath):
     df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)

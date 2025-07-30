@@ -66,18 +66,37 @@ function load_existing(existing_filename) {
     filename = existing_filename;
     $('#spinner').removeClass("d-none");
     $('#autoSegmentBtn').hide();
-    fill_users_list();
-    $('#downloadBtn').show();
-    $('#trainModelBtn').show();
-    $('#spinner').addClass("d-none");
+    usersPromise = fill_users_list();
+    modelsPromise = fill_models_list();
+    Promise.all([usersPromise, modelsPromise])
+    .then(() => {
+        $('#downloadBtn').show();
+        $('#trainModelBtn').show();
+        $('#spinner').addClass("d-none");
+    }).catch((err) => {
+        console.error("Error loading existing file:", err);
+    })
+}
+
+function fill_models_list() {
+    return $.ajax({
+        url: '/models_list',
+        method: "POST",
+        data: JSON.stringify({filename: filename}),
+        contentType: "application/json",
+        success: function(response) {
+            for (let row of response.data) {
+                addModel(row)
+            }
+        }
+    });
 }
 
 function fill_users_list() {
     $('#userDropdown').empty().append('<option></option>');
-    $.ajax({
+    return $.ajax({
         url: '/users_list',
         method: "POST",
-        async: false,
         data: JSON.stringify({filename: filename}),
         contentType: "application/json",
         success: function(response) {
@@ -182,20 +201,32 @@ $('#importLabelsFile').on('change', function (event) {
 });
 
 // order models by timestamp
-$('#modelMetricsTable').DataTable({order: [[1, 'desc']]});
+$('#modelMetricsTable').DataTable({
+    order: [[1, 'asc']],
+    paging: false,
+    scrollY: '400px',
+    scrollCollapse: true
+});
 
-function addModel(modelName, metrics) {
+$('#modelTypeSelect').select2();
+
+function addModel(metrics) {
     let accuracy = metrics["test_accuracy"];
-    const now = new Date();
-    const timestamp = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')} ` +
-                    `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
-    
+    let modelName = metrics["model_name"];
     const modelIndex = modelHistChart.data.labels.length;
     const $btn = $('<button></button>')
         .addClass('btn btn-light w-100 text-start mb-2')
-        .text(`${modelName} (${Math.round(accuracy * 100)} %) ${timestamp}`)
-        .on('mouseenter', () => highlightBar(modelIndex))
-        .on('mouseleave', () => clearHighlight());
+        .text(`${modelName} (${Math.round(accuracy * 100)} %) ${metrics["timestamp_end"]}`);
+    // hover
+    $btn.on('mouseenter', () => highlightBar(modelIndex))
+    .on('mouseleave', () => clearHighlight());
+    // click
+    $btn.on('click', () => {
+        $('#modelScroll').find('button').removeClass('btn-dark');
+        $btn.addClass('btn-dark');
+        fillModelSummary(metrics);
+    })
+
     $('#modelScroll').append($btn);
 
     modelHistChart.data.labels.push(modelName);
@@ -210,12 +241,34 @@ function addModel(modelName, metrics) {
     
     table.row.add([
         modelName,
-        timestamp,
+        metrics["timestamp_end"],
         metrics["test_accuracy"].toFixed(2),
         metrics["test_f1"].toFixed(2),
         metrics["train_accuracy"].toFixed(2),
         metrics["train_f1"].toFixed(2),
+        metrics["num_features"],
+        metrics["time_taken"],
     ]).draw(true);
+}
+
+function fillModelSummary(metrics) {
+    $('#modelTypeSelect').val(metrics["model_type"]).trigger('change');
+    $('#modelTypeSelect').prop('disabled', 'disabled');
+
+    
+    $('#featureSelector input.feature-checkbox').each(function () {
+        let check = metrics["include_features"].includes($(this).val())
+        $(this).prop('checked', check).trigger('change');
+    });
+    $('#featureSelector input[type="checkbox"]').prop('disabled', true);
+    $('#trainModelBtn').hide()
+    $('#enableTrainBtn').show();
+    
+    $('html, body').animate({ scrollTop: 0 }, 250);
+    $('#modelSummary').text('');
+    setTimeout(() => {
+        $('#modelSummary').text(metrics["output"]);
+    }, 300);
 }
 
 function highlightBar(index) {
@@ -349,7 +402,16 @@ function fillFeatureList() {
                     </div>`));
                 }
             }
+            $('.feature-checkbox').on('change', function() {
+                $('.group-checkbox').each(function() {
+                    const groupId = $(this).attr('id');
+                    const allChecked = $(`#${groupId}-features .feature-checkbox`).length > 0 && 
+                                       $(`#${groupId}-features .feature-checkbox:not(:checked)`).length === 0;
             
+                    $(this).prop('checked', allChecked);
+                });
+            });
+
             $('.group-checkbox').on('change', function () {
                 const groupId = $(this).attr('id');
                 $(`#${groupId}-features input[type=checkbox]`).prop('checked', this.checked);
@@ -578,6 +640,15 @@ function autoSegment() {
     });
 }
 
+function enableTrain() {
+    $('#modelTypeSelect').prop('disabled', false);
+    $('#featureSelector input[type="checkbox"]').prop('disabled', false);
+    $('#trainModelBtn').show();
+    $('#modelScroll').find('button').removeClass('btn-dark');
+    
+    $('#enableTrainBtn').hide();
+}
+
 function trainModel() {
     $('#spinner').removeClass("d-none");
 
@@ -585,8 +656,6 @@ function trainModel() {
     $('#featureSelector input.feature-checkbox:checked').each(function () {
         features.push($(this).val());
     });
-    let modelTypeHumRead = $('#modelTypeSelect option:selected').text()
-
     $.ajax({
         url: `/train_model`,
         method: "POST",
@@ -597,7 +666,7 @@ function trainModel() {
             $('#modelSummary').text(response["output"]);
             if (response["success"]) {
                 $('#modelSummary').removeClass("text-danger");
-                addModel(modelTypeHumRead, response["metrics"])
+                addModel(response["metrics"])
             } else {
                 $("#modelSummary:not([class*='text-danger'])").addClass("text-danger");
             }
