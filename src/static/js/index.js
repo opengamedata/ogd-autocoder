@@ -1,5 +1,7 @@
 let filename = null;
 let modelHistChart;
+// dictionary of this shape {label: {metric: [...]} }
+let metricsByLabel = {};
 
 $('#tsvFile').on('change', function () {
     if (this.files.length > 0) {
@@ -46,7 +48,7 @@ function uploadFile() {
         data: formData,
         processData: false,
         contentType: false,
-        success: function(response) {
+        success: function (response) {
             filename = response.filename;
             fill_users_list();
 
@@ -54,7 +56,7 @@ function uploadFile() {
             $('#trainModelBtn').show();
             $('#spinner').addClass("d-none");
         },
-        error: function(xhr, status, error) {
+        error: function (xhr, status, error) {
             console.error("Upload failed:", status, error);
             console.log("Server response:", xhr.responseText);
         }
@@ -68,22 +70,22 @@ function load_existing(existing_filename) {
     usersPromise = fill_users_list();
     modelsPromise = fill_models_list();
     Promise.all([usersPromise, modelsPromise])
-    .then(() => {
-        $('#downloadBtn').show();
-        $('#trainModelBtn').show();
-        $('#spinner').addClass("d-none");
-    }).catch((err) => {
-        console.error("Error loading existing file:", err);
-    })
+        .then(() => {
+            $('#downloadBtn').show();
+            $('#trainModelBtn').show();
+            $('#spinner').addClass("d-none");
+        }).catch((err) => {
+            console.error("Error loading existing file:", err);
+        })
 }
 
 function fill_models_list() {
     return $.ajax({
         url: '/models_list',
         method: "POST",
-        data: JSON.stringify({filename: filename}),
+        data: JSON.stringify({ filename: filename }),
         contentType: "application/json",
-        success: function(response) {
+        success: function (response) {
             for (let row of response.data) {
                 addModel(row)
             }
@@ -96,9 +98,9 @@ function fill_users_list() {
     return $.ajax({
         url: '/users_list',
         method: "POST",
-        data: JSON.stringify({filename: filename}),
+        data: JSON.stringify({ filename: filename }),
         contentType: "application/json",
-        success: function(response) {
+        success: function (response) {
             response.users.forEach(user_id => {
                 $('#userDropdown').append(`<option value="${user_id}">${user_id}</option>`);
             });
@@ -111,7 +113,7 @@ function fill_users_list() {
 
             $('#userDropdown').show();
         },
-        error: function(xhr, status, error) {
+        error: function (xhr, status, error) {
             console.error("User list loading failed:", status, error);
             console.log("Server response:", xhr.responseText);
         }
@@ -147,9 +149,9 @@ function fillSegmentDropdown() {
         $.ajax({
             url: `/list_segment_ids/${user_id}`,
             method: "POST",
-            data: JSON.stringify({filename: filename}),
+            data: JSON.stringify({ filename: filename }),
             contentType: "application/json",
-            success: function(response) {
+            success: function (response) {
                 response.data.forEach(seg_id => {
                     $('#segmentDropdown').append(`<option value="${seg_id}">${seg_id}</option>`);
                 });
@@ -158,7 +160,7 @@ function fillSegmentDropdown() {
                 const segment_id = $('#segmentDropdown').val();
                 loadEvents("#labelTable", segment_id);
             },
-            error: function(xhr, status, error) {
+            error: function (xhr, status, error) {
                 console.error("Segment options loading failed:", status, error);
                 console.log("Server response:", xhr.responseText);
             }
@@ -178,19 +180,19 @@ $('#importLabelsFile').on('change', function (event) {
 
     reader.onload = function (e) {
         try {
-        const rows = JSON.parse(e.target.result);
-        const $dropdown = $('#labelsDropdown');
+            const rows = JSON.parse(e.target.result);
+            const $dropdown = $('#labelsDropdown');
 
-        $.each(rows, function (i, row) {
-            if (row.code && row.definition) {
-                const $option = $('<option>')
-                    .val(row.code)
-                    .text(row.code)
-                    .attr('title', row.definition);
+            $.each(rows, function (i, row) {
+                if (row.code && row.definition) {
+                    const $option = $('<option>')
+                        .val(row.code)
+                        .text(row.code)
+                        .attr('title', row.definition);
 
-                $dropdown.append($option);
-            }
-        });
+                    $dropdown.append($option);
+                }
+            });
         } catch (err) {
             alert('Invalid JSON file, please check the format, e.g. {"code": "struggle", "definition": "player does not understand sth"}.');
         }
@@ -208,7 +210,7 @@ for (let table_id of ["#labelTable", "#segmentTable"]) {
         scrollCollapse: true,
         colReorder: true,
         columnDefs: [
-            { targets: [7,8,9,10,11,12,13,14,15,16,17], visible: false },
+            { targets: [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], visible: false },
         ],
         dom: '<"top d-flex justify-content-between align-items-center"fB>rt<"bottom"ip>',
         buttons: ['colvis'],
@@ -224,6 +226,7 @@ $('#modelMetricsTable').DataTable({
 });
 
 $('#modelTypeSelect').select2();
+$('#labelForMetrics').select2();
 
 function addModel(metrics) {
     let accuracy = metrics["test_accuracy"];
@@ -234,7 +237,7 @@ function addModel(metrics) {
         .text(`${modelName} (${Math.round(accuracy * 100)} %) ${metrics["timestamp_end"]}`);
     // hover
     $btn.on('mouseenter', () => highlightBar(modelIndex))
-    .on('mouseleave', () => clearHighlight());
+        .on('mouseleave', () => clearHighlight());
     // click
     $btn.on('click', () => {
         $('#modelScroll').find('button').removeClass('btn-dark');
@@ -249,11 +252,15 @@ function addModel(metrics) {
     modelHistChart.data.datasets[1].data.push(metrics["test_f1"]);
     modelHistChart.data.datasets[2].data.push(metrics["train_accuracy"]);
     modelHistChart.data.datasets[3].data.push(metrics["train_f1"]);
+    modelHistChart.data.datasets[4].data.push(0); // just for hovers, otherwise it breaks
+    modelHistChart.data.datasets[5].data.push(0);
+    modelHistChart.data.datasets[6].data.push(0);
+    modelHistChart.data.datasets[7].data.push(0);
     modelHistChart.update();
 
     // updating table view
     let table = $('#modelMetricsTable').DataTable();
-    
+
     table.row.add([
         modelName,
         metrics["timestamp_end"],
@@ -264,13 +271,40 @@ function addModel(metrics) {
         metrics["num_features"],
         metrics["time_taken"],
     ]).draw(true);
+
+    for (const key in metrics) {
+        let type = null;
+        let parts = [];
+
+        if (key.includes("recall")) {
+            type = "recall";
+            parts = key.split("recall");
+        } else if (key.includes("precision")) {
+            type = "precision";
+            parts = key.split("precision");
+        } else {
+            continue; // skip other metrics
+        }
+        let metricKey = parts[0] + type;
+        let label = parts[1].substring(1);
+
+        metricsByLabel[label] ??= {}; // ??= assigns if null
+        metricsByLabel[label][metricKey] ??= [];
+        metricsByLabel[label][metricKey].push(metrics[key]);
+
+        // if label isn't in the dropdown yet
+        if ($("#labelForMetrics").find(`option[value="${label}"]`).length === 0) {
+            const newOption = new Option(label.toUpperCase(), label, false, false);
+            $("#labelForMetrics").append(newOption)
+        }
+    }
 }
 
 function fillModelSummary(metrics) {
     $('#modelTypeSelect').val(metrics["model_type"]).trigger('change');
     $('#modelTypeSelect').prop('disabled', 'disabled');
 
-    
+
     $('#featureSelector input.feature-checkbox').each(function () {
         let check = metrics["include_features"].includes($(this).val())
         $(this).prop('checked', check).trigger('change');
@@ -278,7 +312,7 @@ function fillModelSummary(metrics) {
     $('#featureSelector input[type="checkbox"]').prop('disabled', true);
     $('#trainModelBtn').hide()
     $('#enableTrainBtn').show();
-    
+
     $('html, body').animate({ scrollTop: 0 }, 250);
     $('#modelSummary').text('');
     setTimeout(() => {
@@ -291,13 +325,21 @@ function highlightBar(index) {
         { datasetIndex: 0, index },
         { datasetIndex: 1, index },
         { datasetIndex: 2, index },
-        { datasetIndex: 3, index }
+        { datasetIndex: 3, index },
+        { datasetIndex: 4, index },
+        { datasetIndex: 5, index },
+        { datasetIndex: 6, index },
+        { datasetIndex: 7, index }
     ]);
     modelHistChart.tooltip.setActiveElements([
         { datasetIndex: 0, index },
         { datasetIndex: 1, index },
         { datasetIndex: 2, index },
-        { datasetIndex: 3, index }
+        { datasetIndex: 3, index },
+        { datasetIndex: 4, index },
+        { datasetIndex: 5, index },
+        { datasetIndex: 6, index },
+        { datasetIndex: 7, index }
     ]);
     modelHistChart.update();
 }
@@ -308,68 +350,167 @@ function clearHighlight() {
     modelHistChart.update();
 }
 
-
 const ctx = $('#modelsBarChart')[0].getContext('2d');
+Chart.register(ChartDataLabels);
+
 modelHistChart = new Chart(ctx, {
     type: 'bar',
     data: {
         labels: [], // Fill this with model names dynamically
         datasets: [
-        {
-            label: 'Test Accuracy',
-            data: [],
-            backgroundColor: 'rgba(54, 162, 235, 0.6)',
-            borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 1,
-        },
-        {
-            label: 'Test F1 Score',
-            data: [],
-            backgroundColor: 'rgba(75, 192, 192, 0.6)',
-            borderColor: 'rgba(75, 192, 192, 1)',
-            borderWidth: 1,
-            hidden: true
-        },
-        {
-            label: 'Train Accuracy',
-            data: [],
-            backgroundColor: 'rgba(255, 159, 64, 0.6)',
-            borderColor: 'rgba(255, 159, 64, 1)',
-            borderWidth: 1,
-            hidden: true
-        },
-        {
-            label: 'Train F1 Score',
-            data: [],
-            backgroundColor: 'rgba(153, 102, 255, 0.6)',
-            borderColor: 'rgba(153, 102, 255, 1)',
-            borderWidth: 1,
-            hidden: true
-        }
+            {
+                label: 'Test Accuracy',
+                data: [],
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+            },
+            {
+                label: 'Test F1 Score',
+                data: [],
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1,
+                hidden: true
+            },
+            {
+                label: 'Train Accuracy',
+                data: [],
+                backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1,
+                hidden: true
+            },
+            {
+                label: 'Train F1 Score',
+                data: [],
+                backgroundColor: 'rgba(153, 102, 255, 0.6)',
+                borderColor: 'rgba(153, 102, 255, 1)',
+                borderWidth: 1,
+                hidden: true
+            },
+            {
+                label: 'Test Precision',
+                data: [],
+                backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1,
+                hidden: true
+            },
+            {
+                label: 'Test Recall',
+                data: [],
+                backgroundColor: 'rgba(255, 206, 86, 0.6)',
+                borderColor: 'rgba(255, 206, 86, 1)',
+                borderWidth: 1,
+                hidden: true
+            },
+            {
+                label: 'Train Precision',
+                data: [],
+                backgroundColor: 'rgba(201, 203, 207, 0.6)',
+                borderColor: 'rgba(201, 203, 207, 1)',
+                borderWidth: 1,
+                hidden: true
+            },
+            {
+                label: 'Train Recall',
+                data: [],
+                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                borderColor: 'rgba(0, 0, 0, 1)',
+                borderWidth: 1,
+                hidden: true
+            },
         ]
     },
+    plugins: [{
+        beforeInit(chart) {
+            // https://stackoverflow.com/questions/42585861/chart-js-increase-spacing-between-legend-and-chart/67723827#67723827
+            // Get a reference to the original fit function
+            const originalFit = chart.legend.fit;
+
+            // Override the fit function
+            chart.legend.fit = function fit() {
+                // Call the original function and bind scope in order to use `this` correctly inside it
+                originalFit.bind(chart.legend)();
+                // Change the height as suggested in other answers
+                this.height += 15;
+            }
+        }
+    }],
     options: {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-        y: {
-            beginAtZero: true,
-            max: 1,
-            ticks: {
-            callback: val => val.toFixed(2)
+            y: {
+                beginAtZero: true,
+                max: 1,
+                ticks: {
+                    callback: val => val.toFixed(2)
+                }
             }
-        }
         },
         plugins: {
-        legend: { display: true },
-        tooltip: {
-            callbacks: {
-            label: ctx => `${ctx.dataset.label}: ${(ctx.raw * 100).toFixed(1)}%`
+            legend: { display: true },
+            tooltip: {
+                callbacks: {
+                    label: function (tooltipItem) {
+                        const datasetIndex = tooltipItem.datasetIndex;
+                        const meta = tooltipItem.chart.getDatasetMeta(datasetIndex);
+
+                        // Only show tooltip if dataset is not hidden
+                        if (!meta.hidden) {
+                            const label = tooltipItem.dataset.label || '';
+                            const value = tooltipItem.raw;
+                            return `${label}: ${(value * 100).toFixed(1)}%`;
+                        }
+                        return null;
+                    }
+                }
+            },
+            datalabels: {
+                color: 'black',
+                anchor: 'end',
+                align: 'end',
+                offset: 0,
+                formatter: function (value) {
+                    return value == 0 ? 0 : value.toFixed(2);
+                }
             }
         }
-        }
     }
-});  
+});
+
+toggleBarsForLabel();
+
+function toggleBarsForLabel() {
+    let label = $("#labelForMetrics").val();
+    let columns = ["Test Accuracy", "Test F1 Score", "Train Accuracy", "Train F1 Score"];
+    let colToShow = ["Test Accuracy", "Test F1 Score"];
+    if (label != "all") {
+        columns = ["Test Precision", "Test Recall", "Train Precision", "Train Recall"];
+        colToShow = ["Test Precision", "Test Recall"];
+
+        modelHistChart.data.datasets[4].data = metricsByLabel[label]["test_precision"];
+        modelHistChart.data.datasets[5].data = metricsByLabel[label]["test_recall"];
+        modelHistChart.data.datasets[6].data = metricsByLabel[label]["train_precision"];
+        modelHistChart.data.datasets[7].data = metricsByLabel[label]["train_recall"];
+        modelHistChart.update();
+    }
+
+    modelHistChart.data.datasets.forEach((ds, i) => {
+        const meta = modelHistChart.getDatasetMeta(i);
+        meta.hidden = !colToShow.includes(ds.label);
+    });
+
+    modelHistChart.update();
+
+    modelHistChart.options.plugins.legend.labels.filter = (legendItem) => {
+        return columns.includes(legendItem.text);
+    };
+
+    modelHistChart.update();
+}
 
 function fillFeatureList() {
     if (!filename) {
@@ -381,9 +522,9 @@ function fillFeatureList() {
     $.ajax({
         url: "/list_available_features",
         method: "POST",
-        data: JSON.stringify({filename: filename}),
+        data: JSON.stringify({ filename: filename }),
         contentType: "application/json",
-        success: function(response) {
+        success: function (response) {
             for (group of response.data) {
                 if (group.children.length > 1) {
                     group_content = $(`
@@ -409,7 +550,7 @@ function fillFeatureList() {
                 } else {
                     feature = group.children[0]
                     container.append($(
-                    `<div class="form-check">
+                        `<div class="form-check">
                         <input class="form-check-input feature-checkbox" type="checkbox" value="${feature}" id="feature-${feature}" checked>
                         <label class="form-check-label" for="feature-${feature}">
                             ${feature}
@@ -417,12 +558,12 @@ function fillFeatureList() {
                     </div>`));
                 }
             }
-            $('.feature-checkbox').on('change', function() {
-                $('.group-checkbox').each(function() {
+            $('.feature-checkbox').on('change', function () {
+                $('.group-checkbox').each(function () {
                     const groupId = $(this).attr('id');
-                    const allChecked = $(`#${groupId}-features .feature-checkbox`).length > 0 && 
-                                       $(`#${groupId}-features .feature-checkbox:not(:checked)`).length === 0;
-            
+                    const allChecked = $(`#${groupId}-features .feature-checkbox`).length > 0 &&
+                        $(`#${groupId}-features .feature-checkbox:not(:checked)`).length === 0;
+
                     $(this).prop('checked', allChecked);
                 });
             });
@@ -431,10 +572,10 @@ function fillFeatureList() {
                 const groupId = $(this).attr('id');
                 $(`#${groupId}-features input[type=checkbox]`).prop('checked', this.checked);
             });
-            
+
             $('#featureSearch').on('input', function () {
                 const query = $(this).val().toLowerCase();
-              
+
                 $('.feature-checkbox').each(function () {
                     // $(this).next() is the label element
                     const featureName = $(this).next().text().toLowerCase();
@@ -444,7 +585,7 @@ function fillFeatureList() {
                         $(this).parent().hide();
                     }
                 });
-                
+
                 $('.group-checkbox').each(function () {
                     const hasVisibleChild = $(this).parent().parent().find('.feature-checkbox:visible').length > 0;
                     if (hasVisibleChild)
@@ -456,7 +597,7 @@ function fillFeatureList() {
 
             $('#spinner').addClass("d-none");
         },
-        error: function(xhr, status, error) {
+        error: function (xhr, status, error) {
             console.error("Feature list loading failed:", status, error);
             console.log("Server response:", xhr.responseText);
         }
@@ -471,23 +612,23 @@ function fillLabelDropdown() {
         tags: true,
         placeholder: '...',
         width: '100%',
-        templateResult: function formatOption (option) {
+        templateResult: function formatOption(option) {
             let template = '<div><strong>' + option.text + '</strong></div>';
             if (option.title) {
                 template += '<div>' + option.title + '</div>'
             }
             return $(template);
         }
-      });
+    });
     const user_id = $('#userDropdown').val();
     if (user_id) {
         $('#spinner').removeClass("d-none");
         $.ajax({
             url: "/list_labels",
             method: "POST",
-            data: JSON.stringify({filename: filename}),
+            data: JSON.stringify({ filename: filename }),
             contentType: "application/json",
-            success: function(response) {
+            success: function (response) {
                 response.data.forEach(label => {
                     if ($(`#labelsDropdown option[value="${label}"]`).length === 0) { // don't repeat codebook options
                         $('#labelsDropdown').append(`<option value="${label}">${label}</option>`);
@@ -495,7 +636,7 @@ function fillLabelDropdown() {
                 });
                 $('#spinner').addClass("d-none");
             },
-            error: function(xhr, status, error) {
+            error: function (xhr, status, error) {
                 console.error("Label options loading failed:", status, error);
                 console.log("Server response:", xhr.responseText);
             }
@@ -530,11 +671,11 @@ function loadEvents(table_id) {
         method: "POST",
         data: JSON.stringify({ filename: filename, segment_id: segment_id }),
         contentType: "application/json",
-        success: function(response) {
+        success: function (response) {
             let data = response.data;
             const table = $(table_id).DataTable();
             table.clear();
-            
+
             data.forEach(row => {
                 table.row.add([
                     row.index,
@@ -555,7 +696,7 @@ function loadEvents(table_id) {
                     row.user_id,
                     row.user_data,
                     row.game_state
-                  ]);
+                ]);
             });
 
             table.draw();
@@ -563,7 +704,7 @@ function loadEvents(table_id) {
             $('#spinner').addClass("d-none");
             $('#autoSegmentBtn').show();
         },
-        error: function(xhr, status, error) {
+        error: function (xhr, status, error) {
             console.error("Event data load failed:", status, error);
             console.log("Server response:", xhr.responseText);
         }
@@ -583,21 +724,21 @@ function segmentRows() {
         url: `/segment/${user_id}`,
         method: "POST",
         // select the index and the time column (will be the row identifier)
-        data: JSON.stringify({ 
+        data: JSON.stringify({
             filename: filename,
             selected_rows: selectedRows.map(row => [row[0], row[3]]),
             segment_id: $("#segmentIdInput").val(),
         }),
         contentType: "application/json",
-        success: function(response) {
+        success: function (response) {
             // autoincrement
             let next_segment_id = parseInt($("#segmentIdInput").val()) + 1
             $("#segmentIdInput").val(next_segment_id);
-    
+
             // reload data
             loadEvents(table_id);
         },
-        error: function(xhr, status, error) {
+        error: function (xhr, status, error) {
             console.error("Segmentation failed:", status, error);
             console.log("Server response:", xhr.responseText);
         }
@@ -612,20 +753,20 @@ function labelRows() {
         url: `/label/${user_id}`,
         method: "POST",
         // select the index and the time column (will be the row identifier)
-        data: JSON.stringify({ 
+        data: JSON.stringify({
             filename: filename,
             segment_id: $("#segmentDropdown").val(),
             segment_labels: $('#labelsDropdown').val().join(', '),
             label_justification: $('#labelJustificationInput').val()
         }),
         contentType: "application/json",
-        success: function(response) {    
+        success: function (response) {
             // reload data
             fillLabelDropdown();
             $('#labelJustificationInput').val("")
             loadEvents(table_id);
         },
-        error: function(xhr, status, error) {
+        error: function (xhr, status, error) {
             console.error("Labeling failed:", status, error);
             console.log("Server response:", xhr.responseText);
         }
@@ -643,13 +784,13 @@ function autoSegment() {
     $.ajax({
         url: `/autosegment/${user_id}`,
         method: "POST",
-        data: JSON.stringify({ filename: filename,}),
+        data: JSON.stringify({ filename: filename, }),
         contentType: "application/json",
-        success: function(response) {
+        success: function (response) {
             // reload data
             loadEvents(table_id);
         },
-        error: function(xhr, status, error) {
+        error: function (xhr, status, error) {
             console.error("Auto Segmentation failed:", status, error);
             console.log("Server response:", xhr.responseText);
         }
@@ -661,7 +802,7 @@ function enableTrain() {
     $('#featureSelector input[type="checkbox"]').prop('disabled', false);
     $('#trainModelBtn').show();
     $('#modelScroll').find('button').removeClass('btn-dark');
-    
+
     $('#enableTrainBtn').hide();
 }
 
@@ -675,19 +816,20 @@ function trainModel() {
     $.ajax({
         url: `/train_model`,
         method: "POST",
-        data: JSON.stringify({ filename: filename, model_type: $('#modelTypeSelect').val(), include_features: features}),
+        data: JSON.stringify({ filename: filename, model_type: $('#modelTypeSelect').val(), include_features: features }),
         contentType: "application/json",
-        success: function(response) {
+        success: function (response) {
             $('#spinner').addClass("d-none");
             $('#modelSummary').text(response["output"]);
             if (response["success"]) {
                 $('#modelSummary').removeClass("text-danger");
-                addModel(response["metrics"])
+                let label = $('#labelForMetrics').val();
+                addModel(response["metrics"], label);
             } else {
                 $("#modelSummary:not([class*='text-danger'])").addClass("text-danger");
             }
         },
-        error: function(xhr, status, error) {
+        error: function (xhr, status, error) {
             console.error("Model Training failed:", status, error);
             console.log("Server response:", xhr.responseText);
         }

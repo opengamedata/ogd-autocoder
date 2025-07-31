@@ -7,7 +7,7 @@ from datetime import datetime
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, log_loss, f1_score
+from sklearn.metrics import precision_score, recall_score, f1_score, log_loss, classification_report
 from sklearn.linear_model import LogisticRegression
 
 import tensorflow as tf
@@ -187,12 +187,17 @@ def train_neural_net(x_train, x_test, y_train, y_test, classes, metrics):
     output += (f"Train Accuracy:\t{accuracy}\n\n")
     #output += (f"Train Loss:\t{loss}\n\n")
 
-    y_pred_probs = model.predict(x_test_tensor)
-    y_pred = np.argmax(y_pred_probs, axis=1)
-    y_true = np.argmax(y_test, axis=1)
-    metrics["train_f1"] = f1_score(np.argmax(y_train, axis=1), np.argmax(model.predict(x_train), axis=1), average='weighted')
-    metrics["test_f1"] = f1_score(y_true, y_pred, average='weighted')
-    output += classification_report(y_true, y_pred, target_names=classes)
+    y_pred_test = np.argmax(model.predict(x_test_tensor), axis=1)
+    y_pred_train = np.argmax(model.predict(x_train_tensor), axis=1)
+    y_test = np.argmax(y_test, axis=1)
+    y_train = np.argmax(y_test, axis=1)
+
+    metrics["train_f1"] = f1_score(y_train, y_pred_train, average='weighted')
+    metrics["test_f1"] = f1_score(y_test, y_pred_test, average='weighted')
+
+    add_label_oriented_metrics(metrics, y_test, y_pred_test, y_train, y_pred_train, classes)
+
+    output += classification_report(y_test, y_pred_test, target_names=classes)
 
     return output
 
@@ -210,10 +215,13 @@ def train_logistic(x_train, x_test, y_train, y_test, classes, metrics):
     output += (f"Train Accuracy:\t{metrics["train_accuracy"]}\n\n")
     #output += (f"Train Loss: {log_loss(y_train, model.predict(x_train))}\n\n")
 
-    y_pred = model.predict(x_test)
+    y_pred_test = model.predict(x_test)
+    y_pred_train = model.predict(x_train)
     metrics["train_f1"] = f1_score(y_train, model.predict(x_train), average='weighted')
-    metrics["test_f1"] = f1_score(y_test, y_pred, average='weighted')
-    output += classification_report(y_test, y_pred, target_names=classes)
+    metrics["test_f1"] = f1_score(y_test, y_pred_test, average='weighted')
+    add_label_oriented_metrics(metrics, y_test, y_pred_test, y_train, y_pred_train, classes)
+
+    output += classification_report(y_test, y_pred_test, target_names=classes)
 
     return output
 
@@ -230,9 +238,26 @@ def train_random_forest(x_train, x_test, y_train, y_test, classes, metrics):
     output += (f"Train Accuracy:\t{metrics["train_accuracy"]}\n\n")
 
 
-    y_pred = model.predict(x_test)
+    y_pred_test = model.predict(x_test)
+    y_pred_train = model.predict(x_train)
     metrics["train_f1"] = f1_score(y_train, model.predict(x_train), average='weighted')
-    metrics["test_f1"] = f1_score(y_test, y_pred, average='weighted')
-    output += classification_report(y_test, y_pred, target_names=classes)
+    metrics["test_f1"] = f1_score(y_test, y_pred_test, average='weighted')
+    add_label_oriented_metrics(metrics, y_test, y_pred_test, y_train, y_pred_train, classes)
+
+    output += classification_report(y_test, y_pred_test, target_names=classes)
 
     return output
+
+
+def add_label_oriented_metrics(metrics, y_test, y_pred_test, y_train, y_pred_train, classes):
+    test_precisions = precision_score(y_test, y_pred_test, average=None)
+    test_recalls = recall_score(y_test, y_pred_test, average=None)
+    train_precisions = precision_score(y_train, y_pred_train, average=None)
+    train_recalls = recall_score(y_train, y_pred_train, average=None)
+
+    for i, class_name in enumerate(classes):
+        key_safe = class_name.lower().replace(" ", "_")
+        metrics[f"test_precision_{key_safe}"] = test_precisions[i]
+        metrics[f"test_recall_{key_safe}"] = test_recalls[i]
+        metrics[f"train_precision_{key_safe}"] = train_precisions[i]
+        metrics[f"train_recall_{key_safe}"] = train_recalls[i]
