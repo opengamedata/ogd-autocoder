@@ -117,7 +117,7 @@ def train():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
     success = True
     try:
-        output, metrics = train_model(filepath, request.json["model_type"], request.json["include_features"])
+        output, metrics = train_model(filepath, request.json["model_type"], request.json["include_labels"], request.json["include_features"])
     except Exception as e:
         print(e)
         output = str(e)

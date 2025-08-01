@@ -17,14 +17,19 @@ $('#downloadBtn').on('click', function () {
 $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
     // when tab was switched
     const tabId = $('#nav-tab .nav-link.active').attr('id');
-    if (["nav-segment-tab", "nav-label-tab"].includes(tabId)) {
+    if (tabId == "nav-segment-tab") {
         $("#load_and_user_panel").removeClass("d-none");
+        userChanged();
+    } else if (tabId == "nav-label-tab") {
+        $("#load_and_user_panel").removeClass("d-none");
+        fillLabelDropdown("#labelsDropdown", true);
         userChanged();
     } else if (tabId == "nav-train-tab") {
         $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none"); // https://stackoverflow.com/questions/8266662/add-class-via-jquery-but-only-when-not-exists
         fillFeatureList();
+        fillLabelDropdown("#trainLabelsDropdown", false);
     } else {
-        $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none")
+        $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none");
     }
 });
 
@@ -52,6 +57,12 @@ function uploadFile() {
             filename = response.filename;
             fill_users_list();
 
+            const tabId = $('#nav-tab .nav-link.active').attr('id');
+            if (tabId == "nav-label-tab")
+                fillLabelDropdown("#labelsDropdown", true);
+            else if (tabId == "nav-train-tab")
+                fillLabelDropdown("#trainLabelsDropdown", false);
+            
             $('#downloadBtn').show();
             $('#trainModelBtn').show();
             $('#spinner').addClass("d-none");
@@ -157,8 +168,7 @@ function fillSegmentDropdown() {
                 });
                 $('#spinner').addClass("d-none");
 
-                const segment_id = $('#segmentDropdown').val();
-                loadEvents("#labelTable", segment_id);
+                loadEvents("#labelTable");
             },
             error: function (xhr, status, error) {
                 console.error("Segment options loading failed:", status, error);
@@ -227,6 +237,8 @@ $('#modelMetricsTable').DataTable({
 
 $('#modelTypeSelect').select2();
 $('#labelForMetrics').select2();
+$('#labelsDropdown').select2();
+$('#trainLabelsDropdown').select2();
 
 function addModel(metrics) {
     let accuracy = metrics["test_accuracy"];
@@ -304,13 +316,23 @@ function addModel(metrics) {
         let label = parts[1].substring(1);
 
         metricsByLabel[label] ??= {}; // ??= assigns if null
-        metricsByLabel[label][metricKey] ??= [];
+        metricsByLabel[label][metricKey] ??= new Array(modelIndex).fill(null); // array of nulls if there wasn't a label like this before
         metricsByLabel[label][metricKey].push(metrics[key]);
 
         // if label isn't in the dropdown yet
         if ($("#labelForMetrics").find(`option[value="${label}"]`).length === 0) {
             const newOption = new Option(label.toUpperCase(), label, false, false);
             $("#labelForMetrics").append(newOption)
+        }
+    }
+
+    for (const label in metricsByLabel) {
+        for (const metricKey in metricsByLabel[label]) {
+          if (metricsByLabel[label][metricKey]) {
+            while (metricsByLabel[label][metricKey].length < modelIndex) {
+                metricsByLabel[label][metricKey].push(null);
+              }
+          }
         }
     }
 }
@@ -489,6 +511,9 @@ modelHistChart = new Chart(ctx, {
                 align: 'end',
                 offset: 0,
                 formatter: function (value) {
+                    if (value == null)
+                        return null
+
                     return value == 0 ? 0 : value.toFixed(2);
                 }
             }
@@ -619,12 +644,18 @@ function fillFeatureList() {
     });
 }
 
-function fillLabelDropdown() {
+function fillLabelDropdown(dropdown_id, allow_new_lbl) {
+    // dropdown_id: #labelsDropdown | #trainLabelsDropdown
+    // allow_new_lbl: allows adding new labels to the dropdown
+
     // don't remove the uploaded options from codebook.csv
-    $('#labelsDropdown').val("");
-    $('#labelsDropdown').children(':not([title])').remove();
-    $('#labelsDropdown').select2({
-        tags: true,
+    if (!filename) {
+        return;
+    }
+    $(dropdown_id).val("");
+    $(dropdown_id).children(':not([title])').remove();
+    $(dropdown_id).select2({
+        tags: allow_new_lbl,
         placeholder: '...',
         width: '100%',
         templateResult: function formatOption(option) {
@@ -635,28 +666,26 @@ function fillLabelDropdown() {
             return $(template);
         }
     });
-    const user_id = $('#userDropdown').val();
-    if (user_id) {
-        $('#spinner').removeClass("d-none");
-        $.ajax({
-            url: "/list_labels",
-            method: "POST",
-            data: JSON.stringify({ filename: filename }),
-            contentType: "application/json",
-            success: function (response) {
-                response.data.forEach(label => {
-                    if ($(`#labelsDropdown option[value="${label}"]`).length === 0) { // don't repeat codebook options
-                        $('#labelsDropdown').append(`<option value="${label}">${label}</option>`);
-                    }
-                });
-                $('#spinner').addClass("d-none");
-            },
-            error: function (xhr, status, error) {
-                console.error("Label options loading failed:", status, error);
-                console.log("Server response:", xhr.responseText);
-            }
-        });
-    }
+    
+    $('#spinner').removeClass("d-none");
+    $.ajax({
+        url: "/list_labels",
+        method: "POST",
+        data: JSON.stringify({ filename: filename }),
+        contentType: "application/json",
+        success: function (response) {
+            response.data.forEach(label => {
+                if ($(`${dropdown_id} option[value="${label}"]`).length === 0) { // don't repeat codebook options
+                    $(dropdown_id).append(`<option value="${label}">${label}</option>`);
+                }
+            });
+            $('#spinner').addClass("d-none");
+        },
+        error: function (xhr, status, error) {
+            console.error("Label options loading failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
 }
 
 function userChanged() {
@@ -665,20 +694,30 @@ function userChanged() {
         loadEvents("#segmentTable");
     } else if (tabId == "nav-label-tab") {
         fillSegmentDropdown();
-        fillLabelDropdown();
     }
 }
 
 function loadEvents(table_id) {
     // table_id: #segmentTable | #labelTable
+    const table = $(table_id).DataTable();
+    table.clear();
+    
     let segment_id = null;
     if (table_id == "#labelTable") {
         segment_id = $('#segmentDropdown').val()
-        if (!segment_id) return; // needs a segment_id
+
+        // needs a segment_id
+        if (!segment_id) {
+            table.draw();
+            return;
+        }
     }
 
     const user_id = $('#userDropdown').val();
-    if (!user_id) return;
+    if (!user_id) {
+        table.draw();
+        return;
+    }
 
     $('#spinner').removeClass("d-none");
     $.ajax({
@@ -688,8 +727,6 @@ function loadEvents(table_id) {
         contentType: "application/json",
         success: function (response) {
             let data = response.data;
-            const table = $(table_id).DataTable();
-            table.clear();
 
             data.forEach(row => {
                 table.row.add([
@@ -777,7 +814,7 @@ function labelRows() {
         contentType: "application/json",
         success: function (response) {
             // reload data
-            fillLabelDropdown();
+            fillLabelDropdown("#labelsDropdown", true);
             $('#labelJustificationInput').val("")
             loadEvents(table_id);
         },
@@ -831,15 +868,14 @@ function trainModel() {
     $.ajax({
         url: `/train_model`,
         method: "POST",
-        data: JSON.stringify({ filename: filename, model_type: $('#modelTypeSelect').val(), include_features: features }),
+        data: JSON.stringify({ filename: filename, model_type: $('#modelTypeSelect').val(), include_labels: $('#trainLabelsDropdown').val(), include_features: features }),
         contentType: "application/json",
         success: function (response) {
             $('#spinner').addClass("d-none");
             $('#modelSummary').text(response["output"]);
             if (response["success"]) {
                 $('#modelSummary').removeClass("text-danger");
-                let label = $('#labelForMetrics').val();
-                addModel(response["metrics"], label);
+                addModel(response["metrics"]);
             } else {
                 $("#modelSummary:not([class*='text-danger'])").addClass("text-danger");
             }

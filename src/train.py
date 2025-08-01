@@ -33,12 +33,15 @@ def available_features(filepath):
     return columns
 
 
-def train_model(filepath, model_type, include_features):
+def train_model(filepath, model_type, include_labels, include_features):
     start_time = time.time()
 
     train_df = get_train_df(filepath)
     #train_df = clean_agg_df.categorize(columns=["job_name"])
     #train_df = dd.get_dummies(train_df, columns=["job_name"], dtype=float)
+    
+    # filter by label (for now only single-label support)
+    train_df = train_df[train_df["segment_labels"].isin(include_labels)]
 
     le = LabelEncoder()
     target_col = le.fit_transform(train_df['segment_labels']) # converts to ints
