@@ -216,7 +216,11 @@
                     <option value="all">All Labels</option>
                   </select>
                   <div>
-                    <canvas id="modelsBarChart" class="flex-grow-1"></canvas>
+                    <div id="chartScrollWrapper" class="overflow-auto">
+                      <div id="chartCanvasWrapper">
+                        <canvas id="modelsBarChart" style="max-height: 500px"></canvas>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

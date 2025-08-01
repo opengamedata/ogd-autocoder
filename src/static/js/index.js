@@ -256,7 +256,22 @@ function addModel(metrics) {
     modelHistChart.data.datasets[5].data.push(0);
     modelHistChart.data.datasets[6].data.push(0);
     modelHistChart.data.datasets[7].data.push(0);
+    
+    // resize for horizontal scrollbar
+    const wrapper = $('#chartCanvasWrapper');
+    const labelCount = modelHistChart.data.labels.length;
+    const requiredWidth = labelCount * 120; // size for 2-4 bars
+
+    wrapper.width(requiredWidth);
+
+    modelHistChart.resize();
+
+    // scroll to the end
+    $('#chartScrollWrapper').scrollLeft(wrapper[0].scrollWidth);
+
+    // applying ALL changes
     modelHistChart.update();
+
 
     // updating table view
     let table = $('#modelMetricsTable').DataTable();
