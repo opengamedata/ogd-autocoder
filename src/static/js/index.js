@@ -316,7 +316,12 @@ function addModel(metrics) {
         let label = parts[1].substring(1);
 
         metricsByLabel[label] ??= {}; // ??= assigns if null
-        metricsByLabel[label][metricKey] ??= new Array(modelIndex).fill(null); // array of nulls if there wasn't a label like this before
+        metricsByLabel[label][metricKey] ??= [];
+        
+        // fill with nulls for those models that dont use this labels
+        while (metricsByLabel[label][metricKey].length < modelIndex) {
+            metricsByLabel[label][metricKey].push(null);
+        }
         metricsByLabel[label][metricKey].push(metrics[key]);
 
         // if label isn't in the dropdown yet
@@ -326,12 +331,13 @@ function addModel(metrics) {
         }
     }
 
+    // fill with nulls for those models that dont use this labels
     for (const label in metricsByLabel) {
         for (const metricKey in metricsByLabel[label]) {
           if (metricsByLabel[label][metricKey]) {
             while (metricsByLabel[label][metricKey].length < modelIndex) {
                 metricsByLabel[label][metricKey].push(null);
-              }
+            }
           }
         }
     }
@@ -347,6 +353,8 @@ function fillModelSummary(metrics) {
         $(this).prop('checked', check).trigger('change');
     });
     $('#featureSelector input[type="checkbox"]').prop('disabled', true);
+    $('#trainLabelsDropdown').val(metrics["include_labels"]).trigger('change');
+    $('#trainLabelsDropdown').prop('disabled', 'disabled');
     $('#trainModelBtn').hide()
     $('#enableTrainBtn').show();
 
@@ -499,7 +507,7 @@ modelHistChart = new Chart(ctx, {
                         if (!meta.hidden) {
                             const label = tooltipItem.dataset.label || '';
                             const value = tooltipItem.raw;
-                            return `${label}: ${(value * 100).toFixed(1)}%`;
+                            return `${label}: ${value == null ? "NA" : (value * 100).toFixed(1)}%`;
                         }
                         return null;
                     }
@@ -851,6 +859,7 @@ function autoSegment() {
 
 function enableTrain() {
     $('#modelTypeSelect').prop('disabled', false);
+    $('#trainLabelsDropdown').prop('disabled', false);
     $('#featureSelector input[type="checkbox"]').prop('disabled', false);
     $('#trainModelBtn').show();
     $('#modelScroll').find('button').removeClass('btn-dark');

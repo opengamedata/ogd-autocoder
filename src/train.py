@@ -72,6 +72,7 @@ def train_model(filepath, model_type, include_labels, include_features):
     metrics = {} # stores the metrics (to save model)
     metrics["model_type"] = model_type
     metrics["num_features"] = x_train_full.shape[1]
+    metrics["include_labels"] = include_labels
     metrics["include_features"] = include_features
     if (model_type == "logistic"):
         metrics["model_name"] = "Logistic Regression"
