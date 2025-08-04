@@ -59,6 +59,12 @@ def users_list():
 
     return jsonify({"users": get_users_list(filepath)})
 
+@app.route("/event_types_list", methods=["POST"])
+def event_types_list():
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
+
+    return jsonify({"users": get_event_types(filepath)})
+
 @app.route("/list_segment_ids/<user_id>", methods=["POST"])
 def list_segment_ids(user_id):
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
@@ -105,10 +111,10 @@ def label(user_id):
     label_rows(filepath, user_id, segment_id, segment_labels, label_justification)
     return jsonify({"success": True})
 
-@app.route("/autosegment/<user_id>", methods=["POST"])
-def autosegment(user_id):
+@app.route("/autosegment", methods=["POST"])
+def autosegment():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
-    autosegment_by_job(filepath, user_id)
+    autosegment_by_event_type(filepath, request.json["sep_event_types"])
 
     return jsonify({"success": True})
 

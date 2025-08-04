@@ -44,7 +44,8 @@ function uploadFile() {
     formData.append("file", file);
 
     $('#spinner').removeClass("d-none");
-    $('#autoSegmentBtn').hide();
+    $('#autoSegmentBtn').prop("disabled", "disabled");
+    $('#segmentEventTypeDropdown').prop("disabled", "disabled");
     //const fileSizeMB = file.size / (1024 * 1024);
     //let estimatedTime = 0.042 * fileSizeMB + 1.79; // linear regression made from 2 points :)
     $.ajax({
@@ -55,17 +56,7 @@ function uploadFile() {
         contentType: false,
         success: function (response) {
             filename = response.filename;
-            fill_users_list();
-
-            const tabId = $('#nav-tab .nav-link.active').attr('id');
-            if (tabId == "nav-label-tab")
-                fillLabelDropdown("#labelsDropdown", true);
-            else if (tabId == "nav-train-tab")
-                fillLabelDropdown("#trainLabelsDropdown", false);
-            
-            $('#downloadBtn').show();
-            $('#trainModelBtn').show();
-            $('#spinner').addClass("d-none");
+            on_file_change(false);
         },
         error: function (xhr, status, error) {
             console.error("Upload failed:", status, error);
@@ -77,17 +68,42 @@ function uploadFile() {
 function load_existing(existing_filename) {
     filename = existing_filename;
     $('#spinner').removeClass("d-none");
-    $('#autoSegmentBtn').hide();
-    usersPromise = fill_users_list();
-    modelsPromise = fill_models_list();
-    Promise.all([usersPromise, modelsPromise])
-        .then(() => {
-            $('#downloadBtn').show();
-            $('#trainModelBtn').show();
-            $('#spinner').addClass("d-none");
-        }).catch((err) => {
-            console.error("Error loading existing file:", err);
-        })
+    $('#segmentEventTypeDropdown').prop("disabled", "disabled");
+    $('#autoSegmentBtn').prop("disabled", "disabled");
+    on_file_change(true);
+}
+
+function on_file_change(load_models) {
+    let promises = [];
+    promises.push(fill_users_list());
+    promises.push(fill_event_types());
+    if (load_models) {
+        promises.push(fill_models_list());
+    }
+
+    Promise.all(promises)
+    .then(() => {
+        const tabId = $('#nav-tab .nav-link.active').attr('id');
+        if (tabId == "nav-label-tab")
+            fillLabelDropdown("#labelsDropdown", true);
+        else if (tabId == "nav-train-tab")
+            fillLabelDropdown("#trainLabelsDropdown", false);
+        
+        const table1 = $('#segmentTable').DataTable();
+        table1.clear();
+        table1.draw();
+        const table2 = $('#labelTable').DataTable();
+        table2.clear();
+        table2.draw();
+        
+        $('#downloadBtn').show();
+        $('#trainModelBtn').show();
+        $('#autoSegmentBtn').prop("disabled", "disabled");
+        $('#segmentEventTypeDropdown').prop("disabled", "disabled");
+        $('#spinner').addClass("d-none");
+    }).catch((err) => {
+        console.error("Error loading existing file:", err);
+    });
 }
 
 function fill_models_list() {
@@ -130,6 +146,28 @@ function fill_users_list() {
         }
     });
 }
+
+function fill_event_types() {
+    $('#segmentEventTypeDropdown').empty();
+    return $.ajax({
+        url: '/event_types_list',
+        method: "POST",
+        data: JSON.stringify({ filename: filename }),
+        contentType: "application/json",
+        success: function (response) {
+            response.users.forEach(event_type => {
+                $('#segmentEventTypeDropdown').append(`<option value="${event_type}">${event_type}</option>`);
+            });
+
+            $('#segmentEventTypeDropdown').show();
+        },
+        error: function (xhr, status, error) {
+            console.error("Event type list loading failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
+}
+
 function nextSegment() {
     const select = $('#segmentDropdown');
     const options = select.find('option');
@@ -239,6 +277,7 @@ $('#modelTypeSelect').select2();
 $('#labelForMetrics').select2();
 $('#labelsDropdown').select2();
 $('#trainLabelsDropdown').select2();
+$('#segmentEventTypeDropdown').select2();
 
 function addModel(metrics) {
     let accuracy = metrics["test_accuracy"];
@@ -762,7 +801,8 @@ function loadEvents(table_id) {
             table.draw();
 
             $('#spinner').addClass("d-none");
-            $('#autoSegmentBtn').show();
+            $('#autoSegmentBtn').prop("disabled", false);
+            $('#segmentEventTypeDropdown').prop("disabled", false);
         },
         error: function (xhr, status, error) {
             console.error("Event data load failed:", status, error);
@@ -837,14 +877,13 @@ function autoSegment() {
     // hide modal
     bootstrap.Modal.getInstance($('#confirmSegmentModal')[0]).hide();
 
-    const user_id = $('#userDropdown').val();
     let table_id = "#segmentTable"
 
     $('#spinner').removeClass("d-none");
     $.ajax({
-        url: `/autosegment/${user_id}`,
+        url: '/autosegment',
         method: "POST",
-        data: JSON.stringify({ filename: filename, }),
+        data: JSON.stringify({ filename: filename,  sep_event_types: $('#segmentEventTypeDropdown').val()}),
         contentType: "application/json",
         success: function (response) {
             // reload data

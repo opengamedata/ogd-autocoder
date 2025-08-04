@@ -53,7 +53,15 @@
         </div>
         <div class="d-flex align-items-end">
           <button class="btn btn-primary me-2" type="button" onclick="segmentRows()">Apply</button>
-          <button class="btn btn-success" id="autoSegmentBtn" style="display:none;" data-bs-toggle="modal" data-bs-target="#confirmSegmentModal" title="Automatically assign segment IDs based on job changes.">
+        </div>
+        <div class="border-start mx-5" style="height: 40px;"></div>
+        <div class="me-2" style="width: 600px;">
+          <label for="segmentEventTypeDropdown" class="form-label">Cutoff Event Types</label>
+          <select id="segmentEventTypeDropdown" multiple="multiple" disabled="disabled" class="form-select"></select>
+        </div>
+      
+        <div class="d-flex align-items-end">
+          <button class="btn btn-success" id="autoSegmentBtn" disabled="disabled" data-bs-toggle="modal" data-bs-target="#confirmSegmentModal" title="Automatically assign segment IDs based on job changes.">
             <i class="bi bi-magic me-1"></i> Autosegment
           </button>
         </div>
@@ -107,7 +115,7 @@
             <input type="file" id="importLabelsFile" accept=".json" style="display: none;" />
           </div>
 
-          <select id="labelsDropdown" class="form-control" multiple="multiple"></select>
+          <select id="labelsDropdown" style="width: 100%;" class="form-control" multiple="multiple"></select>
         </div>
     
         <div class="col-md-4">
@@ -152,7 +160,7 @@
       <div class="row mt-3">
         <div class="col-md-6">
           <div>
-            <label for="modelTypeSelect" class="form-label fw-bold">Select Model</label>
+            <label for="modelTypeSelect" class="form-label fw-bold">Model</label>
           </div>
           <div class="mb-3">
             <select class="form-select" id="modelTypeSelect">
@@ -162,13 +170,13 @@
             </select>
           </div>
           <div>
-            <label for="trainLabelsDropdown" class="form-label fw-bold">Select Labels to Include</label>
+            <label for="trainLabelsDropdown" class="form-label fw-bold">Labels to Include</label>
           </div>
           <div class="mb-3">
-            <select id="trainLabelsDropdown" class="form-control" multiple="multiple"></select>
+            <select id="trainLabelsDropdown" style="width: 100%;" class="form-control" multiple="multiple"></select>
           </div>
           <div class="mb-3">
-            <label class="form-label fw-bold">Select Features</label>
+            <label class="form-label fw-bold">Features</label>
             <input type="text" id="featureSearch" class="form-control mb-2" placeholder="Search features...">
             <div id="featureSelector" class="border rounded p-2" style="height: 400px; overflow-y: auto;"></div>
           </div>
@@ -272,7 +280,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        This will overwrite the existing <code>segment_id</code> column for this user. Are you sure you want to continue?
+        This will overwrite the existing <code>segment_id</code> column for <strong>ALL USERS</strong>. Are you sure you want to continue?
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

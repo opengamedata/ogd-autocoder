@@ -53,6 +53,11 @@ def get_users_list(filepath):
 
     return df.user_id.dropna().unique().tolist()
 
+def get_event_types(filepath):
+    df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
+
+    return df.event_name.dropna().unique().tolist()
+
 def segment_ids_for_user(filepath, user_id):
     df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
 
@@ -108,16 +113,19 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
     df = df.drop(columns=["row_id"])
     df.to_csv(filepath, index=False, sep="\t")
 
-def autosegment_by_job(filepath, user_id):
+def autosegment_by_event_type(filepath, sep_event_types):
+    """
+    Autosegments the whole dataframe
+
+    sep_event_types: list of event types by which we should separate ito segments
+    """
+    
     df = pd.read_csv(filepath, sep="\t")#, dtype=COL_DTYPES)
-    # execute the operation in pandas
-    absent_df = df[df['user_id'] == user_id]
-    # absent_df = absent_df.sort_values('timestamp') # originally its also sorted like that
-    absent_df['segment_id'] = (absent_df['job_name'] != absent_df['job_name'].shift()).fillna(False).astype(int).cumsum()
-    absent_df = absent_df[['segment_id', 'session_id', 'index']]
+    df["timestamp"] = pd.to_datetime(df["timestamp"], format='mixed')
+    df = df.sort_values('timestamp')
 
-    df = df.merge(absent_df, on=['session_id', 'index'], how='left', suffixes=('', '_new'))
-
-    df['segment_id'] = df['segment_id_new'].where(df['user_id'] == user_id, df['segment_id'])
-    df = df.drop(columns=['segment_id_new'])
+    # hardcoded - when new session begins (index = 0), automatically sets it as new segment
+    df['is_sep_event'] = (df['event_name'].isin(sep_event_types) | (df['index'] == 0)).fillna(False).astype(int)
+    df['segment_id'] = df.groupby('user_id')['is_sep_event'].cumsum()
+    df = df.drop(columns=['is_sep_event'])
     df.to_csv(filepath, index=False, sep="\t")
