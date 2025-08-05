@@ -128,4 +128,9 @@ def autosegment_by_event_type(filepath, sep_event_types):
     df['is_sep_event'] = (df['event_name'].isin(sep_event_types) | (df['index'] == 0)).fillna(False).astype(int)
     df['segment_id'] = df.groupby('user_id')['is_sep_event'].cumsum()
     df = df.drop(columns=['is_sep_event'])
+    
+    # include cutoff events into the previous segment
+    filter = df['event_name'].isin(sep_event_types)
+    df.loc[filter, 'segment_id'] = df.loc[filter, 'segment_id'].astype(int) - 1
+
     df.to_csv(filepath, index=False, sep="\t")
