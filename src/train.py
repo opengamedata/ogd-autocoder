@@ -51,7 +51,7 @@ def train_model(filepath, model_type, hyperparameters, include_labels, include_f
     x_train_full, x_test, y_train_full, y_test = train_test_split(
         train_df[include_features], # train_df.drop(columns=['segment_labels', 'segment_id']),
         target_col,
-        test_size=0.25,
+        train_size=float(hyperparameters["train_test_ratio"]),
         random_state=RANDOM_STATE,
         stratify=train_df['segment_labels'] # same proportion in both splits
         # fixme - maybe try bootstrap

@@ -420,6 +420,10 @@ function fillModelSummary(metrics) {
 
     $('#trainLabelsDropdown').val(metrics["include_labels"]).trigger('change');
     $('#trainLabelsDropdown').prop('disabled', 'disabled');
+
+    $('#trainTestSplit').prop('disabled', true);
+    $('#trainTestSplitValue').prop('disabled', true);
+
     $('#trainModelBtn').hide()
     $('#enableTrainBtn').show();
 
@@ -937,6 +941,9 @@ function enableTrain() {
     $('#nnLayers').prop('disabled', false);
     $(`input[name^="nn_units_layer_"]`).prop('disabled', false);
 
+    $('#trainTestSplit').prop('disabled', false);
+    $('#trainTestSplitValue').prop('disabled', false);
+
     $('#featureSelector input[type="checkbox"]').prop('disabled', false);
     $('#trainModelBtn').show();
     $('#modelScroll').find('button').removeClass('btn-dark');
@@ -1018,10 +1025,13 @@ function getHyperparameters(model) {
         };
     }
 
+    params.train_test_ratio = $('#trainTestSplit').val()
     return params;
 }
 
 function setHyperparameters(model, params) {
+    $('#trainTestSplit').val(params.train_test_ratio);
+    updateLabelFromValue();
     if (model === 'logistic') {
         $('#logisticLambda').val(params.lambda);
         $('#logisticPenalty').val(params.penalty).trigger('change');
@@ -1059,4 +1069,10 @@ function createUnitPerLayerInputs() {
       }
       $container.append($flexDiv);
     }
-  };
+};
+
+
+function updateLabelFromValue() {
+    const percent = (parseFloat($('#trainTestSplit').val()) * 100).toFixed(0);
+    $('#trainTestSplitValue').text(`${percent}%`);
+};
