@@ -33,7 +33,7 @@ def available_features(filepath):
     return columns
 
 
-def train_model(filepath, model_type, include_labels, include_features):
+def train_model(filepath, model_type, hyperparameters, include_labels, include_features):
     start_time = time.time()
 
     train_df = get_train_df(filepath)
@@ -45,7 +45,7 @@ def train_model(filepath, model_type, include_labels, include_features):
 
     le = LabelEncoder()
     target_col = le.fit_transform(train_df['segment_labels']) # converts to ints
-    if model_type == "neural_net":
+    if model_type == "neural-net":
         target_col = keras.utils.to_categorical(target_col, num_classes = len(le.classes_)) # converts to dummies
 
     x_train_full, x_test, y_train_full, y_test = train_test_split(
@@ -57,11 +57,11 @@ def train_model(filepath, model_type, include_labels, include_features):
         # fixme - maybe try bootstrap
     )
 
-    output = (f"Row count:\t{len(train_df)}\n")
-    output += (f"Input col count:\t{x_train_full.shape[1]}\n")
-    output += (f"Classes count:\n")
+    output = (f"Row Count:\t{len(train_df)}\n")
+    output += (f"Input Columns:\t{x_train_full.shape[1]}\n")
+    output += (f"Classes Count:\n")
     for label, count in train_df['segment_labels'].value_counts().items():
-        output += (f"{label}\t{count}\n")
+        output += (f"  {label}\t{count}\n")
     output += "\n"
 
     # add to (output +=)
@@ -69,27 +69,28 @@ def train_model(filepath, model_type, include_labels, include_features):
     # print("x Validation Shape: " + str(x_val.shape))
     # print("x Test Shape: " + str(x_test.shape))
     
-    metrics = {} # stores the metrics (to save model)
+    metrics = {} # stores the metrics and some other model info (to save model)
     metrics["model_type"] = model_type
     metrics["num_features"] = x_train_full.shape[1]
     metrics["include_labels"] = include_labels
     metrics["include_features"] = include_features
     if (model_type == "logistic"):
         metrics["model_name"] = "Logistic Regression"
-        output += train_logistic(x_train_full, x_test, y_train_full, y_test, le.classes_, metrics)
-    elif (model_type == "random_forest"):
+        output += train_logistic(x_train_full, x_test, y_train_full, y_test, le.classes_, hyperparameters, metrics)
+    elif (model_type == "random-forest"):
         metrics["model_name"] = "Random Forest"
-        output += train_random_forest(x_train_full, x_test, y_train_full, y_test, le.classes_, metrics)
-    elif (model_type == "neural_net"):
+        output += train_random_forest(x_train_full, x_test, y_train_full, y_test, le.classes_, hyperparameters, metrics)
+    elif (model_type == "neural-net"):
         metrics["model_name"] = "Neural Network"
         # y is one-hot encoded here !!
-        output += train_neural_net(x_train_full, x_test, y_train_full, y_test, le.classes_, metrics)
+        output += train_neural_net(x_train_full, x_test, y_train_full, y_test, le.classes_, hyperparameters, metrics)
     else:
         output += "Invalid Model Selected"
 
     time_taken = time.time() - start_time
-    output = f"Time taken:\t{time_taken} secs\n\n" + output
-
+    output = f"{metrics["model_name"]}\n\nTime taken:\t{round(time_taken, 2)} secs\n\n" + output
+    
+    metrics["hyperparameters"] = hyperparameters # might have been updated inside train_ of specific model
     metrics["output"] = output
     metrics["time_taken"] = time_taken
     metrics["timestamp_end"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -153,34 +154,38 @@ def get_train_df(filepath):
     )
     return clean_agg_df
 
-def train_neural_net(x_train, x_test, y_train, y_test, classes, metrics):
-    output = "Neural Network\n\n"
+def train_neural_net(x_train, x_test, y_train, y_test, classes, hyperparameters, metrics):
+    output = ""
     x_train_tensor = tf.convert_to_tensor(x_train)
     y_train_tensor = tf.convert_to_tensor(y_train)
     x_test_tensor = tf.convert_to_tensor(x_test)
     y_test_tensor = tf.convert_to_tensor(y_test)
 
     #class_weight = {0: 1., 1: 1.4}
-
+    hyperparameters["epochs"] = hyperparameters.get("epochs", 10)
+    hyperparameters["learning_rate"] = hyperparameters.get("learning_rate", 0.01)
+    hyperparameters["n_layers"] = hyperparameters.get("n_layers", 0)
+    hyperparameters["units_per_layer"] = hyperparameters.get("units_per_layer", [])
     model = Sequential()
     model.add(Input(shape=(x_train_tensor.shape[1],)))
-    model.add(Dense(1000, activation='relu'))
-    model.add(Dense(1000, activation='relu'))
-    model.add(Dense(100, activation='relu'))
+
+    for l in range(hyperparameters["n_layers"]):
+        model.add(Dense(hyperparameters["units_per_layer"][l], activation='relu'))
+
     model.add(Dense(len(classes), activation='softmax'))
-    adam = keras.optimizers.Adam(learning_rate=0.001)
+    adam = keras.optimizers.Adam(learning_rate=hyperparameters["learning_rate"])
     model.compile(optimizer=adam, loss="categorical_crossentropy", metrics=['accuracy'])
 
 
     early_stopping = EarlyStopping(
         monitor='val_loss',
-        patience=5,
+        patience=5, # fixme - check if necessary...
         # restores model weights from the epoch with the best value of the monitored quantity
         restore_best_weights=True
     )
 
     # class_weight=class_weight
-    model.fit(x_train_tensor, y_train_tensor, epochs=75, batch_size=32, validation_data=(x_test_tensor, y_test_tensor), callbacks=[early_stopping])
+    model.fit(x_train_tensor, y_train_tensor, epochs=hyperparameters["epochs"], batch_size=32, validation_data=(x_test_tensor, y_test_tensor), callbacks=[early_stopping])
     loss, accuracy = model.evaluate(x_test_tensor, y_test_tensor)
     metrics["test_accuracy"] = accuracy
     output += (f"Test Accuracy:\t{accuracy}\n")
@@ -194,7 +199,7 @@ def train_neural_net(x_train, x_test, y_train, y_test, classes, metrics):
     y_pred_test = np.argmax(model.predict(x_test_tensor), axis=1)
     y_pred_train = np.argmax(model.predict(x_train_tensor), axis=1)
     y_test = np.argmax(y_test, axis=1)
-    y_train = np.argmax(y_test, axis=1)
+    y_train = np.argmax(y_train, axis=1)
 
     metrics["train_f1"] = f1_score(y_train, y_pred_train, average='weighted')
     metrics["test_f1"] = f1_score(y_test, y_pred_test, average='weighted')
@@ -206,9 +211,19 @@ def train_neural_net(x_train, x_test, y_train, y_test, classes, metrics):
     return output
 
 
-def train_logistic(x_train, x_test, y_train, y_test, classes, metrics):
-    output = "Logistic Regression\n\n"
-    model = LogisticRegression(penalty='l2')
+def train_logistic(x_train, x_test, y_train, y_test, classes, hyperparameters, metrics):
+    output = ""
+    
+    hyperparameters["penalty"] = hyperparameters.get("penalty", None)
+    hyperparameters["lambda"] = hyperparameters.get("lambda", 1.0)
+    if hyperparameters["lambda"] == 0:
+        hyperparameters["penalty"] = None
+
+    model = LogisticRegression(
+        solver="liblinear",
+        penalty=hyperparameters["penalty"],
+        C=1 / (hyperparameters["lambda"] + 1e-5) # avoid zero division
+    )
     model.fit(x_train, y_train)
 
     metrics["test_accuracy"] = model.score(x_test, y_test)
@@ -230,9 +245,16 @@ def train_logistic(x_train, x_test, y_train, y_test, classes, metrics):
     return output
 
 
-def train_random_forest(x_train, x_test, y_train, y_test, classes, metrics):
-    output = "Random Forest\n\n"
-    model = RandomForestClassifier(random_state=RANDOM_STATE)
+def train_random_forest(x_train, x_test, y_train, y_test, classes, hyperparameters, metrics):
+    output = ""
+    hyperparameters["n_estimators"] = hyperparameters.get("n_estimators", 100)
+    hyperparameters["max_depth"] = hyperparameters.get("max_depth", 3)
+
+    model = RandomForestClassifier(
+        random_state=RANDOM_STATE,
+        n_estimators=hyperparameters["n_estimators"],
+        max_depth=hyperparameters["max_depth"]
+    )
     model.fit(x_train, y_train)
 
     metrics["test_accuracy"] = model.score(x_test, y_test)

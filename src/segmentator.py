@@ -1,5 +1,6 @@
 import os
 import time
+import traceback
 from utils import *
 from train import train_model, available_features
 from werkzeug.utils import secure_filename
@@ -123,9 +124,9 @@ def train():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
     success = True
     try:
-        output, metrics = train_model(filepath, request.json["model_type"], request.json["include_labels"], request.json["include_features"])
+        output, metrics = train_model(filepath, request.json["model_type"], request.json["hyperparameters"], request.json["include_labels"], request.json["include_features"])
     except Exception as e:
-        print(e)
+        print(traceback.format_exc())
         output = str(e)
         metrics = []
         success = False

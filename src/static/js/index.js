@@ -27,7 +27,15 @@ $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
     } else if (tabId == "nav-train-tab") {
         $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none"); // https://stackoverflow.com/questions/8266662/add-class-via-jquery-but-only-when-not-exists
         fillFeatureList();
-        fillLabelDropdown("#trainLabelsDropdown", false);
+        createUnitPerLayerInputs();
+        fillLabelDropdown("#trainLabelsDropdown", false).then(() => {
+            // select all labels by default
+            let allValues = $('#trainLabelsDropdown option').map(function() {
+                return $(this).val();
+            }).get();
+
+            $('#trainLabelsDropdown').val(allValues).trigger('change');
+        });
     } else {
         $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none");
     }
@@ -273,11 +281,11 @@ $('#modelMetricsTable').DataTable({
     scrollCollapse: true
 });
 
-$('#modelTypeSelect').select2();
 $('#labelForMetrics').select2();
 $('#labelsDropdown').select2();
 $('#trainLabelsDropdown').select2();
 $('#segmentEventTypeDropdown').select2();
+$('#logisticPenalty').select2();
 
 function addModel(metrics) {
     let accuracy = metrics["test_accuracy"];
@@ -335,7 +343,7 @@ function addModel(metrics) {
         metrics["train_accuracy"].toFixed(2),
         metrics["train_f1"].toFixed(2),
         metrics["num_features"],
-        metrics["time_taken"],
+        metrics["time_taken"].toFixed(2),
     ]).draw(true);
 
     for (const key in metrics) {
@@ -383,15 +391,33 @@ function addModel(metrics) {
 }
 
 function fillModelSummary(metrics) {
-    $('#modelTypeSelect').val(metrics["model_type"]).trigger('change');
-    $('#modelTypeSelect').prop('disabled', 'disabled');
+    $('#modelTabs .nav-link').prop('disabled', 'disabled');
+    $('#modelTabs .nav-link').removeClass('active');
+    $('#modelTabsContent .tab-pane').removeClass('show active');
+    const tabId = `#${metrics["model_type"]}-tab`;
+    const paneId = `#${metrics["model_type"]}`;
 
+    $(tabId).addClass('active');
+    $(paneId).addClass('show active');
+    
+    setHyperparameters(metrics["model_type"], metrics["hyperparameters"]);
 
     $('#featureSelector input.feature-checkbox').each(function () {
         let check = metrics["include_features"].includes($(this).val())
         $(this).prop('checked', check).trigger('change');
     });
     $('#featureSelector input[type="checkbox"]').prop('disabled', true);
+    $('#logisticLambda').prop('disabled', true);
+    $('#logisticPenalty').prop('disabled', true);
+
+    $('#rfEstimators').prop('disabled', true);
+    $('#rfMaxDepth').prop('disabled', true);
+
+    $('#nnEpochs').prop('disabled', true);
+    $('#nnLearningRate').prop('disabled', true);
+    $('#nnLayers').prop('disabled', true);
+    $(`input[name^="nn_units_layer_"]`).prop('disabled', true);
+
     $('#trainLabelsDropdown').val(metrics["include_labels"]).trigger('change');
     $('#trainLabelsDropdown').prop('disabled', 'disabled');
     $('#trainModelBtn').hide()
@@ -697,7 +723,7 @@ function fillLabelDropdown(dropdown_id, allow_new_lbl) {
 
     // don't remove the uploaded options from codebook.csv
     if (!filename) {
-        return;
+        return Promise.reject(new Error("Filename is required"));
     }
     $(dropdown_id).val("");
     $(dropdown_id).children(':not([title])').remove();
@@ -715,7 +741,7 @@ function fillLabelDropdown(dropdown_id, allow_new_lbl) {
     });
     
     $('#spinner').removeClass("d-none");
-    $.ajax({
+    return $.ajax({
         url: "/list_labels",
         method: "POST",
         data: JSON.stringify({ filename: filename }),
@@ -897,8 +923,20 @@ function autoSegment() {
 }
 
 function enableTrain() {
-    $('#modelTypeSelect').prop('disabled', false);
+    $('#modelTabs .nav-link').prop('disabled', false);
     $('#trainLabelsDropdown').prop('disabled', false);
+
+    $('#logisticLambda').prop('disabled', false);
+    $('#logisticPenalty').prop('disabled', false);
+
+    $('#rfEstimators').prop('disabled', false);
+    $('#rfMaxDepth').prop('disabled', false);
+
+    $('#nnEpochs').prop('disabled', false);
+    $('#nnLearningRate').prop('disabled', false);
+    $('#nnLayers').prop('disabled', false);
+    $(`input[name^="nn_units_layer_"]`).prop('disabled', false);
+
     $('#featureSelector input[type="checkbox"]').prop('disabled', false);
     $('#trainModelBtn').show();
     $('#modelScroll').find('button').removeClass('btn-dark');
@@ -908,7 +946,7 @@ function enableTrain() {
 
 function trainModel() {
     $('#spinner').removeClass("d-none");
-
+    let model_type = $('#modelTabs .nav-link.active').attr('id').replace('-tab', '');
     let features = [];
     $('#featureSelector input.feature-checkbox:checked').each(function () {
         features.push($(this).val());
@@ -916,7 +954,13 @@ function trainModel() {
     $.ajax({
         url: `/train_model`,
         method: "POST",
-        data: JSON.stringify({ filename: filename, model_type: $('#modelTypeSelect').val(), include_labels: $('#trainLabelsDropdown').val(), include_features: features }),
+        data: JSON.stringify({
+            filename: filename,
+            model_type: model_type,
+            include_labels: $('#trainLabelsDropdown').val(),
+            include_features: features,
+            hyperparameters: getHyperparameters(model_type)
+        }),
         contentType: "application/json",
         success: function (response) {
             $('#spinner').addClass("d-none");
@@ -934,3 +978,85 @@ function trainModel() {
         }
     });
 }
+
+function getHyperparameters(model) {
+    let params = {};
+
+    if (model === 'logistic') {
+        let lambda = parseFloat($('#logisticLambda').val());
+        if (isNaN(lambda) || lambda <= 0) lambda = 1;
+
+        params = {
+            lambda: lambda,
+            penalty: $('#logisticPenalty').val()
+        };
+    } else if (model === 'random-forest') {
+        let nEstimators = parseInt($('#rfEstimators').val());
+        let maxDepth = parseInt($('#rfMaxDepth').val());
+
+        params = {
+            n_estimators: isNaN(nEstimators) ? null : nEstimators,
+            max_depth: isNaN(maxDepth) ? null : maxDepth
+        };
+    } else if (model === 'neural-net') {
+        let epochs = parseInt($('#nnEpochs').val());
+        let learningRate = parseFloat($('#nnLearningRate').val());
+        let nLayers = parseInt($('#nnLayers').val());
+
+        // units per each layer
+        let units = [];
+        $('#nnUnitsPerLayerContainer input').each(function () {
+            let val = parseInt($(this).val());
+            units.push(isNaN(val) || val < 1 ? 1 : val);
+        });
+
+        params = {
+            epochs: isNaN(epochs) ? null : epochs,
+            learning_rate: isNaN(learningRate) ? null : learningRate,
+            n_layers: isNaN(nLayers) ? null : nLayers,
+            units_per_layer: units
+        };
+    }
+
+    return params;
+}
+
+function setHyperparameters(model, params) {
+    if (model === 'logistic') {
+        $('#logisticLambda').val(params.lambda);
+        $('#logisticPenalty').val(params.penalty).trigger('change');
+    } else if (model === 'random-forest') {
+        $('#rfEstimators').val(params.n_estimators);
+        $('#rfMaxDepth').val(params.max_depth);
+    } else if (model === 'neural-net') {
+        $('#nnEpochs').val(params.epochs);
+        $('#nnLearningRate').val(params.learning_rate);
+        $('#nnLayers').val(params.n_layers).trigger('input');
+
+        params.units_per_layer.forEach((val, i) => {
+            $(`input[name="nn_units_layer_${i+1}"]`).val(val);
+        });
+    }
+}
+
+function createUnitPerLayerInputs() {
+    const numLayers = parseInt($('#nnLayers').val()) || 0;
+    const $container = $('#nnUnitsPerLayerContainer');
+    $container.empty();
+  
+    if (numLayers > 0) {
+      const $flexDiv = $('<div class="d-flex flex-wrap gap-2"></div>'); // inline flex container with gaps
+  
+      for (let i = 1; i <= numLayers; i++) {
+        const $inputGroup = $(`
+          <div class="d-flex flex-column align-items-center">
+            <label class="form-label mb-0" style="font-size: 0.75rem;">Layer ${i}</label>
+            <input type="number" min="1" class="form-control form-control-sm" 
+                   placeholder="Units" value="10" name="nn_units_layer_${i}" style="width: 80px;">
+          </div>
+        `);
+        $flexDiv.append($inputGroup);
+      }
+      $container.append($flexDiv);
+    }
+  };
