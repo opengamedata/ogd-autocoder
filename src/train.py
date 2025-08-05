@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import precision_score, recall_score, f1_score, log_loss, classification_report
 from sklearn.linear_model import LogisticRegression
+from sklearn.utils.class_weight import compute_class_weight
 
 import tensorflow as tf
 from tensorflow import keras
@@ -88,7 +89,7 @@ def train_model(filepath, model_type, hyperparameters, include_labels, include_f
         output += "Invalid Model Selected"
 
     time_taken = time.time() - start_time
-    output = f"{metrics["model_name"]}\n\nTime taken:\t{round(time_taken, 2)} secs\n\n" + output
+    output = f"{metrics["model_name"]}: \t{round(time_taken, 2)} secs\n\n" + output
     
     metrics["hyperparameters"] = hyperparameters # might have been updated inside train_ of specific model
     metrics["output"] = output
@@ -161,7 +162,15 @@ def train_neural_net(x_train, x_test, y_train, y_test, classes, hyperparameters,
     x_test_tensor = tf.convert_to_tensor(x_test)
     y_test_tensor = tf.convert_to_tensor(y_test)
 
-    #class_weight = {0: 1., 1: 1.4}
+    y_train_int = np.argmax(y_train, axis=1) # transform to int from 1-hot
+    class_labels = np.unique(y_train_int)
+    class_weights = compute_class_weight(
+        class_weight="balanced" if hyperparameters.get("balance_classes", False) else None,
+        classes=class_labels,
+        y=y_train_int
+    )
+    class_weights = dict(zip(class_labels, class_weights))
+
     hyperparameters["epochs"] = hyperparameters.get("epochs", 10)
     hyperparameters["learning_rate"] = hyperparameters.get("learning_rate", 0.01)
     hyperparameters["n_layers"] = hyperparameters.get("n_layers", 0)
@@ -184,9 +193,13 @@ def train_neural_net(x_train, x_test, y_train, y_test, classes, hyperparameters,
         restore_best_weights=True
     )
 
-    # class_weight=class_weight
-    model.fit(x_train_tensor, y_train_tensor, epochs=hyperparameters["epochs"], batch_size=32, validation_data=(x_test_tensor, y_test_tensor), callbacks=[early_stopping])
+    model.fit(x_train_tensor, y_train_tensor, epochs=hyperparameters["epochs"], class_weight=class_weights, batch_size=32, validation_data=(x_test_tensor, y_test_tensor), callbacks=[early_stopping])
     loss, accuracy = model.evaluate(x_test_tensor, y_test_tensor)
+    output += f"Class Weights (greater means error is more critical):\n"
+    for i, w in class_weights.items():
+        output += f"  {classes[i]}\t{round(w, 2)}\n"
+    output += "\n"
+
     metrics["test_accuracy"] = accuracy
     output += (f"Test Accuracy:\t{accuracy}\n")
     #output += (f"Test Loss:\t{loss}\n\n")
@@ -218,13 +231,28 @@ def train_logistic(x_train, x_test, y_train, y_test, classes, hyperparameters, m
     hyperparameters["lambda"] = hyperparameters.get("lambda", 1.0)
     if hyperparameters["lambda"] == 0:
         hyperparameters["penalty"] = None
+    
+    class_labels = np.unique(y_train)
+    class_weights = compute_class_weight(
+        class_weight="balanced" if hyperparameters.get("balance_classes", False) else None,
+        classes=class_labels,
+        y=y_train
+    )
+    class_weights = dict(zip(class_labels, class_weights))
 
     model = LogisticRegression(
+        random_state=RANDOM_STATE,
+        class_weight=class_weights,
         solver="liblinear",
         penalty=hyperparameters["penalty"],
         C=1 / (hyperparameters["lambda"] + 1e-5) # avoid zero division
     )
     model.fit(x_train, y_train)
+
+    output += f"Class Weights (greater means error is more critical):\n"
+    for i, w in class_weights.items():
+        output += f"  {classes[i]}\t{round(w, 2)}\n"
+    output += "\n"
 
     metrics["test_accuracy"] = model.score(x_test, y_test)
     output += (f"Test Accuracy:\t{metrics["test_accuracy"]}\n")
@@ -250,8 +278,17 @@ def train_random_forest(x_train, x_test, y_train, y_test, classes, hyperparamete
     hyperparameters["n_estimators"] = hyperparameters.get("n_estimators", 100)
     hyperparameters["max_depth"] = hyperparameters.get("max_depth", 3)
 
+    class_labels = np.unique(y_train)
+    class_weights = compute_class_weight(
+        class_weight="balanced" if hyperparameters.get("balance_classes", False) else None,
+        classes=class_labels,
+        y=y_train
+    )
+    class_weights = dict(zip(class_labels, class_weights))
+
     model = RandomForestClassifier(
         random_state=RANDOM_STATE,
+        class_weight=class_weights,
         n_estimators=hyperparameters["n_estimators"],
         max_depth=hyperparameters["max_depth"]
     )
@@ -259,6 +296,11 @@ def train_random_forest(x_train, x_test, y_train, y_test, classes, hyperparamete
 
     metrics["test_accuracy"] = model.score(x_test, y_test)
     metrics["train_accuracy"] = model.score(x_train, y_train)
+
+    output += f"Class Weights (greater means error is more critical):\n"
+    for i, w in class_weights.items():
+        output += f"  {classes[i]}\t{round(w, 2)}\n"
+    output += "\n"
 
     output += (f"Test Accuracy:\t{metrics["test_accuracy"]}\n")
     output += (f"Train Accuracy:\t{metrics["train_accuracy"]}\n\n")

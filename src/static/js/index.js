@@ -423,6 +423,7 @@ function fillModelSummary(metrics) {
 
     $('#trainTestSplit').prop('disabled', true);
     $('#trainTestSplitValue').prop('disabled', true);
+    $('#balanceClassesCheckbox').prop('disabled', true);
 
     $('#trainModelBtn').hide()
     $('#enableTrainBtn').show();
@@ -943,6 +944,7 @@ function enableTrain() {
 
     $('#trainTestSplit').prop('disabled', false);
     $('#trainTestSplitValue').prop('disabled', false);
+    $('#balanceClassesCheckbox').prop('disabled', false);
 
     $('#featureSelector input[type="checkbox"]').prop('disabled', false);
     $('#trainModelBtn').show();
@@ -1025,12 +1027,14 @@ function getHyperparameters(model) {
         };
     }
 
-    params.train_test_ratio = $('#trainTestSplit').val()
+    params.train_test_ratio = $('#trainTestSplit').val();
+    params.balance_classes = $("#balanceClassesCheckbox").is(':checked');
     return params;
 }
 
 function setHyperparameters(model, params) {
     $('#trainTestSplit').val(params.train_test_ratio);
+    $("#balanceClassesCheckbox").prop('checked', params.balance_classes);
     updateLabelFromValue();
     if (model === 'logistic') {
         $('#logisticLambda').val(params.lambda);
