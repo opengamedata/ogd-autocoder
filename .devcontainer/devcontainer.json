@@ -1,0 +1,10 @@
+{
+    "name": "container-ogd-autocoder",
+    "dockerFile": "Dockerfile",
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+    },
+    "extensions": [
+        "esbenp.prettier-vscode",
+    ]
+}
