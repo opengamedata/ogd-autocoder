@@ -56,7 +56,11 @@ def get_models_list(filepath):
 def get_users_list(filepath):
     df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
 
-    return df.user_id.dropna().unique().tolist()
+    return (
+        df.groupby("user_id")["segment_id"]
+        .nunique(dropna=True)
+        .reset_index(name="segment_count")
+    )
 
 
 def get_event_types(filepath):

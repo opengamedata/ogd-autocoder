@@ -65,7 +65,7 @@ def models_list():
 def users_list():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
 
-    return jsonify({"users": get_users_list(filepath)})
+    return jsonify({"users": get_users_list(filepath).to_dict(orient="records")})
 
 
 @app.route("/event_types_list", methods=["POST"])

@@ -52,8 +52,6 @@ function uploadFile() {
     formData.append("file", file);
 
     $('#spinner').removeClass("d-none");
-    $('#autoSegmentBtn').prop("disabled", "disabled");
-    $('#segmentEventTypeDropdown').prop("disabled", "disabled");
     //const fileSizeMB = file.size / (1024 * 1024);
     //let estimatedTime = 0.042 * fileSizeMB + 1.79; // linear regression made from 2 points :)
     $.ajax({
@@ -76,8 +74,6 @@ function uploadFile() {
 function load_existing(existing_filename) {
     filename = existing_filename;
     $('#spinner').removeClass("d-none");
-    $('#segmentEventTypeDropdown').prop("disabled", "disabled");
-    $('#autoSegmentBtn').prop("disabled", "disabled");
     on_file_change(true);
 }
 
@@ -106,16 +102,16 @@ function on_file_change(load_models) {
         
         $('#downloadBtn').show();
         $('#trainModelBtn').show();
-        $('#autoSegmentBtn').prop("disabled", "disabled");
-        $('#segmentEventTypeDropdown').prop("disabled", "disabled");
+        $('#autoSegmentBtn').prop("disabled", false);
+        $('#segmentEventTypeDropdown').prop("disabled", false);
         $('#spinner').addClass("d-none");
     }).catch((err) => {
         console.error("Error loading existing file:", err);
     });
 }
 
-function fill_models_list() {
-    return $.ajax({
+async function fill_models_list() {
+    await $.ajax({
         url: '/models_list',
         method: "POST",
         data: JSON.stringify({ filename: filename }),
@@ -128,17 +124,22 @@ function fill_models_list() {
     });
 }
 
-function fill_users_list() {
+async function fill_users_list() {
+    const previousValue = $('#userDropdown').val();
     $('#userDropdown').empty().append('<option></option>');
-    return $.ajax({
+    await $.ajax({
         url: '/users_list',
         method: "POST",
         data: JSON.stringify({ filename: filename }),
         contentType: "application/json",
         success: function (response) {
-            response.users.forEach(user_id => {
-                $('#userDropdown').append(`<option value="${user_id}">${user_id}</option>`);
+            response.users.forEach(user => {
+                $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} segments)</option>`);
             });
+
+            if (previousValue && $(`#userDropdown option[value="${previousValue}"]`).length > 0) {
+                $('#userDropdown').val(previousValue).trigger('change');
+            }
 
             // Initialize or reinitialize Select2
             $('#userDropdown').select2({
@@ -155,9 +156,9 @@ function fill_users_list() {
     });
 }
 
-function fill_event_types() {
+async function fill_event_types() {
     $('#segmentEventTypeDropdown').empty();
-    return $.ajax({
+    await $.ajax({
         url: '/event_types_list',
         method: "POST",
         data: JSON.stringify({ filename: filename }),
@@ -214,7 +215,7 @@ function fillSegmentDropdown() {
                 });
                 $('#spinner').addClass("d-none");
 
-                loadEvents("#labelTable");
+                loadEvents("#labelTable").finally(() => {$('#spinner').addClass("d-none");});
             },
             error: function (xhr, status, error) {
                 console.error("Segment options loading failed:", status, error);
@@ -223,6 +224,11 @@ function fillSegmentDropdown() {
         });
     }
 }
+
+$('#segmentDropdown').on('change', function () {
+    $('#spinner').removeClass("d-none");
+    loadEvents('#labelTable').finally(() => {$('#spinner').addClass("d-none");});
+});
 
 $('#importLabelsBtn').on('click', function () {
     $('#importLabelsFile').click();
@@ -722,13 +728,13 @@ function fillFeatureList() {
     });
 }
 
-function fillLabelDropdown(dropdown_id, allow_new_lbl) {
+async function fillLabelDropdown(dropdown_id, allow_new_lbl) {
     // dropdown_id: #labelsDropdown | #trainLabelsDropdown
     // allow_new_lbl: allows adding new labels to the dropdown
 
     // don't remove the uploaded options from codebook.csv
     if (!filename) {
-        return Promise.reject(new Error("Filename is required"));
+        return;
     }
     $(dropdown_id).val("");
     $(dropdown_id).children(':not([title])').remove();
@@ -746,7 +752,7 @@ function fillLabelDropdown(dropdown_id, allow_new_lbl) {
     });
     
     $('#spinner').removeClass("d-none");
-    return $.ajax({
+    await $.ajax({
         url: "/list_labels",
         method: "POST",
         data: JSON.stringify({ filename: filename }),
@@ -769,13 +775,14 @@ function fillLabelDropdown(dropdown_id, allow_new_lbl) {
 function userChanged() {
     const tabId = $('#nav-tab .nav-link.active').attr('id');
     if (tabId == "nav-segment-tab") {
-        loadEvents("#segmentTable");
+        $('#spinner').removeClass("d-none");
+        loadEvents("#segmentTable").finally(() => {$('#spinner').addClass("d-none");});
     } else if (tabId == "nav-label-tab") {
         fillSegmentDropdown();
     }
 }
 
-function loadEvents(table_id) {
+async function loadEvents(table_id) {
     // table_id: #segmentTable | #labelTable
     const table = $(table_id).DataTable();
     table.clear();
@@ -797,8 +804,7 @@ function loadEvents(table_id) {
         return;
     }
 
-    $('#spinner').removeClass("d-none");
-    $.ajax({
+    await $.ajax({
         url: `/events/${user_id}`,
         method: "POST",
         data: JSON.stringify({ filename: filename, segment_id: segment_id }),
@@ -830,10 +836,6 @@ function loadEvents(table_id) {
             });
 
             table.draw();
-
-            $('#spinner').addClass("d-none");
-            $('#autoSegmentBtn').prop("disabled", false);
-            $('#segmentEventTypeDropdown').prop("disabled", false);
         },
         error: function (xhr, status, error) {
             console.error("Event data load failed:", status, error);
@@ -867,7 +869,7 @@ function segmentRows() {
             $("#segmentIdInput").val(next_segment_id);
 
             // reload data
-            loadEvents(table_id);
+            fill_users_list().finally(() => {$('#spinner').addClass("d-none");});
         },
         error: function (xhr, status, error) {
             console.error("Segmentation failed:", status, error);
@@ -893,9 +895,12 @@ function labelRows() {
         contentType: "application/json",
         success: function (response) {
             // reload data
-            fillLabelDropdown("#labelsDropdown", true);
             $('#labelJustificationInput').val("")
-            loadEvents(table_id);
+            let promises = [];
+            promises.push(fillLabelDropdown("#labelsDropdown", true));
+            promises.push(loadEvents(table_id));
+
+            Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
         },
         error: function (xhr, status, error) {
             console.error("Labeling failed:", status, error);
@@ -918,7 +923,7 @@ function autoSegment() {
         contentType: "application/json",
         success: function (response) {
             // reload data
-            loadEvents(table_id);
+            fill_users_list().finally(() => {$('#spinner').addClass("d-none");});
         },
         error: function (xhr, status, error) {
             console.error("Auto Segmentation failed:", status, error);
