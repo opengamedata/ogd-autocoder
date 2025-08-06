@@ -16,16 +16,20 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+
 @app.route("/")
 def index():
     try:
         files = [
             {
                 "fullname": f,
-                "formatted": f.split('_', 1)[1] + ' ' + f.split('_', 1)[0].replace("T", " ") # format the datetime
+                "formatted": f.split("_", 1)[1]
+                + " "
+                + f.split("_", 1)[0].replace("T", " "),  # format the datetime
             }
             for f in os.listdir(UPLOAD_FOLDER)
-            if os.path.isfile(os.path.join(UPLOAD_FOLDER, f)) and not os.path.splitext(f)[0].endswith("_models")
+            if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))
+            and not os.path.splitext(f)[0].endswith("_models")
         ]
 
         # timestamp descending order
@@ -35,6 +39,7 @@ def index():
         files = []
 
     return render_template("index.html", uploaded_files=files)
+
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
@@ -48,11 +53,13 @@ def upload_file():
 
     return jsonify({"filename": filename})
 
+
 @app.route("/models_list", methods=["POST"])
 def models_list():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
 
     return jsonify({"data": get_models_list(filepath)})
+
 
 @app.route("/users_list", methods=["POST"])
 def users_list():
@@ -60,11 +67,13 @@ def users_list():
 
     return jsonify({"users": get_users_list(filepath)})
 
+
 @app.route("/event_types_list", methods=["POST"])
 def event_types_list():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
 
     return jsonify({"users": get_event_types(filepath)})
+
 
 @app.route("/list_segment_ids/<user_id>", methods=["POST"])
 def list_segment_ids(user_id):
@@ -72,11 +81,13 @@ def list_segment_ids(user_id):
 
     return jsonify({"data": segment_ids_for_user(filepath, user_id)})
 
+
 @app.route("/list_labels", methods=["POST"])
 def list_labels():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
 
     return jsonify({"data": list_seg_labels(filepath)})
+
 
 @app.route("/list_available_features", methods=["POST"])
 def list_available_features():
@@ -89,7 +100,10 @@ def events(user_id):
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
     user_events = get_events_for_user(filepath, user_id, request.json.get("segment_id"))
 
-    return jsonify({"data": user_events.fillna("-").to_dict(orient="records")}) # "max_segment_id": user_events["segment_id"].fillna(0).max()
+    return jsonify(
+        {"data": user_events.fillna("-").to_dict(orient="records")}
+    )  # "max_segment_id": user_events["segment_id"].fillna(0).max()
+
 
 @app.route("/segment/<user_id>", methods=["POST"])
 def segment(user_id):
@@ -102,6 +116,7 @@ def segment(user_id):
     # fixme - store filepath in headers
     return jsonify({"success": True})
 
+
 @app.route("/label/<user_id>", methods=["POST"])
 def label(user_id):
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
@@ -112,6 +127,7 @@ def label(user_id):
     label_rows(filepath, user_id, segment_id, segment_labels, label_justification)
     return jsonify({"success": True})
 
+
 @app.route("/autosegment", methods=["POST"])
 def autosegment():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
@@ -119,12 +135,19 @@ def autosegment():
 
     return jsonify({"success": True})
 
+
 @app.route("/train_model", methods=["POST"])
 def train():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
     success = True
     try:
-        output, metrics = train_model(filepath, request.json["model_type"], request.json["hyperparameters"], request.json["include_labels"], request.json["include_features"])
+        output, metrics = train_model(
+            filepath,
+            request.json["model_type"],
+            request.json["hyperparameters"],
+            request.json["include_labels"],
+            request.json["include_features"],
+        )
     except Exception as e:
         print(traceback.format_exc())
         output = str(e)
@@ -133,10 +156,11 @@ def train():
 
     return jsonify({"output": output, "metrics": metrics, "success": success})
 
-@app.route('/download', methods=['GET'])
+
+@app.route("/download", methods=["GET"])
 def download_file():
     # Get file path from query string, e.g. /download?file=somefile.csv
-    filename = request.args.get('file')
+    filename = request.args.get("file")
 
     if not filename:
         return abort(400, description="Missing 'file' query parameter.")
@@ -148,9 +172,9 @@ def download_file():
         return abort(404, description="File not found.")
 
     return send_file(
-        filepath,
-        as_attachment=True,
-        download_name=filename.split("_", maxsplit=1)[1]
+        filepath, as_attachment=True, download_name=filename.split("_", maxsplit=1)[1]
     )
+
+
 if __name__ == "__main__":
     app.run(debug=True)
