@@ -78,9 +78,7 @@ function load_existing(existing_filename) {
 }
 
 function on_file_change(load_models) {
-    let promises = [];
-    promises.push(fill_users_list());
-    promises.push(fill_event_types());
+    let promises = [fill_users_list(), fill_event_types(), fillLabelsCount()];
     if (load_models) {
         promises.push(fill_models_list());
     }
@@ -134,7 +132,7 @@ async function fill_users_list() {
         contentType: "application/json",
         success: function (response) {
             response.users.forEach(user => {
-                $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} segments)</option>`);
+                $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
             });
 
             if (previousValue && $(`#userDropdown option[value="${previousValue}"]`).length > 0) {
@@ -899,6 +897,7 @@ function labelRows() {
             let promises = [];
             promises.push(fillLabelDropdown("#labelsDropdown", true));
             promises.push(loadEvents(table_id));
+            promises.push(fillLabelsCount());
 
             Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
         },
@@ -1080,7 +1079,27 @@ function createUnitPerLayerInputs() {
     }
 };
 
-
+async function fillLabelsCount() {
+    await $.ajax({
+        url: '/labels_value_count',
+        method: "POST",
+        data: JSON.stringify({ filename: filename }),
+        contentType: "application/json",
+        success: function (response) {
+            debugger;
+            let text = "";
+            response.data.forEach(label => {
+                text += `${label.segment_labels} (${label.count}), `;
+            });
+            text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : ""; // remove last comma
+            $("#labelsValueCount").text(text);
+        },
+        error: function (xhr, status, error) {
+            console.error("User list loading failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
+}
 function updateLabelFromValue() {
     const percent = (parseFloat($('#trainTestSplit').val()) * 100).toFixed(0);
     $('#trainTestSplitValue').text(`${percent}%`);

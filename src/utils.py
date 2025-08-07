@@ -69,6 +69,16 @@ def get_event_types(filepath):
     return df.event_name.dropna().unique().tolist()
 
 
+def segment_labels_count(filepath):
+    df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
+
+    return (
+        df.drop_duplicates(subset=["user_id", "segment_id"])
+        .segment_labels.value_counts()
+        .reset_index(name="count")
+    )
+
+
 def segment_ids_for_user(filepath, user_id):
     df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
 

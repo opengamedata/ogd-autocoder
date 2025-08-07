@@ -81,6 +81,10 @@ def list_segment_ids(user_id):
 
     return jsonify({"data": segment_ids_for_user(filepath, user_id)})
 
+@app.route("/labels_value_count", methods=["POST"])
+def labels_value_count():
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.json["filename"])
+    return jsonify({"data": segment_labels_count(filepath).to_dict(orient="records")})
 
 @app.route("/list_labels", methods=["POST"])
 def list_labels():
