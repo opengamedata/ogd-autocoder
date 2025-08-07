@@ -81,7 +81,7 @@ def event_types_list():
 def list_segment_ids(user_id):
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], request.cookies.get('filename'))
 
-    return jsonify({"data": segment_ids_for_user(filepath, user_id)})
+    return jsonify({"data": segment_ids_for_user(filepath, user_id).to_dict(orient="records")})
 
 @app.route("/labels_value_count", methods=["POST"])
 def labels_value_count():

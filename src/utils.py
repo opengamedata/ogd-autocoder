@@ -82,10 +82,9 @@ def segment_labels_count(filepath):
 def segment_ids_for_user(filepath, user_id):
     df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
 
-    return sorted(
-        df[df["user_id"] == user_id].segment_id.dropna().astype("int").unique().tolist()
-    )
-
+    df = df[df["user_id"] == user_id][["segment_id", "segment_labels"]].dropna(subset=["segment_id"])
+    df = df.where(pd.notnull(df), None).drop_duplicates()
+    return df.sort_values(by="segment_id")
 
 def list_seg_labels(filepath):
     df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)

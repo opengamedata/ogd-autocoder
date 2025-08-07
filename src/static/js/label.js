@@ -53,14 +53,17 @@ async function fillLabelDropdowns() {
 function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id) {
     const user_id = $('#userDropdown').val();
     $('#spinner').removeClass("d-none");
+    let selectedSegment = $(seg_dropdown_id).val();
+    let selectedLabels = $(lbl_dropdown_id).val().join(', ');
+    let justification = $(jus_dropdown_id).val();
     $.ajax({
         url: `/label/${user_id}`,
         method: "POST",
         // select the index and the time column (will be the row identifier)
         data: JSON.stringify({
-            segment_id: $(seg_dropdown_id).val(),
-            segment_labels: $(lbl_dropdown_id).val().join(', '),
-            label_justification: $(jus_dropdown_id).val()
+            segment_id: selectedSegment,
+            segment_labels: selectedLabels,
+            label_justification: justification
         }),
         contentType: "application/json",
         success: function (response) {
@@ -68,8 +71,8 @@ function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id) 
             $(jus_dropdown_id).val("")
             let promises = [];
             promises.push(fillLabelDropdowns());
-            promises.push(loadEvents(table_id, seg_dropdown_id));
             promises.push(fillLabelsCount());
+            promises.push(fillSegmentDropdown(table_id, seg_dropdown_id));
 
             Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
         },
@@ -117,20 +120,26 @@ function prevSegment(dropdown_id) {
     select.prop('selectedIndex', next).trigger('change');
 }
 
-function fillSegmentDropdown(table_id, dropdown_id) {
+async function fillSegmentDropdown(table_id, dropdown_id) {
+    const previousValue = $(dropdown_id).val();
     $(dropdown_id).empty();
     const user_id = $('#userDropdown').val();
     if (user_id) {
         $('#spinner').removeClass("d-none");
-        $.ajax({
+        await $.ajax({
             url: `/list_segment_ids/${user_id}`,
             method: "POST",
             success: function (response) {
-                response.data.forEach(seg_id => {
-                    $(dropdown_id).append(`<option value="${seg_id}">${seg_id}</option>`);
+                response.data.forEach(seg => {
+                    let lbl = seg.segment_labels ? "(" + seg.segment_labels + ")" : "---";
+                    $(dropdown_id).append(`<option value="${seg.segment_id}">${seg.segment_id} ${lbl}</option>`);
                 });
-                $(dropdown_id).trigger('change');
 
+                if (previousValue && $(`${dropdown_id} option[value="${previousValue}"]`).length > 0) {
+                    $(dropdown_id).val(previousValue);
+                }
+
+                $(dropdown_id).trigger('change');
                 loadEvents(table_id, dropdown_id).finally(() => {$('#spinner').addClass("d-none");});
             },
             error: function (xhr, status, error) {
