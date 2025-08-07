@@ -50,31 +50,23 @@ $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
         userChanged();
     } else if (tabId == "nav-label-tab") {
         $("#load_and_user_panel").removeClass("d-none");
-        if (filename) {
-            fillLabelDropdown("#labelsDropdown");
-        }
         userChanged();
     } else if (tabId == "nav-train-tab") {
         $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none"); // https://stackoverflow.com/questions/8266662/add-class-via-jquery-but-only-when-not-exists
         if (filename) {
             fillFeatureList();
             createUnitPerLayerInputs();
-            fillLabelDropdown("#trainLabelsDropdown").then(() => {
-                // select all labels by default
-                let allValues = $('#trainLabelsDropdown option').map(function() {
-                    return $(this).val();
-                }).get();
 
-                $('#trainLabelsDropdown').val(allValues).trigger('change');
-            });
+            // select all labels by default
+            let allValues = $('#trainLabelsDropdown option').map(function() {
+                return $(this).val();
+            }).get();
+
+            $('#trainLabelsDropdown').val(allValues).trigger('change');
         }
     } else { 
         // apply tab
         $("#load_and_user_panel").removeClass("d-none");
-        //$("#load_and_user_panel:not([class*='d-none'])").addClass("d-none");
-        if (filename) {
-            fillLabelDropdown("#labelsDropdown_apply");
-        }
         userChanged();
     }
 });
@@ -126,13 +118,7 @@ function on_file_change(load_models) {
     Promise.all(promises)
     .then(() => {
         const tabId = $('#nav-tab .nav-link.active').attr('id');
-        if (tabId == "nav-label-tab")
-            fillLabelDropdown("#labelsDropdown");
-        else if (tabId == "nav-train-tab")
-            fillLabelDropdown("#trainLabelsDropdown");
-        else if (tabId == "nav-apply-tab")
-            fillLabelDropdown("#labelsDropdown_apply");
-        
+        fillLabelDropdowns();
         for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
             const table = $(table_id).DataTable();
             table.clear();

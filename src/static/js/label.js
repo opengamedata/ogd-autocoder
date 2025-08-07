@@ -17,25 +17,30 @@ $('#labelsDropdown').select2({
 });
 
 
-async function fillLabelDropdown(dropdown_id) {
-    // dropdown_id: #labelsDropdown | #trainLabelsDropdown | #labelsDropdown_apply
+async function fillLabelDropdowns() {
+    let dropdown_ids = ["#labelsDropdown", "#trainLabelsDropdown", "#labelsDropdown_apply"]
 
-    // don't remove the uploaded options from codebook.csv
-    $(dropdown_id).val("");
-    $(dropdown_id).children(':not([title])').remove();
-    
+    for (let dropdown_id of dropdown_ids) {
+        // don't remove the uploaded options from codebook.csv
+        $(dropdown_id).val("");
+        $(dropdown_id).children(':not([title])').remove();
+    }
+
     $('#spinner').removeClass("d-none");
     await $.ajax({
         url: "/list_labels",
         method: "POST",
         contentType: "application/json",
         success: function (response) {
-            response.data.forEach(label => {
-                if ($(`${dropdown_id} option[value="${label}"]`).length === 0) { // don't repeat codebook options
-                    $(dropdown_id).append(`<option value="${label}">${label}</option>`);
-                }
-                $(dropdown_id).trigger('change');
-            });
+            for (let dropdown_id of dropdown_ids) {
+                response.data.forEach(label => {
+                    if ($(`${dropdown_id} option[value="${label}"]`).length === 0) { // don't repeat codebook options
+                        $(dropdown_id).append(`<option value="${label}">${label}</option>`);
+                    }
+                    $(dropdown_id).trigger('change');
+                });
+            }
+
             $('#spinner').addClass("d-none");
         },
         error: function (xhr, status, error) {
@@ -62,7 +67,7 @@ function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id) 
             // reload data
             $(jus_dropdown_id).val("")
             let promises = [];
-            promises.push(fillLabelDropdown(lbl_dropdown_id));
+            promises.push(fillLabelDropdowns());
             promises.push(loadEvents(table_id, seg_dropdown_id));
             promises.push(fillLabelsCount());
 
