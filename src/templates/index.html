@@ -57,7 +57,7 @@
         </div>
         <div class="border-start mx-5" style="height: 40px;"></div>
         <div class="me-2" style="width: 600px;">
-          <label for="segmentEventTypeDropdown" class="form-label">Cutoff Event Types</label>
+          <label for="segmentEventTypeDropdown" class="form-label">Cutoff Event Types (apart from using sessions)</label>
           <select id="segmentEventTypeDropdown" multiple="multiple" disabled="disabled" class="form-select"></select>
         </div>
       
@@ -101,9 +101,9 @@
         <div class="col-md-4">
           <label for="segmentDropdown" class="form-label">Segment ID</label>
           <div class="d-flex align-items-center">
-            <button class="btn btn-primary me-1" type="button" onclick="prevSegment()">&lt;</button>
+            <button class="btn btn-primary me-1" type="button" onclick="prevSegment('#segmentDropdown')">&lt;</button>
             <select class="form-control flex-grow-1 me-1" id="segmentDropdown"></select>
-            <button class="btn btn-primary" type="button" onclick="nextSegment()">&gt;</button>
+            <button class="btn btn-primary" type="button" onclick="nextSegment('#segmentDropdown')">&gt;</button>
           </div>          
         </div>
     
@@ -126,7 +126,7 @@
     
         <div class="col-md-1">
           <label class="form-label d-block">&nbsp;</label>
-          <button class="btn btn-primary w-100" type="button" onclick="labelRows()">Apply</button>
+          <button class="btn btn-primary w-100" type="button" onclick="labelRows('#labelTable', '#segmentDropdown', '#labelsDropdown', '#labelJustificationInput')">Apply</button>
         </div>
       </div>
       
@@ -363,6 +363,61 @@
     </div>
     <!--APPLY-->
     <div class="tab-pane fade" id="nav-apply" role="tabpanel" aria-labelledby="nav-apply-tab">
+      <div class="mb-3 row g-3 align-items-end">
+    
+        <div class="col-md-4">
+          <label for="segmentDropdown_apply" class="form-label">Segment ID</label>
+          <div class="d-flex align-items-center">
+            <button class="btn btn-primary me-1" type="button" onclick="prevSegment('#segmentDropdown_apply')">&lt;</button>
+            <select class="form-control flex-grow-1 me-1" id="segmentDropdown_apply"></select>
+            <button class="btn btn-primary" type="button" onclick="nextSegment('#segmentDropdown_apply')">&gt;</button>
+          </div>          
+        </div>
+    
+        <div class="col-md-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label for="labelsDropdown_apply" class="form-label mb-0">Labels</label>
+          </div>
+
+          <select id="labelsDropdown_apply" style="width: 100%;" class="form-control" multiple="multiple"></select>
+        </div>
+    
+        <div class="col-md-4">
+          <label for="labelJustificationInput_apply" class="form-label">Justification</label>
+          <input type="text" class="form-control" id="labelJustificationInput_apply" placeholder="Explain the label(s) choice..." aria-label="Label Justification">
+        </div>
+    
+        <div class="col-md-1">
+          <label class="form-label d-block">&nbsp;</label>
+          <button class="btn btn-primary w-100" type="button" onclick="labelRows('#applyTable', '#segmentDropdown_apply', '#labelsDropdown_apply', '#labelJustificationInput_apply')">Apply</button>
+        </div>
+      </div>
+      
+      <table id="applyTable" class="table table-striped table-bordered" style="width:100%">
+        <thead>
+          <tr>
+            <th>Index</th>
+            <th>Event Name</th>
+            <th>Job Name</th>
+            <th>Time</th>
+            <th>Segment ID</th>
+            <th>Segment labels</th>
+            <th>Label justif.</th>
+            <th>Session ID</th>
+            <th>App ID</th>
+            <th>Event Data</th>
+            <th>Event Source</th>
+            <th>App Version</th>
+            <th>App Branch</th>
+            <th>Log Version</th>
+            <th>Offset</th>
+            <th>User ID</th>
+            <th>User Data</th>
+            <th>Game State</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
 
   </div>
@@ -389,4 +444,5 @@
 <script src="/static/js/index.js"></script>
 <script src="/static/js/label.js"></script>
 <script src="/static/js/train.js"></script>
+<script src="/static/js/apply.js"></script>
 {% endblock %}

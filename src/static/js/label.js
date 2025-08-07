@@ -18,7 +18,7 @@ $('#labelsDropdown').select2({
 
 
 async function fillLabelDropdown(dropdown_id) {
-    // dropdown_id: #labelsDropdown | #trainLabelsDropdown
+    // dropdown_id: #labelsDropdown | #trainLabelsDropdown | #labelsDropdown_apply
 
     // don't remove the uploaded options from codebook.csv
     $(dropdown_id).val("");
@@ -45,8 +45,7 @@ async function fillLabelDropdown(dropdown_id) {
     });
 }
 
-function labelRows() {
-    let table_id = "#labelTable";
+function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id) {
     const user_id = $('#userDropdown').val();
     $('#spinner').removeClass("d-none");
     $.ajax({
@@ -54,17 +53,17 @@ function labelRows() {
         method: "POST",
         // select the index and the time column (will be the row identifier)
         data: JSON.stringify({
-            segment_id: $("#segmentDropdown").val(),
-            segment_labels: $('#labelsDropdown').val().join(', '),
-            label_justification: $('#labelJustificationInput').val()
+            segment_id: $(seg_dropdown_id).val(),
+            segment_labels: $(lbl_dropdown_id).val().join(', '),
+            label_justification: $(jus_dropdown_id).val()
         }),
         contentType: "application/json",
         success: function (response) {
             // reload data
-            $('#labelJustificationInput').val("")
+            $(jus_dropdown_id).val("")
             let promises = [];
-            promises.push(fillLabelDropdown("#labelsDropdown"));
-            promises.push(loadEvents(table_id));
+            promises.push(fillLabelDropdown(lbl_dropdown_id));
+            promises.push(loadEvents(table_id, seg_dropdown_id));
             promises.push(fillLabelsCount());
 
             Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
@@ -95,8 +94,8 @@ async function fillLabelsCount() {
     });
 }
 
-function nextSegment() {
-    const select = $('#segmentDropdown');
+function nextSegment(dropdown_id) {
+    const select = $(dropdown_id);
     const options = select.find('option');
     const current = select.prop('selectedIndex');
     const next = (current + 1) % options.length;
@@ -104,8 +103,8 @@ function nextSegment() {
     select.prop('selectedIndex', next).trigger('change');
 }
 
-function prevSegment() {
-    const select = $('#segmentDropdown');
+function prevSegment(dropdown_id) {
+    const select = $(dropdown_id);
     const options = select.find('option');
     const current = select.prop('selectedIndex');
     const next = (options.length + (current - 1)) % options.length;
@@ -113,8 +112,8 @@ function prevSegment() {
     select.prop('selectedIndex', next).trigger('change');
 }
 
-function fillSegmentDropdown() {
-    $('#segmentDropdown').empty();
+function fillSegmentDropdown(table_id, dropdown_id) {
+    $(dropdown_id).empty();
     const user_id = $('#userDropdown').val();
     if (user_id) {
         $('#spinner').removeClass("d-none");
@@ -123,11 +122,11 @@ function fillSegmentDropdown() {
             method: "POST",
             success: function (response) {
                 response.data.forEach(seg_id => {
-                    $('#segmentDropdown').append(`<option value="${seg_id}">${seg_id}</option>`);
+                    $(dropdown_id).append(`<option value="${seg_id}">${seg_id}</option>`);
                 });
-                $('#segmentDropdown').trigger('change');
+                $(dropdown_id).trigger('change');
 
-                loadEvents("#labelTable").finally(() => {$('#spinner').addClass("d-none");});
+                loadEvents(table_id, dropdown_id).finally(() => {$('#spinner').addClass("d-none");});
             },
             error: function (xhr, status, error) {
                 console.error("Segment options loading failed:", status, error);
@@ -139,7 +138,7 @@ function fillSegmentDropdown() {
 
 $('#segmentDropdown').on('change', function () {
     $('#spinner').removeClass("d-none");
-    loadEvents('#labelTable').finally(() => {$('#spinner').addClass("d-none");});
+    loadEvents('#labelTable', '#segmentDropdown').finally(() => {$('#spinner').addClass("d-none");});
 });
 
 $('#importLabelsBtn').on('click', function () {

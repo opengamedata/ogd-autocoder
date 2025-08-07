@@ -15,7 +15,7 @@ $('#modelMetricsTable').DataTable({
     scrollCollapse: true
 });
 
-for (let table_id of ["#labelTable", "#segmentTable"]) {
+for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
     $(table_id).DataTable({
         select: { style: 'multi' },
         order: [[3, 'asc']],
@@ -68,8 +68,14 @@ $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
                 $('#trainLabelsDropdown').val(allValues).trigger('change');
             });
         }
-    } else {
-        $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none");
+    } else { 
+        // apply tab
+        $("#load_and_user_panel").removeClass("d-none");
+        //$("#load_and_user_panel:not([class*='d-none'])").addClass("d-none");
+        if (filename) {
+            fillLabelDropdown("#labelsDropdown_apply");
+        }
+        userChanged();
     }
 });
 
@@ -124,14 +130,15 @@ function on_file_change(load_models) {
             fillLabelDropdown("#labelsDropdown");
         else if (tabId == "nav-train-tab")
             fillLabelDropdown("#trainLabelsDropdown");
+        else if (tabId == "nav-apply-tab")
+            fillLabelDropdown("#labelsDropdown_apply");
         
-        const table1 = $('#segmentTable').DataTable();
-        table1.clear();
-        table1.draw();
-        const table2 = $('#labelTable').DataTable();
-        table2.clear();
-        table2.draw();
-        
+        for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
+            const table = $(table_id).DataTable();
+            table.clear();
+            table.draw();
+        }
+
         $('#downloadBtn').show();
         $('#trainModelBtn').show();
         $('#autoSegmentBtn').prop("disabled", false);
@@ -171,22 +178,23 @@ function userChanged() {
     const tabId = $('#nav-tab .nav-link.active').attr('id');
     if (tabId == "nav-segment-tab") {
         $('#spinner').removeClass("d-none");
-        loadEvents("#segmentTable").finally(() => {$('#spinner').addClass("d-none");});
+        loadEvents("#segmentTable", null).finally(() => {$('#spinner').addClass("d-none");});
     } else if (tabId == "nav-label-tab") {
-        fillSegmentDropdown();
+        fillSegmentDropdown('#labelTable', '#segmentDropdown');
+    } else if (tabId == "nav-apply-tab") {
+        fillSegmentDropdown('#applyTable', '#segmentDropdown_apply');
     }
 }
 
-async function loadEvents(table_id) {
-    // table_id: #segmentTable | #labelTable
+async function loadEvents(table_id, seg_dropdown_id) {
+    // table_id: #segmentTable | #labelTable | #applyTable
     const table = $(table_id).DataTable();
     table.clear();
     
     let segment_id = null;
-    if (table_id == "#labelTable") {
-        segment_id = $('#segmentDropdown').val()
-
-        // needs a segment_id
+    if (["#labelTable", "#applyTable"].includes(table_id)) {
+        // need a segment_id
+        segment_id = $(seg_dropdown_id).val()
         if (!segment_id) {
             table.draw();
             return;
