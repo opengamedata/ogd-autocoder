@@ -1,7 +1,7 @@
 let modelHistChart;
 // dictionary of this shape {label: {metric: [...]} }
 let metricsByLabel = {};
-
+let applyModelPath = null;
 
 
 $('#labelForMetrics').select2();
@@ -41,8 +41,9 @@ function trainModel() {
             $('#spinner').addClass("d-none");
             $('#modelSummary').text(response["output"]);
             if (response["success"]) {
+                applyModelPath = response["model_info"]["model_path"]
                 $('#modelSummary').removeClass("text-danger");
-                addModel(response["metrics"]);
+                addModel(response["model_info"]);
             } else {
                 $("#modelSummary:not([class*='text-danger'])").addClass("text-danger");
             }
@@ -159,13 +160,13 @@ async function fill_models_list() {
     });
 }
 
-function addModel(metrics) {
-    let accuracy = metrics["test_accuracy"];
-    let modelName = metrics["model_name"];
+function addModel(model_info) {
+    let accuracy = model_info["test_accuracy"];
+    let modelName = model_info["model_name"];
     const modelIndex = modelHistChart.data.labels.length;
     const $btn = $('<button></button>')
         .addClass('btn btn-light w-100 text-start mb-2')
-        .text(`${modelName} (${Math.round(accuracy * 100)} %) ${metrics["timestamp_end"]}`);
+        .text(`${modelName} (${Math.round(accuracy * 100)} %) ${model_info["timestamp_end"]}`);
     // hover
     $btn.on('mouseenter', () => highlightBar(modelIndex))
         .on('mouseleave', () => clearHighlight());
@@ -173,16 +174,16 @@ function addModel(metrics) {
     $btn.on('click', () => {
         $('#modelScroll').find('button').removeClass('btn-dark');
         $btn.addClass('btn-dark');
-        fillModelSummary(metrics);
+        fillModelSummary(model_info);
     })
 
     $('#modelScroll').append($btn);
 
     modelHistChart.data.labels.push(modelName);
-    modelHistChart.data.datasets[0].data.push(metrics["test_accuracy"]);
-    modelHistChart.data.datasets[1].data.push(metrics["test_f1"]);
-    modelHistChart.data.datasets[2].data.push(metrics["train_accuracy"]);
-    modelHistChart.data.datasets[3].data.push(metrics["train_f1"]);
+    modelHistChart.data.datasets[0].data.push(model_info["test_accuracy"]);
+    modelHistChart.data.datasets[1].data.push(model_info["test_f1"]);
+    modelHistChart.data.datasets[2].data.push(model_info["train_accuracy"]);
+    modelHistChart.data.datasets[3].data.push(model_info["train_f1"]);
     modelHistChart.data.datasets[4].data.push(0); // just for hovers, otherwise it breaks
     modelHistChart.data.datasets[5].data.push(0);
     modelHistChart.data.datasets[6].data.push(0);
@@ -209,16 +210,16 @@ function addModel(metrics) {
 
     table.row.add([
         modelName,
-        metrics["timestamp_end"],
-        metrics["test_accuracy"].toFixed(2),
-        metrics["test_f1"].toFixed(2),
-        metrics["train_accuracy"].toFixed(2),
-        metrics["train_f1"].toFixed(2),
-        metrics["num_features"],
-        metrics["time_taken"].toFixed(2),
+        model_info["timestamp_end"],
+        model_info["test_accuracy"].toFixed(2),
+        model_info["test_f1"].toFixed(2),
+        model_info["train_accuracy"].toFixed(2),
+        model_info["train_f1"].toFixed(2),
+        model_info["num_features"],
+        model_info["time_taken"].toFixed(2),
     ]).draw(true);
 
-    for (const key in metrics) {
+    for (const key in model_info) {
         let type = null;
         let parts = [];
 
@@ -241,7 +242,7 @@ function addModel(metrics) {
         while (metricsByLabel[label][metricKey].length < modelIndex) {
             metricsByLabel[label][metricKey].push(null);
         }
-        metricsByLabel[label][metricKey].push(metrics[key]);
+        metricsByLabel[label][metricKey].push(model_info[key]);
 
         // if label isn't in the dropdown yet
         if ($("#labelForMetrics").find(`option[value="${label}"]`).length === 0) {
@@ -263,20 +264,22 @@ function addModel(metrics) {
 }
 
 
-function fillModelSummary(metrics) {
+function fillModelSummary(model_info) {
+    applyModelPath = model_info["model_path"]; // for the apply button
+
     $('#modelTabs .nav-link').prop('disabled', 'disabled');
     $('#modelTabs .nav-link').removeClass('active');
     $('#modelTabsContent .tab-pane').removeClass('show active');
-    const tabId = `#${metrics["model_type"]}-tab`;
-    const paneId = `#${metrics["model_type"]}`;
+    const tabId = `#${model_info["model_type"]}-tab`;
+    const paneId = `#${model_info["model_type"]}`;
 
     $(tabId).addClass('active');
     $(paneId).addClass('show active');
     
-    setHyperparameters(metrics["model_type"], metrics["hyperparameters"]);
+    setHyperparameters(model_info["model_type"], model_info["hyperparameters"]);
 
     $('#featureSelector input.feature-checkbox').each(function () {
-        let check = metrics["include_features"].includes($(this).val())
+        let check = model_info["include_features"].includes($(this).val())
         $(this).prop('checked', check).trigger('change');
     });
     $('#featureSelector input[type="checkbox"]').prop('disabled', true);
@@ -291,7 +294,7 @@ function fillModelSummary(metrics) {
     $('#nnLayers').prop('disabled', true);
     $(`input[name^="nn_units_layer_"]`).prop('disabled', true);
 
-    $('#trainLabelsDropdown').val(metrics["include_labels"]).trigger('change');
+    $('#trainLabelsDropdown').val(model_info["include_labels"]).trigger('change');
     $('#trainLabelsDropdown').prop('disabled', 'disabled');
 
     $('#trainTestSplit').prop('disabled', true);
@@ -304,7 +307,7 @@ function fillModelSummary(metrics) {
     $('html, body').animate({ scrollTop: 0 }, 250);
     $('#modelSummary').text('');
     setTimeout(() => {
-        $('#modelSummary').text(metrics["output"]);
+        $('#modelSummary').text(model_info["output"]);
     }, 300);
 }
 

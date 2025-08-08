@@ -55,7 +55,7 @@ function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id) 
     $('#spinner').removeClass("d-none");
     let selectedSegment = $(seg_dropdown_id).val();
     let selectedLabels = $(lbl_dropdown_id).val().join(', ');
-    let justification = $(jus_dropdown_id).val();
+    let justification = jus_dropdown_id ? $(jus_dropdown_id).val() : null;
     $.ajax({
         url: `/label/${user_id}`,
         method: "POST",

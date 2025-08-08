@@ -1,6 +1,7 @@
 import os
 import time
 import joblib
+import json
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -33,7 +34,7 @@ RANDOM_STATE = 13
 def available_features(filepath):
     columns = []
     for c in (
-        get_train_df(filepath).drop(columns=["segment_labels", "segment_id"]).columns
+        preprocess_df(filepath).drop(columns=["segment_labels", "segment_id"]).columns
     ):
         if (len(columns) == 0) or (c.split("_")[-1] != columns[-1]["name"]):
             columns.append({"name": c.split("_")[-1], "children": [c]})
@@ -49,7 +50,7 @@ def train_model(
 ):
     start_time = time.time()
 
-    train_df = get_train_df(filepath)
+    train_df = preprocess_df(filepath)
     # train_df = clean_agg_df.categorize(columns=["job_name"])
     # train_df = dd.get_dummies(train_df, columns=["job_name"], dtype=float)
 
@@ -86,10 +87,12 @@ def train_model(
     # print("x Validation Shape: " + str(x_val.shape))
     # print("x Test Shape: " + str(x_test.shape))
 
-    model_info = {}  # stores the metrics and some other model info (to save model)
+    # stores the metrics and some other model info (to save model)
+    model_info = {}
     model_info["model_type"] = model_type
     model_info["num_features"] = x_train_full.shape[1]
-    model_info["include_labels"] = include_labels
+    # to avoid saving label encoder object, may have different order from include_labels
+    model_info["include_labels"] = le.classes_.tolist()
     model_info["include_features"] = include_features
     if model_type == "logistic":
         model_info["model_name"] = "Logistic Regression"
@@ -163,7 +166,7 @@ def train_model(
     return output, model_info
 
 
-def get_train_df(filepath):
+def preprocess_df(filepath):
     # segment_id is the new task_id, segment_labels is the target
     df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
     # fixme - add support for multiple labels
@@ -186,6 +189,10 @@ def get_train_df(filepath):
 
     clean_df = df[["event_name", "segment_id", "segment_labels"]]  # , "job_name"
     # remove NA's
+    # fixme replace N/A method
+    clean_df.loc[:, "segment_labels"] = clean_df["segment_labels"].fillna(
+        "N/A"
+    )  # to include these rows, needed for inference
     clean_df = clean_df.dropna()
     # clean_df = clean_df.categorize(columns=["event_name"])
     clean_1hot_df = pd.get_dummies(
@@ -208,6 +215,62 @@ def get_train_df(filepath):
         .merge(duration_df, on="segment_id", how="left")
     )
     return clean_agg_df
+
+
+def find_model_info(filepath, model_path):
+    models_filepath = get_models_filename(filepath)
+    with open(models_filepath, "r") as f:
+        data = json.load(f)
+
+    matched = [row for row in data if row.get("model_path") == model_path]
+
+    return matched[0] if matched else None
+
+
+def inference(filepath, model_path):
+    df_processed = preprocess_df(filepath)
+    model_info = find_model_info(filepath, model_path)
+
+    X = df_processed[model_info["include_features"]]
+    if model_info["model_type"] == "neural-net":
+        model = tf.keras.models.load_model(model_info["model_path"])
+        probs = model.predict(X)
+    else:
+        model = joblib.load(model_info["model_path"])
+        probs = model.predict_proba(X)
+
+    y_idx = np.argmax(probs, axis=1)
+    y = [model_info["include_labels"][i] for i in y_idx]
+    confidence = probs[np.arange(len(probs)), y_idx]
+    df_processed["predicted_labels"] = y
+    df_processed["prediction_confidence"] = confidence
+
+    df = pd.read_csv(filepath, sep="\t")
+    df = df.drop(columns=["predicted_labels", "prediction_confidence"], errors="ignore")
+
+    df["old_segment_id"] = df["segment_id"]
+    df["segment_id"] = df["user_id"] + "-" + df["segment_id"].astype(str)
+
+    df = df.merge(
+        df_processed[["segment_id", "predicted_labels", "prediction_confidence"]],
+        how="left",
+        on="segment_id",
+    )
+
+    df["segment_id"] = df["old_segment_id"]
+
+    df.drop(columns=["old_segment_id"]).to_csv(filepath, index=False, sep="\t")
+
+
+def get_predicted_label(filepath, user_id, segment_id):
+    df = pd.read_csv(filepath, sep="\t")
+    if "predicted_labels" not in df.columns:
+        return None
+    filter = (df["user_id"] == user_id) & (
+        df["segment_id"] == int(segment_id)
+    )  # fixme maybe convert segment_id to string
+
+    return df[filter][["predicted_labels", "prediction_confidence"]].values[0]
 
 
 def train_neural_net(
@@ -289,13 +352,17 @@ def train_neural_net(
 
     output += classification_report(y_test, y_pred_test, target_names=classes)
 
-    metrics["model_path"] = os.path.join(models_dir, "neural_net_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".h5")
+    metrics["model_path"] = os.path.join(
+        models_dir, "neural_net_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".h5"
+    )
     model.save(metrics["model_path"])
 
     return output
 
 
-def train_logistic(x_train, x_test, y_train, y_test, classes, hyperparameters, models_dir, metrics):
+def train_logistic(
+    x_train, x_test, y_train, y_test, classes, hyperparameters, models_dir, metrics
+):
     output = ""
 
     hyperparameters["penalty"] = hyperparameters.get("penalty", None)
@@ -345,7 +412,9 @@ def train_logistic(x_train, x_test, y_train, y_test, classes, hyperparameters, m
 
     output += classification_report(y_test, y_pred_test, target_names=classes)
 
-    metrics["model_path"] = os.path.join(models_dir, "logistic_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl")
+    metrics["model_path"] = os.path.join(
+        models_dir, "logistic_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl"
+    )
     joblib.dump(model, metrics["model_path"])
 
     return output
@@ -397,7 +466,10 @@ def train_random_forest(
 
     output += classification_report(y_test, y_pred_test, target_names=classes)
 
-    metrics["model_path"] = os.path.join(models_dir, "random_forest_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl")
+    metrics["model_path"] = os.path.join(
+        models_dir,
+        "random_forest_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl",
+    )
     joblib.dump(model, metrics["model_path"])
 
     return output

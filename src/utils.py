@@ -82,9 +82,12 @@ def segment_labels_count(filepath):
 def segment_ids_for_user(filepath, user_id):
     df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
 
-    df = df[df["user_id"] == user_id][["segment_id", "segment_labels"]].dropna(subset=["segment_id"])
+    df = df[df["user_id"] == user_id][["segment_id", "segment_labels"]].dropna(
+        subset=["segment_id"]
+    )
     df = df.where(pd.notnull(df), None).drop_duplicates()
     return df.sort_values(by="segment_id")
+
 
 def list_seg_labels(filepath):
     df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
@@ -127,10 +130,11 @@ def label_rows(filepath, user_id, segment_id, segment_labels, label_justificatio
     update_val = np.nan if segment_labels == "" else segment_labels
     df["segment_labels"] = df["segment_labels"].mask(update_filter, update_val)
 
-    update_val = np.nan if label_justification == "" else label_justification
-    df["label_justification"] = df["label_justification"].mask(
-        update_filter, update_val
-    )
+    if label_justification is not None: # None just keeps the same, "" sets the field to NA
+        update_val = np.nan if label_justification == "" else label_justification
+        df["label_justification"] = df["label_justification"].mask(
+            update_filter, update_val
+        )
 
     df.to_csv(filepath, index=False, sep="\t")
 

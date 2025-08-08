@@ -1,0 +1,18 @@
+
+
+
+
+
+
+
+/* SELECT 2 CUSTOMIZATION */
+.select2-container .select2-selection--single {
+    height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+.select2-container .select2-selection--single .select2-selection__arrow {
+    height: 100%;
+}
+  
