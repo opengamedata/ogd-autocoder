@@ -11,11 +11,16 @@ app = Flask(__name__)
 app.secret_key = "secret"  # Needed for session
 
 UPLOAD_FOLDER = "uploads"
+
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+if not os.path.exists(app.config["UPLOAD_FOLDER"]):
+    os.makedirs(app.config["UPLOAD_FOLDER"])
 
+app.config["MODELS_DIR"] = os.path.join(app.config["UPLOAD_FOLDER"], "models")
+
+if not os.path.exists(app.config["MODELS_DIR"]):
+    os.makedirs(app.config["MODELS_DIR"])
 
 @app.route("/")
 def index():
@@ -152,6 +157,7 @@ def train():
             request.json["hyperparameters"],
             request.json["include_labels"],
             request.json["include_features"],
+            app.config["MODELS_DIR"]
         )
     except Exception as e:
         print(traceback.format_exc())

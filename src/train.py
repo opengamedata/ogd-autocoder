@@ -1,7 +1,8 @@
+import os
+import time
+import joblib
 import pandas as pd
 import numpy as np
-import time
-import os
 from datetime import datetime
 
 from sklearn.preprocessing import LabelEncoder
@@ -44,7 +45,7 @@ def available_features(filepath):
 
 
 def train_model(
-    filepath, model_type, hyperparameters, include_labels, include_features
+    filepath, model_type, hyperparameters, include_labels, include_features, models_dir
 ):
     start_time = time.time()
 
@@ -85,13 +86,13 @@ def train_model(
     # print("x Validation Shape: " + str(x_val.shape))
     # print("x Test Shape: " + str(x_test.shape))
 
-    metrics = {}  # stores the metrics and some other model info (to save model)
-    metrics["model_type"] = model_type
-    metrics["num_features"] = x_train_full.shape[1]
-    metrics["include_labels"] = include_labels
-    metrics["include_features"] = include_features
+    model_info = {}  # stores the metrics and some other model info (to save model)
+    model_info["model_type"] = model_type
+    model_info["num_features"] = x_train_full.shape[1]
+    model_info["include_labels"] = include_labels
+    model_info["include_features"] = include_features
     if model_type == "logistic":
-        metrics["model_name"] = "Logistic Regression"
+        model_info["model_name"] = "Logistic Regression"
         output += train_logistic(
             x_train_full,
             x_test,
@@ -99,10 +100,11 @@ def train_model(
             y_test,
             le.classes_,
             hyperparameters,
-            metrics,
+            models_dir,
+            model_info,
         )
     elif model_type == "random-forest":
-        metrics["model_name"] = "Random Forest"
+        model_info["model_name"] = "Random Forest"
         output += train_random_forest(
             x_train_full,
             x_test,
@@ -110,10 +112,11 @@ def train_model(
             y_test,
             le.classes_,
             hyperparameters,
-            metrics,
+            models_dir,
+            model_info,
         )
     elif model_type == "neural-net":
-        metrics["model_name"] = "Neural Network"
+        model_info["model_name"] = "Neural Network"
         # y is one-hot encoded here !!
         output += train_neural_net(
             x_train_full,
@@ -122,20 +125,21 @@ def train_model(
             y_test,
             le.classes_,
             hyperparameters,
-            metrics,
+            models_dir,
+            model_info,
         )
     else:
         output += "Invalid Model Selected"
 
     time_taken = time.time() - start_time
-    output = f"{metrics['model_name']}: \t{round(time_taken, 2)} secs\n\n" + output
+    output = f"{model_info['model_name']}: \t{round(time_taken, 2)} secs\n\n" + output
 
-    metrics["hyperparameters"] = (
+    model_info["hyperparameters"] = (
         hyperparameters  # might have been updated inside train_ of specific model
     )
-    metrics["output"] = output
-    metrics["time_taken"] = time_taken
-    metrics["timestamp_end"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    model_info["output"] = output
+    model_info["time_taken"] = time_taken
+    model_info["timestamp_end"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # for model comparison
     models_filepath = get_models_filename(filepath)
@@ -144,19 +148,19 @@ def train_model(
         if "timestamp_end" in models_df.columns:
             models_df = models_df.astype({"timestamp_end": "string"})
     else:
-        models_df = pd.DataFrame(columns=metrics.keys())
+        models_df = pd.DataFrame(columns=model_info.keys())
 
-    for k, v in metrics.items():
+    for k, v in model_info.items():
         if k not in models_df.columns:
             models_df[k] = np.nan
 
     # insert new rows
-    row = {col: metrics.get(col, np.nan) for col in models_df.columns}
+    row = {col: model_info.get(col, np.nan) for col in models_df.columns}
     models_df.loc[len(models_df)] = row
 
     models_df.to_json(models_filepath, orient="records")
 
-    return output, metrics
+    return output, model_info
 
 
 def get_train_df(filepath):
@@ -207,7 +211,7 @@ def get_train_df(filepath):
 
 
 def train_neural_net(
-    x_train, x_test, y_train, y_test, classes, hyperparameters, metrics
+    x_train, x_test, y_train, y_test, classes, hyperparameters, models_dir, metrics
 ):
     output = ""
     x_train_tensor = tf.convert_to_tensor(x_train)
@@ -285,10 +289,13 @@ def train_neural_net(
 
     output += classification_report(y_test, y_pred_test, target_names=classes)
 
+    metrics["model_path"] = os.path.join(models_dir, "neural_net_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".h5")
+    model.save(metrics["model_path"])
+
     return output
 
 
-def train_logistic(x_train, x_test, y_train, y_test, classes, hyperparameters, metrics):
+def train_logistic(x_train, x_test, y_train, y_test, classes, hyperparameters, models_dir, metrics):
     output = ""
 
     hyperparameters["penalty"] = hyperparameters.get("penalty", None)
@@ -338,11 +345,14 @@ def train_logistic(x_train, x_test, y_train, y_test, classes, hyperparameters, m
 
     output += classification_report(y_test, y_pred_test, target_names=classes)
 
+    metrics["model_path"] = os.path.join(models_dir, "logistic_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl")
+    joblib.dump(model, metrics["model_path"])
+
     return output
 
 
 def train_random_forest(
-    x_train, x_test, y_train, y_test, classes, hyperparameters, metrics
+    x_train, x_test, y_train, y_test, classes, hyperparameters, models_dir, metrics
 ):
     output = ""
     hyperparameters["n_estimators"] = hyperparameters.get("n_estimators", 100)
@@ -386,6 +396,9 @@ def train_random_forest(
     )
 
     output += classification_report(y_test, y_pred_test, target_names=classes)
+
+    metrics["model_path"] = os.path.join(models_dir, "random_forest_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl")
+    joblib.dump(model, metrics["model_path"])
 
     return output
 
