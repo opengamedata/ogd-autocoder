@@ -11,6 +11,7 @@ dependencies = [
     "pandas>=2.3.1",
     "scikit-learn>=1.7.0",
     "tensorflow>=2.16.2",
+    # ogd-core
 ]
 
 [dependency-groups]

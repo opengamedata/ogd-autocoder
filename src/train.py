@@ -26,7 +26,7 @@ from keras.models import Sequential
 from keras.callbacks import EarlyStopping
 
 from utils import get_models_filename
-
+from ogd.core.configs.generators.GeneratorCollectionConfig import GeneratorCollectionConfig
 
 RANDOM_STATE = 13
 
@@ -42,7 +42,13 @@ def available_features(filepath):
             columns[-1]["children"].append(c)
 
     columns.sort(key=lambda x: len(x["children"]))  # sort by number of children
-    return columns
+
+    # load also OGD features
+    df = pd.read_csv(filepath, sep="\t")
+    game_name = df.app_id.unique()[0]
+    ogd_columns = GeneratorCollectionConfig.FromFile(game_name).ExtractorNames
+    ogd_columns = [{"name": c, "children": [c]} for c in ogd_columns]
+    return ogd_columns + columns
 
 
 def train_model(
