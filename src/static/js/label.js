@@ -52,6 +52,10 @@ async function fillLabelDropdowns() {
 
 function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id) {
     const user_id = $('#userDropdown').val();
+    if (!user_id) {
+        return;
+    }
+
     $('#spinner').removeClass("d-none");
     let selectedSegment = $(seg_dropdown_id).val();
     let selectedLabels = $(lbl_dropdown_id).val().join(', ');

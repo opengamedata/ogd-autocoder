@@ -397,10 +397,12 @@
           <input type="text" class="form-control" id="confidence" disabled placeholder="..." aria-label="">
         </div>
         <div class="col-md-1">
-          <button class="btn btn-success w-100" type="button" onclick="labelRows('#applyTable', '#segmentDropdown_apply', '#labelsDropdown_apply', null)">Apply</button>
+          <div id="accept-count" class="text-muted mb-1">Accepts: 0</div>
+          <button class="btn btn-success w-100" type="button" onclick="acceptLabel()">Apply</button>
         </div>
         <div class="col-md-1">
-          <button class="btn btn-danger w-100" type="button">Reject</button>
+          <div id="reject-count" class="text-muted mb-1">Rejects: 0</div>
+          <button class="btn btn-danger w-100" onclick="rejectLabel()" type="button">Reject</button>
         </div>
       </div>
       

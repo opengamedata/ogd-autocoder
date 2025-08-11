@@ -1,3 +1,6 @@
+let numRejects = 0;
+let numAccepts = 0;
+
 $('#segmentDropdown_apply').select2({
     placeholder: "...",
     width: '40%',
@@ -64,4 +67,18 @@ function applyModel() {
             console.log("Server response:", xhr.responseText);
         }
     });
+}
+
+function acceptLabel() {
+    labelRows('#applyTable', '#segmentDropdown_apply', '#labelsDropdown_apply', null);
+    
+    numAccepts++;
+    $('#accept-count').text(`Accepts: ${numAccepts}`);
+}
+
+function rejectLabel() {
+    nextSegment('#segmentDropdown_apply');
+
+    numRejects++;
+    $('#reject-count').text(`Rejects: ${numRejects}`);
 }
