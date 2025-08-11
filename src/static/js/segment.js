@@ -21,9 +21,11 @@ function segmentRows() {
             // autoincrement
             let next_segment_id = parseInt($("#segmentIdInput").val()) + 1
             $("#segmentIdInput").val(next_segment_id);
+            let promises = [];
+            promises.push(fill_users_list());
+            promises.push(fillLabelsCount());
 
-            // reload data
-            fill_users_list().finally(() => {$('#spinner').addClass("d-none");});
+            Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
         },
         error: function (xhr, status, error) {
             console.error("Segmentation failed:", status, error);
@@ -45,8 +47,11 @@ function autoSegment() {
         data: JSON.stringify({ sep_event_types: $('#segmentEventTypeDropdown').val()}),
         contentType: "application/json",
         success: function (response) {
-            // reload data
-            fill_users_list().finally(() => {$('#spinner').addClass("d-none");});
+            let promises = [];
+            promises.push(fill_users_list());
+            promises.push(fillLabelsCount());
+
+            Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
         },
         error: function (xhr, status, error) {
             console.error("Auto Segmentation failed:", status, error);

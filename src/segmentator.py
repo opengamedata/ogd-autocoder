@@ -36,7 +36,7 @@ def index():
             for f in os.listdir(UPLOAD_FOLDER)
             if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))
             and not os.path.splitext(f)[0].endswith("_models")
-            and f.endswith(".tsv")
+            and f.endswith(".tsv") and "_" in f
         ]
 
         # timestamp descending order

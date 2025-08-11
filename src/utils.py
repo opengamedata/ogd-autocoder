@@ -85,7 +85,7 @@ def segment_ids_for_user(filepath, user_id):
     df = df[df["user_id"] == user_id][["segment_id", "segment_labels"]].dropna(
         subset=["segment_id"]
     )
-    df = df.where(pd.notnull(df), None).drop_duplicates()
+    df = df.astype(object).where(pd.notnull(df), None).drop_duplicates()
     return df.sort_values(by="segment_id")
 
 
@@ -154,8 +154,18 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
     selected_row_ids = list(map(lambda x: f"{x[0]}_{x[1]}", selected_rows))
     update_filter = (df["user_id"] == user_id) & df["row_id"].isin(selected_row_ids)
 
+    old_segments = df["segment_id"].astype("Int64").copy()
     update_val = np.nan if segment_id == "" else int(segment_id)
     df["segment_id"] = df["segment_id"].mask(update_filter, update_val)
+
+    new_segments = df["segment_id"].astype("Int64")
+    changed_ids = set(old_segments[old_segments != new_segments].unique())
+    changed_ids.add(int(update_val))
+    change_filter = (df["user_id"] == user_id) & df["segment_id"].astype("Int64").isin(changed_ids)
+
+    # clear labels for segment if changed
+    df["segment_labels"] = df["segment_labels"].mask(change_filter, np.nan)
+    df["label_justification"] = df["label_justification"].mask(change_filter, np.nan)
 
     df = df.drop(columns=["row_id"])
     df.to_csv(filepath, index=False, sep="\t")
@@ -163,7 +173,8 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
 
 def autosegment_by_event_type(filepath, sep_event_types):
     """
-    Autosegments the whole dataframe
+    Autosegments the whole dataframe.
+    IMPORTANT: Clears segment_labels
 
     sep_event_types: list of event types by which we should separate ito segments
     """
@@ -184,5 +195,7 @@ def autosegment_by_event_type(filepath, sep_event_types):
     # include cutoff events into the previous segment
     filter = (df["user_id"].notna()) & (df["event_name"].isin(sep_event_types))
     df.loc[filter, "segment_id"] = df.loc[filter, "segment_id"].astype(int) - 1
+
+    df["segment_labels"] = np.nan
 
     df.to_csv(filepath, index=False, sep="\t")

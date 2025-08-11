@@ -271,7 +271,7 @@ def inference(filepath, model_path):
 def get_predicted_label(filepath, user_id, segment_id):
     df = pd.read_csv(filepath, sep="\t")
     if "predicted_labels" not in df.columns:
-        return None
+        return None, None
     filter = (df["user_id"] == user_id) & (
         df["segment_id"] == int(segment_id)
     )  # fixme maybe convert segment_id to string
