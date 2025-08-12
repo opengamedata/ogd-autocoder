@@ -114,9 +114,14 @@
         <div class="col-md-3">
           <div class="d-flex justify-content-between align-items-center mb-1">
             <label for="labelsDropdown" class="form-label mb-0">Labels</label>
-            <button id="importLabelsBtn" type="button" class="btn btn-sm btn-primary" title="Import JSON codebook with columns: code, definition">
-              <i class="bi bi-upload"></i>
-            </button>
+            <div class="d-flex gap-1">
+              <button id="editLabelsBtn" type="button" class="btn btn-sm btn-secondary" title="Edit labels">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button id="importLabelsBtn" type="button" class="btn btn-sm btn-primary" title="Import JSON codebook with columns: code, definition">
+                <i class="bi bi-upload"></i>
+              </button>
+            </div>
             <input type="file" id="importLabelsFile" accept=".json" style="display: none;" />
           </div>
 
@@ -436,6 +441,7 @@
   </div>
 </div>
 
+<!-- AUTO SEGMENT MODAL -->
 <div class="modal fade" id="confirmSegmentModal" tabindex="-1" aria-labelledby="confirmSegmentModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -453,6 +459,25 @@
     </div>
   </div>
 </div>
+
+<!-- LABELS DESCRIPTION MODAL -->
+
+<div class="modal fade" id="editLabelsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Label Descriptions</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="labelsEditForm"></div>
+      <div class="modal-footer">
+        <button type="button" id="saveLabels" class="btn btn-primary">Save Changes</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="/static/js/segment.js"></script>
 <script src="/static/js/index.js"></script>
 <script src="/static/js/label.js"></script>

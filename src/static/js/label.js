@@ -231,3 +231,44 @@ $('#importLabelsFile').on('change', function (event) {
 
     reader.readAsText(file);
 });
+
+$('#editLabelsBtn').on('click', function () {
+    var $form = $('#labelsEditForm');
+    $form.empty();
+
+    $('#labelsDropdown option').each(function (i, opt) {
+        var $opt = $(opt);
+        var label = $opt.text();
+        var desc = $opt.attr('title') || '';
+
+        $form.append(`
+        <div class="mb-2">
+            <div class="label-input-group border rounded p-2">
+                <input type="text" class="label-input form-control mb-2" value="${label}" readonly style="background-color: #f8f9fa; border: 1px solid #ced4da;">
+                <input type="text" class="description-input form-control" value="${desc}" placeholder="Description" style="border: 1px solid #ced4da;">
+            </div>
+        </div>
+
+      
+        `);
+    });
+
+    $('#editLabelsModal').modal('show');
+});
+
+$('#saveLabels').on('click', function () {
+    let dropdown_id = '#labelsDropdown';
+    $(dropdown_id).empty();
+
+    $('#labelsEditForm .label-input-group').each(function (i, row) {
+        var $row = $(row);
+        var label = $row.find('.label-input').val().trim();
+        var desc = $row.find('.description-input').val().trim();
+
+        $(dropdown_id).append(`<option value="${label}" title="${desc}">${label}</option>`);
+    });
+    
+    
+    $(dropdown_id).trigger('change');
+    $('#editLabelsModal').modal('hide');
+});
