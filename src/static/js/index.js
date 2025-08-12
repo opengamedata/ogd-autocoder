@@ -1,20 +1,15 @@
-let filename = null;
+let filename = null; // only used for the download api
 document.cookie = "filename=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 
+// 1. dropdowns initialization
 $('#segmentEventTypeDropdown').select2();
+
 $('#userDropdown').select2({
     placeholder: "Select a user",
     width: '100%',
 });
 
-// order models by timestamp
-$('#modelMetricsTable').DataTable({
-    order: [[1, 'asc']],
-    paging: false,
-    scrollY: '400px',
-    scrollCollapse: true
-});
-
+// 2. tables initialization (3 similar tables)
 for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
     $(table_id).DataTable({
         select: { style: 'multi' },
@@ -29,6 +24,10 @@ for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
         dom: '<"top d-flex justify-content-between align-items-center"fB>rt<"bottom"ip>',
         buttons: ['colvis'],
     });
+}
+
+function triggerFilePicker() {
+    $('#tsvFile').click();
 }
 
 $('#tsvFile').on('change', function () {
@@ -52,29 +51,29 @@ $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
         $("#load_and_user_panel").removeClass("d-none");
         userChanged();
     } else if (tabId == "nav-train-tab") {
-        $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none"); // https://stackoverflow.com/questions/8266662/add-class-via-jquery-but-only-when-not-exists
+        $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none");
         if (filename) {
             fillFeatureList();
             createUnitPerLayerInputs();
 
             // select all labels by default
-            let allValues = $('#trainLabelsDropdown option').map(function() {
+            let allValues = $('#trainLabelsDropdown option').map(function () {
                 return $(this).val();
             }).get();
 
             $('#trainLabelsDropdown').val(allValues).trigger('change');
         }
-    } else { 
+    } else {
         // apply tab
         $("#load_and_user_panel").removeClass("d-none");
         userChanged();
     }
 });
 
-function triggerFilePicker() {
-    $('#tsvFile').click();
-}
-
+/**
+ * Uploads the selected TSV file to the server via AJAX,
+ * updates the `filename` global variable and cookie on success,
+ */
 function uploadFile() {
     const fileInput = document.getElementById('tsvFile');
     const file = fileInput.files[0];
@@ -82,8 +81,6 @@ function uploadFile() {
     formData.append("file", file);
 
     $('#spinner').removeClass("d-none");
-    //const fileSizeMB = file.size / (1024 * 1024);
-    //let estimatedTime = 0.042 * fileSizeMB + 1.79; // linear regression made from 2 points :)
     $.ajax({
         url: "/upload",
         method: "POST",
@@ -102,6 +99,12 @@ function uploadFile() {
     });
 }
 
+/**
+ * Loads an existing file (no uploading),
+ * sets the filename and cookie
+ *
+ * @param {string} existing_filename - name of the selected file form the dropdown
+ */
 function load_existing(existing_filename) {
     filename = existing_filename;
     document.cookie = `filename=${filename}`;
@@ -109,34 +112,44 @@ function load_existing(existing_filename) {
     on_file_change(true);
 }
 
+/**
+ * Handles logic when file is switched (to existing or new)
+ * Populates users list, event types, labels count, and optionally models list.
+ *
+ * @param {boolean} load_models - to avoid loading models for newly uploaded files
+ */
 function on_file_change(load_models) {
-    let promises = [fill_users_list(), fill_event_types(), fillLabelsCount()];
+    let promises = [fillUsersList(), fillEventTypes(), fillLabelsCount()];
     if (load_models) {
-        promises.push(fill_models_list());
+        promises.push(fillModelsList());
     }
 
     Promise.all(promises)
-    .then(() => {
-        const tabId = $('#nav-tab .nav-link.active').attr('id');
-        fillLabelDropdowns();
-        for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
-            const table = $(table_id).DataTable();
-            table.clear();
-            table.draw();
-        }
+        .then(() => {
+            const tabId = $('#nav-tab .nav-link.active').attr('id');
+            fillLabelDropdowns();
+            for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
+                const table = $(table_id).DataTable();
+                table.clear();
+                table.draw();
+            }
 
-        $('#downloadBtn').show();
-        $('#trainModelBtn').show();
-        $('#applyTrain').show();
-        $('#autoSegmentBtn').prop("disabled", false);
-        $('#segmentEventTypeDropdown').prop("disabled", false);
-        $('#spinner').addClass("d-none");
-    }).catch((err) => {
-        console.error("Error loading existing file:", err);
-    });
+            $('#downloadBtn').show();
+            $('#trainModelBtn').show();
+            $('#applyTrain').show();
+            $('#autoSegmentBtn').prop("disabled", false);
+            $('#segmentEventTypeDropdown').prop("disabled", false);
+            $('#spinner').addClass("d-none");
+        }).catch((err) => {
+            console.error("Error loading existing file:", err);
+        });
 }
 
-async function fill_users_list() {
+/**
+ * Populates the #userDropdown with the list of users (display user_id with number of segments)
+ * Preserves the previously selected user if still available.
+ */
+async function fillUsersList() {
     const previousValue = $('#userDropdown').val();
     $('#userDropdown').empty().append('<option></option>');
     await $.ajax({
@@ -165,7 +178,7 @@ function userChanged() {
     const tabId = $('#nav-tab .nav-link.active').attr('id');
     if (tabId == "nav-segment-tab") {
         $('#spinner').removeClass("d-none");
-        loadEvents("#segmentTable", null).finally(() => {$('#spinner').addClass("d-none");});
+        loadEvents("#segmentTable", null).finally(() => { $('#spinner').addClass("d-none"); });
     } else if (tabId == "nav-label-tab") {
         fillSegmentDropdown('#labelTable', '#segmentDropdown');
     } else if (tabId == "nav-apply-tab") {
@@ -173,14 +186,19 @@ function userChanged() {
     }
 }
 
+/**
+ * Populates table with event data for a specific user and optionally a segment,
+ * then populates the given DataTable with the returned data.
+ *
+ * @param {string} table_id - Selector for the target DataTable (e.g., "#segmentTable").
+ * @param {string|null} seg_dropdown_id - Selector for the segment dropdown (null for segment tab).
+ */
 async function loadEvents(table_id, seg_dropdown_id) {
-    // table_id: #segmentTable | #labelTable | #applyTable
     const table = $(table_id).DataTable();
     table.clear();
-    
+
     let segment_id = null;
     if (["#labelTable", "#applyTable"].includes(table_id)) {
-        // need a segment_id
         segment_id = $(seg_dropdown_id).val()
         if (!segment_id) {
             table.draw();

@@ -1,4 +1,7 @@
-
+/**
+ * Update segment id for the selected rows in the #segmentTable for the current user.
+ * Uses the index and timestamp column to identify the selected rows
+ */
 function segmentRows() {
     let table_id = "#segmentTable";
     const user_id = $('#userDropdown').val();
@@ -22,7 +25,7 @@ function segmentRows() {
             let next_segment_id = parseInt($("#segmentIdInput").val()) + 1
             $("#segmentIdInput").val(next_segment_id);
             let promises = [];
-            promises.push(fill_users_list());
+            promises.push(fillUsersList());
             promises.push(fillLabelsCount());
 
             Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
@@ -34,11 +37,12 @@ function segmentRows() {
     });
 }
 
+/**
+ * Automatically segments events based on selected cutoff event types.
+ */
 function autoSegment() {
     // hide modal
     bootstrap.Modal.getInstance($('#confirmSegmentModal')[0]).hide();
-
-    let table_id = "#segmentTable"
 
     $('#spinner').removeClass("d-none");
     $.ajax({
@@ -48,7 +52,7 @@ function autoSegment() {
         contentType: "application/json",
         success: function (response) {
             let promises = [];
-            promises.push(fill_users_list());
+            promises.push(fillUsersList());
             promises.push(fillLabelsCount());
 
             Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
@@ -60,7 +64,10 @@ function autoSegment() {
     });
 }
 
-async function fill_event_types() {
+/**
+ * Populates #segmentEventTypeDropdown with the list of event types.
+ */
+async function fillEventTypes() {
     $('#segmentEventTypeDropdown').empty();
     await $.ajax({
         url: '/event_types_list',

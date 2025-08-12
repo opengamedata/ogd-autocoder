@@ -3,6 +3,7 @@ let modelHistChart;
 let metricsByLabel = {};
 let applyModelPath = null;
 
+// dropdowns initialization
 
 $('#labelForMetrics').select2();
 $('#logisticPenalty').select2();
@@ -20,6 +21,19 @@ $('#trainLabelsDropdown').select2({
     }
 });
 
+// metrics table initialization
+
+$('#modelMetricsTable').DataTable({
+    order: [[1, 'asc']], // order models by timestamp
+    paging: false,
+    scrollY: '400px',
+    scrollCollapse: true
+});
+
+/**
+ * Model training using selected parameters: Model type, labels, hyperparameters and features.
+ * Updates UI with training output and plots the new model metrics if successful. 
+ */
 function trainModel() {
     $('#spinner').removeClass("d-none");
     let model_type = $('#modelTabs .nav-link.active').attr('id').replace('-tab', '');
@@ -148,7 +162,10 @@ function updateLabelFromValue() {
     $('#trainTestSplitValue').text(`${percent}%`);
 };
 
-async function fill_models_list() {
+/**
+ * Fetches the list of previously trained models from the server and plots them.
+ */
+async function fillModelsList() {
     await $.ajax({
         url: '/models_list',
         method: "POST",
@@ -160,6 +177,15 @@ async function fill_models_list() {
     });
 }
 
+/**
+ * Adds a trained model entry to:
+ *  - Model button list (on click read-only view of the model parameters).
+ *  - Model bar chart.
+ *  - Metrics table.
+ * Updates the UI to reflect the new model data.
+ * 
+ * @param {object} model_info - Information about the trained model, including metrics, name, timestamps, and hyperparameters.
+ */
 function addModel(model_info) {
     let accuracy = model_info["test_accuracy"];
     let modelName = model_info["model_name"];
@@ -174,7 +200,7 @@ function addModel(model_info) {
     $btn.on('click', () => {
         $('#modelScroll').find('button').removeClass('btn-dark');
         $btn.addClass('btn-dark');
-        fillModelSummary(model_info);
+        fillModelParamsFromExisting(model_info);
     })
 
     $('#modelScroll').append($btn);
@@ -238,7 +264,7 @@ function addModel(model_info) {
         metricsByLabel[label] ??= {}; // ??= assigns if null
         metricsByLabel[label][metricKey] ??= [];
         
-        // fill with nulls for those models that dont use this labels
+        // fill with nulls for those models that dont use this labels (missing metrics)
         while (metricsByLabel[label][metricKey].length < modelIndex) {
             metricsByLabel[label][metricKey].push(null);
         }
@@ -251,7 +277,7 @@ function addModel(model_info) {
         }
     }
 
-    // fill with nulls for those models that dont use this labels
+    // fill with nulls for those models that dont use this labels (missing metrics)
     for (const label in metricsByLabel) {
         for (const metricKey in metricsByLabel[label]) {
           if (metricsByLabel[label][metricKey]) {
@@ -263,8 +289,13 @@ function addModel(model_info) {
     }
 }
 
-
-function fillModelSummary(model_info) {
+/**
+ * Fill the input parameters (model type, features, hyperparameters, summary)
+ * from existing selected model and sets them to read-only.
+ * 
+ * @param {object} model_info - The selected model's information.
+ */
+function fillModelParamsFromExisting(model_info) {
     applyModelPath = model_info["model_path"]; // for the apply button
 
     $('#modelTabs .nav-link').prop('disabled', 'disabled');
@@ -506,6 +537,10 @@ function toggleBarsForLabel() {
     modelHistChart.update();
 }
 
+/**
+ * Loads the list of available features
+ * Supports grouping features under parent checkboxes and allows search/filter functionality.
+ */
 function fillFeatureList() {
     const container = $('#featureSelector');
     container.empty();

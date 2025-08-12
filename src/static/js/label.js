@@ -1,3 +1,5 @@
+// some functions are also used in the Apply tab
+
 $('#segmentDropdown').select2({
     placeholder: "...",
     width: '40%',
@@ -16,7 +18,15 @@ $('#labelsDropdown').select2({
     }
 });
 
-
+/**
+ * Populates label dropdowns
+ * (`#labelsDropdown`, `#trainLabelsDropdown`, `#labelsDropdown_apply`)
+ * with all existing labels from the file.
+ * 
+ * Clears all labels except the ones from codebook,
+ * then appends the received data without duplicating
+ * 
+*/
 async function fillLabelDropdowns() {
     let dropdown_ids = ["#labelsDropdown", "#trainLabelsDropdown", "#labelsDropdown_apply"]
 
@@ -34,7 +44,8 @@ async function fillLabelDropdowns() {
         success: function (response) {
             for (let dropdown_id of dropdown_ids) {
                 response.data.forEach(label => {
-                    if ($(`${dropdown_id} option[value="${label}"]`).length === 0) { // don't repeat codebook options
+                    if ($(`${dropdown_id} option[value="${label}"]`).length === 0) {
+                        // don't repeat codebook options
                         $(dropdown_id).append(`<option value="${label}">${label}</option>`);
                     }
                     $(dropdown_id).trigger('change');
@@ -50,7 +61,17 @@ async function fillLabelDropdowns() {
     });
 }
 
-function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id) {
+/**
+ * Labels rows from the selected segment.
+ * Uses selected segment, labels, and optional justification to update server data,
+ * then refreshes label dropdowns, label counts, and the segment dropdown for the given table.
+ *
+ * @param {string} table_id - Target DataTable selector.
+ * @param {string} seg_dropdown_id - Selector for the segment dropdown.
+ * @param {string} lbl_dropdown_id - Selector for the labels dropdown.
+ * @param {string|null} jus_dropdown_id - Selector for justification dropdown (optional).
+ */
+function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id = null) {
     const user_id = $('#userDropdown').val();
     if (!user_id) {
         return;
@@ -71,7 +92,6 @@ function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id) 
         }),
         contentType: "application/json",
         success: function (response) {
-            // reload data
             $(jus_dropdown_id).val("")
             let promises = [];
             promises.push(fillLabelDropdowns());
@@ -87,6 +107,10 @@ function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id) 
     });
 }
 
+/**
+ * Fetches the count of each label from the server and displays it in the format:
+ * "Labels count: label1 (count), label2 (count), ..."
+ */
 async function fillLabelsCount() {
     await $.ajax({
         url: '/labels_value_count',
@@ -96,7 +120,7 @@ async function fillLabelsCount() {
             response.data.forEach(label => {
                 text += `${label.segment_labels} (${label.count}), `;
             });
-            text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : ""; // remove last comma
+            text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : "";
             $("#labelsValueCount").text(text);
         },
         error: function (xhr, status, error) {
@@ -124,6 +148,14 @@ function prevSegment(dropdown_id) {
     select.prop('selectedIndex', next).trigger('change');
 }
 
+/**
+ * Loads and populates the segment dropdown for the current user
+ * Preserves the previously selected segment if available.
+ * Once loaded, triggers load events for the segment
+ *
+ * @param {string} table_id - Selector for the DataTable to update after loading.
+ * @param {string} dropdown_id - Selector for the segment dropdown to fill.
+ */
 async function fillSegmentDropdown(table_id, dropdown_id) {
     const previousValue = $(dropdown_id).val();
     $(dropdown_id).empty();
@@ -163,6 +195,13 @@ $('#importLabelsBtn').on('click', function () {
     $('#importLabelsFile').click();
 });
 
+/**
+ * Adds new options (replaces if exist) from the uploaded JSON codebook with this format:
+ * [
+ *   {"code": "Struggle", "definition": "..."},
+ *   {"code": "No Struggle", "definition": "..."}
+ * ]
+*/
 $('#importLabelsFile').on('change', function (event) {
     const file = event.target.files[0];
     if (!file) return;
