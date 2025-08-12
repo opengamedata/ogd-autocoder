@@ -47,8 +47,8 @@ async function getPredictedLabels() {
     });
 }
 
-function applyModel() {
-    if (!applyModelPath) {
+function applyModel(model_path) {
+    if (!model_path) {
         alert('Hit train or select existing model before applying');
         return;
     }
@@ -57,7 +57,7 @@ function applyModel() {
     $.ajax({
         url: '/infere',
         method: "POST",
-        data: JSON.stringify({ model_path: applyModelPath}),
+        data: JSON.stringify({ model_path: model_path}),
         contentType: "application/json",
         success: function (response) {
             $('#spinner').addClass("d-none");

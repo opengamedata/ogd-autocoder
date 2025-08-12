@@ -137,6 +137,7 @@ function on_file_change(load_models) {
             $('#downloadBtn').show();
             $('#trainModelBtn').show();
             $('#applyTrain').show();
+            $('#applyBest').show();
             $('#autoSegmentBtn').prop("disabled", false);
             $('#segmentEventTypeDropdown').prop("disabled", false);
             $('#spinner').addClass("d-none");

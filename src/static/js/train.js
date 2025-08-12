@@ -2,6 +2,7 @@ let modelHistChart;
 // dictionary of this shape {label: {metric: [...]} }
 let metricsByLabel = {};
 let applyModelPath = null;
+let bestModel = {test_accuracy: 0, path: null}; // best selected by test accuracy
 
 // dropdowns initialization
 
@@ -189,6 +190,13 @@ async function fillModelsList() {
 function addModel(model_info) {
     let accuracy = model_info["test_accuracy"];
     let modelName = model_info["model_name"];
+debugger;
+    if (accuracy > bestModel.test_accuracy) {
+        bestModel.test_accuracy = accuracy;
+        bestModel.path = model_info["model_path"]
+    }
+
+
     const modelIndex = modelHistChart.data.labels.length;
     const $btn = $('<button></button>')
         .addClass('btn btn-light w-100 text-start mb-2')
@@ -654,3 +662,12 @@ function enableTrain() {
 
     $('#enableTrainBtn').hide();
 }
+
+$('#applyTrain').on('click', () => {
+    applyModel(applyModelPath);
+})
+
+$('#applyBest').on('click', () => {
+    if (bestModel.path)
+        applyModel(bestModel.path);
+})
