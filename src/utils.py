@@ -2,7 +2,7 @@ import json
 import os
 import numpy as np
 import pandas as pd
-
+import polars as pl
 # COL_DTYPES = {
 #     'app_branch': 'object',
 #     'user_id': 'object',
@@ -20,28 +20,24 @@ def get_models_filename(filepath):
     return model_filename
 
 
-def extract_job_name(game_state_str):
-    try:
-        game_state = json.loads(game_state_str)
-        return game_state.get("job_name", None)
-    except (json.JSONDecodeError, AttributeError):
-        return None
+# def extract_job_name(game_state_str):
+#     try:
+#         game_state = json.loads(game_state_str)
+#         return game_state.get("job_name", None)
+#     except (json.JSONDecodeError, AttributeError):
+#         return None
 
 
 def add_new_columns(filepath):
-    df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
-    if "segment_id" not in df.columns:
-        df["segment_id"] = np.nan
+    df = pl.read_csv(filepath, separator="\t")  # , dtype=COL_DTYPES)
+    for col in ["segment_id", "segment_labels", "label_justification"]:
+        if col not in df.columns:
+            df = df.with_columns(pl.lit(None).alias(col))
 
-    if "segment_labels" not in df.columns:
-        df["segment_labels"] = np.nan
+    # df["job_name"] = df["game_state"].apply(extract_job_name)
+    df = df.with_columns(matched=pl.col("game_state").str.json_path_match("$.job_name"))
 
-    if "label_justification" not in df.columns:
-        df["label_justification"] = np.nan
-
-    df["job_name"] = df["game_state"].apply(extract_job_name)
-
-    df.to_csv(filepath, index=False, sep="\t")
+    df.write_csv(filepath, separator="\t")
 
 
 def get_models_list(filepath):
@@ -54,121 +50,186 @@ def get_models_list(filepath):
 
 
 def get_users_list(filepath):
-    df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
+    """
+    List ordered user ids with segments count
+    """
+    df = pl.read_csv(filepath, separator="\t")
 
-    return (
-        df.groupby("user_id")["segment_id"]
-        .nunique(dropna=True)
-        .reset_index(name="segment_count")
+    df = (
+        df.drop_nulls("user_id").group_by("user_id")
+          .agg(pl.col("segment_id").drop_nulls().n_unique().alias("segment_count")).sort("user_id")
     )
+
+    return df.to_dicts()
 
 
 def get_event_types(filepath):
-    df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
+    """
+    List unique values of the `event_name` column
+    """
+    df = pl.read_csv(filepath, separator="\t")
 
-    return df.event_name.dropna().unique().tolist()
+    return df.select(
+            pl.col("event_name").drop_nulls()
+            .unique().sort()
+        ).to_series().to_list()
 
 
 def segment_labels_count(filepath):
-    df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
+    """
+    For each label - number of segments with that label
+    """
+    df = pl.read_csv(filepath, separator="\t")
 
-    return (
-        df.drop_duplicates(subset=["user_id", "segment_id"])
-        .segment_labels.value_counts()
-        .reset_index(name="count")
+    df = (
+        df.unique(subset=["user_id", "segment_id"])
+        .drop_nulls(["user_id", "segment_id", "segment_labels"])
+        .group_by("segment_labels")
+        .agg(pl.count().alias("count")) # value_counts()
+        .sort("count", descending=True)
     )
+
+    return df.to_dicts()
 
 
 def segment_ids_for_user(filepath, user_id):
-    df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
+    """
+    List ordered segment ids with their label for the selected `user_id`
+    """
+    df = pl.read_csv(filepath, separator="\t")
 
-    df = df[df["user_id"] == user_id][["segment_id", "segment_labels"]].dropna(
-        subset=["segment_id"]
+    df = (
+        df.filter(pl.col("user_id") == user_id)
+        .select(["segment_id", "segment_labels"])
+        .drop_nulls(subset=["segment_id"])
+        .unique()
+        .sort("segment_id")
     )
-    df = df.astype(object).where(pd.notnull(df), None).drop_duplicates()
-    return df.sort_values(by="segment_id")
+
+    return df.to_dicts()
+
 
 
 def list_seg_labels(filepath):
-    df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
-    unique_labels = df.segment_labels.dropna().unique().tolist()
-    flattened = sorted(
-        set(item.strip() for part in unique_labels for item in part.split(", "))
+    """
+    List unique values of the `segment_labels` column
+    """
+    df = pl.read_csv(filepath, separator="\t")
+
+    unique_labels = (
+        df.select(pl.col("segment_labels"))
+        .drop_nulls()
+        .unique()
+        .to_series()
+        .to_list()
     )
+
+    # for multilabel
+    flattened = sorted(
+        {item.strip() for part in unique_labels for item in part.split(", ")}
+    )
+
     return flattened
 
 
 def get_events_for_user(filepath, user_id, segment_id):
-    df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
-    df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
+    """
+    List events for `user id`
+    If `segment_id` is specified, also filter by `segment_id` 
+    """
+    df = pl.read_csv(filepath, separator="\t")
+
+    df = df.with_columns(
+        pl.col("timestamp").str.strptime(pl.Datetime, strict=False)
+    )
+
+    df = df.with_columns( # otherwise precision errors on client side
+        pl.col("session_id").cast(pl.String).alias("session_id")
+    )
 
     if segment_id:
-        df = df[
-            df["segment_id"].notna()
-            & (df["user_id"] == user_id)
-            & (df["segment_id"].astype("Int64") == int(segment_id))
-        ]
+        df = df.filter(
+            pl.col("segment_id").is_not_null()
+            & (pl.col("user_id") == user_id)
+            & (pl.col("segment_id").cast(pl.Int64) == int(segment_id))
+        )
     else:
-        df = df[df["user_id"] == user_id]
+        df = df.filter(pl.col("user_id") == user_id)
 
-    user_events = df.sort_values(by="timestamp", ascending=True)
+    user_events = user_events = (
+        df.sort("timestamp", descending=False)
+        .with_columns(
+            pl.col("timestamp").dt.strftime("%Y-%m-%d %H:%M:%S")
+        )
+    )
 
-    user_events["timestamp"] = user_events["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
-
-    return user_events
+    return user_events.fill_null("-").to_dicts()
 
 
 def label_rows(filepath, user_id, segment_id, segment_labels, label_justification):
-    # set segment_labels and label_justification
-    df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
+    """
+    For a `user_id` and `segment_id` apply segment_labels and label_justification
+    If `segment_id` is specified, also filter by `segment_id` 
+    """
+    df = pl.read_csv(filepath, separator="\t")
 
     update_filter = (
-        df["segment_id"].notna()
-        & (df["user_id"] == user_id)
-        & (df["segment_id"].astype(pd.Int64Dtype()) == int(segment_id))
+        pl.col("segment_id").is_not_null()
+        & (pl.col("user_id") == user_id)
+        & (pl.col("segment_id").cast(pl.Int64) == int(segment_id))
     )
-    update_val = np.nan if segment_labels == "" else segment_labels
-    df["segment_labels"] = df["segment_labels"].mask(update_filter, update_val)
+    update_val = None if segment_labels == "" else segment_labels
+    df = df.with_columns(
+        pl.when(update_filter).then(pl.lit(update_val)).otherwise(pl.col("segment_labels")).alias("segment_labels")
+    )
 
-    if label_justification is not None: # None just keeps the same, "" sets the field to NA
-        update_val = np.nan if label_justification == "" else label_justification
-        df["label_justification"] = df["label_justification"].mask(
-            update_filter, update_val
+    if label_justification is not None: # skipped for the Apply tab (to not override label_justification)
+        update_val = None if label_justification == "" else label_justification
+        df = df.with_columns(
+            pl.when(update_filter).then(pl.lit(update_val)).otherwise(pl.col("label_justification")).alias("label_justification")
         )
 
-    df.to_csv(filepath, index=False, sep="\t")
+    df.write_csv(filepath, separator="\t")
 
 
 def segment_rows(filepath, user_id, segment_id, selected_rows):
-    # set segment_id
-    df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
+    """
+    For a `user_id` apply segment_id on selected_rows (row identifiers => index + session_id columns)
+    Clears segment labels for all affected segments
+    """
+    df = pl.read_csv(filepath, separator="\t")
 
-    df["row_id"] = (
-        df["index"].astype(str)
-        + "_"
-        + pd.to_datetime(df["timestamp"], format="mixed").dt.strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+    df = df.with_columns(
+        (pl.col("index").cast(pl.String) + "_" + pl.col("session_id").cast(pl.String)).alias("row_id")
     )
-    df["row_id"] = df["row_id"].astype(str)
-    selected_row_ids = list(map(lambda x: f"{x[0]}_{x[1]}", selected_rows))
-    update_filter = (df["user_id"] == user_id) & df["row_id"].isin(selected_row_ids)
+    selected_row_ids = [f"{x[0]}_{x[1]}" for x in selected_rows]
+    update_filter = (pl.col("user_id") == user_id) & pl.col("row_id").is_in(selected_row_ids)
 
-    old_segments = df["segment_id"].astype("Int64").copy()
-    update_val = np.nan if segment_id == "" else int(segment_id)
-    df["segment_id"] = df["segment_id"].mask(update_filter, update_val)
-
-    new_segments = df["segment_id"].astype("Int64")
-    changed_ids = set(old_segments[old_segments != new_segments].unique())
-    changed_ids.add(int(update_val))
-    change_filter = (df["user_id"] == user_id) & df["segment_id"].astype("Int64").isin(changed_ids)
+    old_segments = df.select(pl.col("segment_id").cast(pl.Int64))
+    update_val = None if segment_id == "" else int(segment_id)
+    df = df.with_columns(
+        pl.when(update_filter).then(pl.lit(update_val)).otherwise(pl.col("segment_id")).alias("segment_id")
+    )
 
     # clear labels for segment if changed
-    df["segment_labels"] = df["segment_labels"].mask(change_filter, np.nan)
-    df["label_justification"] = df["label_justification"].mask(change_filter, np.nan)
+    new_segments = df.select(pl.col("segment_id").cast(pl.Int64))
+    # affected segments
+    changed_ids = set(
+        old_segments.filter(pl.col("segment_id") != new_segments["segment_id"])
+        .select("segment_id").unique().drop_nulls().to_series().to_list()
+    )
+    if update_val is not None:
+        # target segment also
+        changed_ids.add(int(update_val))
+    change_filter = (pl.col("user_id") == user_id) & pl.col("segment_id").cast(pl.Int64).is_in(changed_ids)    
 
-    df = df.drop(columns=["row_id"])
-    df.to_csv(filepath, index=False, sep="\t")
+    df = df.with_columns([
+        pl.when(change_filter).then(pl.lit(None)).otherwise(pl.col("segment_labels")).alias("segment_labels"),
+        pl.when(change_filter).then(pl.lit(None)).otherwise(pl.col("label_justification")).alias("label_justification"),
+    ])
+
+    df = df.drop("row_id")
+    df.write_csv(filepath, separator="\t")
 
 
 def autosegment_by_event_type(filepath, sep_event_types):
@@ -179,23 +240,33 @@ def autosegment_by_event_type(filepath, sep_event_types):
     sep_event_types: list of event types by which we should separate ito segments
     """
 
-    df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
-    df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
-    df = df.sort_values("timestamp")
+    df = pl.read_csv(filepath, separator="\t")
+    df = df.with_columns(
+        pl.col("timestamp").str.strptime(pl.Datetime, strict=False)
+    )
+
+    df = df.sort("timestamp")
 
     # hardcoded - when new session begins (index = 0), automatically sets it as new segment
-    df["is_sep_event"] = (
-        (df["event_name"].isin(sep_event_types) | (df["index"] == 0))
-        .fillna(False)
-        .astype(int)
+    df = df.with_columns(
+        (pl.col("event_name").is_in(sep_event_types) | (pl.col("index") == 0))
+        .fill_null(False)
+        .cast(pl.Int32)
+        .alias("is_sep_event")
     )
-    df["segment_id"] = df.groupby("user_id")["is_sep_event"].cumsum()
-    df = df.drop(columns=["is_sep_event"])
+    df = df.with_columns(
+        pl.col("is_sep_event").cum_sum().over("user_id").alias("segment_id")
+    )
+    df = df.drop("is_sep_event")
 
-    # include cutoff events into the previous segment
-    filter = (df["user_id"].notna()) & (df["event_name"].isin(sep_event_types))
-    df.loc[filter, "segment_id"] = df.loc[filter, "segment_id"].astype(int) - 1
+    # include cutoff events (except index = 0) into the previous segment
+    cutoff_filter = pl.col("user_id").is_not_null() & pl.col("event_name").is_in(sep_event_types)
+    df = df.with_columns(
+        pl.when(cutoff_filter)
+        .then(pl.col("segment_id").cast(pl.Int64) - 1)
+        .otherwise(pl.col("segment_id"))
+        .alias("segment_id")
+    )
 
-    df["segment_labels"] = np.nan
-
-    df.to_csv(filepath, index=False, sep="\t")
+    df = df.with_columns(pl.lit(None).alias("segment_labels"))
+    df.write_csv(filepath, separator="\t")

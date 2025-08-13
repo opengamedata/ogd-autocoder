@@ -90,7 +90,7 @@ function uploadFile() {
         success: function (response) {
             filename = response.filename;
             document.cookie = `filename=${filename}`;
-            on_file_change(false);
+            onFileChange(false);
         },
         error: function (xhr, status, error) {
             console.error("Upload failed:", status, error);
@@ -105,11 +105,11 @@ function uploadFile() {
  *
  * @param {string} existing_filename - name of the selected file form the dropdown
  */
-function load_existing(existing_filename) {
+function loadExisting(existing_filename) {
     filename = existing_filename;
     document.cookie = `filename=${filename}`;
     $('#spinner').removeClass("d-none");
-    on_file_change(true);
+    onFileChange(true);
 }
 
 /**
@@ -118,11 +118,11 @@ function load_existing(existing_filename) {
  *
  * @param {boolean} load_models - to avoid loading models for newly uploaded files
  */
-function on_file_change(load_models) {
+function onFileChange(load_models) {
     let promises = [fillUsersList(), fillEventTypes(), fillLabelsCount()];
-    if (load_models) {
-        promises.push(fillModelsList());
-    }
+    // if (load_models) {
+    //     promises.push(fillModelsList());
+    // }
 
     Promise.all(promises)
         .then(() => {

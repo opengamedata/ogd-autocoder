@@ -38,7 +38,7 @@
         </button>
         <ul class="dropdown-menu dropdown-menu-right" aria-labelledby="historyDropdownBtn" id="recentFilesList" style="min-width: 200px;">
           {% for file in uploaded_files %}
-            <li><a class="dropdown-item" href="#" onclick="load_existing('{{ file.fullname }}')">{{ file.formatted }}</a></li>
+            <li><a class="dropdown-item" href="#" onclick="loadExisting('{{ file.fullname }}')">{{ file.formatted }}</a></li>
           {% endfor %}
         </ul>
       </div>

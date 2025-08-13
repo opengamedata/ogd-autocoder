@@ -76,7 +76,7 @@ def users_list():
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
 
-    return jsonify({"users": get_users_list(filepath).to_dict(orient="records")})
+    return jsonify({"users": get_users_list(filepath)})
 
 
 @app.route("/event_types_list", methods=["POST"])
@@ -95,7 +95,7 @@ def list_segment_ids(user_id):
     )
 
     return jsonify(
-        {"data": segment_ids_for_user(filepath, user_id).to_dict(orient="records")}
+        {"data": segment_ids_for_user(filepath, user_id)}
     )
 
 
@@ -104,7 +104,7 @@ def labels_value_count():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    return jsonify({"data": segment_labels_count(filepath).to_dict(orient="records")})
+    return jsonify({"data": segment_labels_count(filepath)})
 
 
 @app.route("/list_labels", methods=["POST"])
@@ -132,7 +132,7 @@ def events(user_id):
     user_events = get_events_for_user(filepath, user_id, request.json.get("segment_id"))
 
     return jsonify(
-        {"data": user_events.fillna("-").to_dict(orient="records")}
+        {"data": user_events}
     )  # "max_segment_id": user_events["segment_id"].fillna(0).max()
 
 

@@ -14,9 +14,9 @@ function segmentRows() {
     $.ajax({
         url: `/segment/${user_id}`,
         method: "POST",
-        // select the index and the time column (will be the row identifier)
+        // select the index and the session column (will be the row identifier)
         data: JSON.stringify({
-            selected_rows: selectedRows.map(row => [row[0], row[3]]),
+            selected_rows: selectedRows.map(row => [row[0], row[7]]),
             segment_id: $("#segmentIdInput").val(),
         }),
         contentType: "application/json",
