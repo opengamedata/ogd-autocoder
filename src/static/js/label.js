@@ -96,7 +96,7 @@ function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id =
             let promises = [];
             promises.push(fillLabelDropdowns());
             promises.push(fillLabelsCount());
-            promises.push(fillSegmentDropdown(table_id, seg_dropdown_id));
+            promises.push(fillSegmentDropdown(table_id, seg_dropdown_id, false));
 
             Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
         },
@@ -150,13 +150,14 @@ function prevSegment(dropdown_id) {
 
 /**
  * Loads and populates the segment dropdown for the current user
- * Preserves the previously selected segment if available.
+ * if reset_value = false - preserves the previously selected segment if available.
  * Once loaded, triggers load events for the segment
  *
  * @param {string} table_id - Selector for the DataTable to update after loading.
  * @param {string} dropdown_id - Selector for the segment dropdown to fill.
+ * @param {boolean} reset_value - whether to preserves previous value
  */
-async function fillSegmentDropdown(table_id, dropdown_id) {
+async function fillSegmentDropdown(table_id, dropdown_id, reset_value = true) {
     const previousValue = $(dropdown_id).val();
     $(dropdown_id).empty();
     const user_id = $('#userDropdown').val();
@@ -165,18 +166,18 @@ async function fillSegmentDropdown(table_id, dropdown_id) {
         await $.ajax({
             url: `/list_segment_ids/${user_id}`,
             method: "POST",
-            success: function (response) {
+            success: async function (response) {
                 response.data.forEach(seg => {
                     let lbl = seg.segment_labels ? "(" + seg.segment_labels + ")" : "---";
                     $(dropdown_id).append(`<option value="${seg.segment_id}">${seg.segment_id} ${lbl}</option>`);
                 });
 
-                if (previousValue && $(`${dropdown_id} option[value="${previousValue}"]`).length > 0) {
+                if (!reset_value && previousValue && $(`${dropdown_id} option[value="${previousValue}"]`).length > 0) {
                     $(dropdown_id).val(previousValue);
                 }
 
                 $(dropdown_id).trigger('change');
-                loadEvents(table_id, dropdown_id).finally(() => {$('#spinner').addClass("d-none");});
+                await loadEvents(table_id, dropdown_id)
             },
             error: function (xhr, status, error) {
                 console.error("Segment options loading failed:", status, error);

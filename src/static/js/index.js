@@ -181,9 +181,14 @@ function userChanged() {
         $('#spinner').removeClass("d-none");
         loadEvents("#segmentTable", null).finally(() => { $('#spinner').addClass("d-none"); });
     } else if (tabId == "nav-label-tab") {
-        fillSegmentDropdown('#labelTable', '#segmentDropdown');
+        $('#spinner').removeClass("d-none");
+        fillSegmentDropdown('#labelTable', '#segmentDropdown').finally(() => { $('#spinner').addClass("d-none"); });
     } else if (tabId == "nav-apply-tab") {
-        fillSegmentDropdown('#applyTable', '#segmentDropdown_apply');
+        $('#spinner').removeClass("d-none");
+        let promises = []
+        promises.push(fillSegmentDropdown('#applyTable', '#segmentDropdown_apply'));
+        promises.push(getPredictedLabels());
+        Promise.all(promises).finally(() => { $('#spinner').addClass("d-none"); });
     }
 }
 

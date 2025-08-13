@@ -27,13 +27,13 @@ def get_models_filename(filepath):
 
 
 def add_new_columns(filepath):
-    df = pl.read_csv(filepath, separator="\t")  # , dtype=COL_DTYPES)
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
     for col in ["segment_id", "segment_labels", "label_justification"]:
         if col not in df.columns:
             df = df.with_columns(pl.lit(None).alias(col))
 
     # df["job_name"] = df["game_state"].apply(extract_job_name)
-    df = df.with_columns(matched=pl.col("game_state").str.json_path_match("$.job_name"))
+    df = df.with_columns(pl.col("game_state").str.json_path_match("$.job_name").alias("job_name"))
 
     df.write_csv(filepath, separator="\t")
 
@@ -51,7 +51,7 @@ def get_users_list(filepath):
     """
     List ordered user ids with segments count
     """
-    df = pl.read_csv(filepath, separator="\t")
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
 
     df = (
         df.drop_nulls("user_id").group_by("user_id")
@@ -65,7 +65,7 @@ def get_event_types(filepath):
     """
     List unique values of the `event_name` column
     """
-    df = pl.read_csv(filepath, separator="\t")
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
 
     return df.select(
             pl.col("event_name").drop_nulls()
@@ -77,7 +77,7 @@ def segment_labels_count(filepath):
     """
     For each label - number of segments with that label
     """
-    df = pl.read_csv(filepath, separator="\t")
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
 
     df = (
         df.unique(subset=["user_id", "segment_id"])
@@ -94,7 +94,8 @@ def segment_ids_for_user(filepath, user_id):
     """
     List ordered segment ids with their label for the selected `user_id`
     """
-    df = pl.read_csv(filepath, separator="\t")
+    # cast to int to sort correctly - fixme sort by timestamp
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.Int64}) 
 
     df = (
         df.filter(pl.col("user_id") == user_id)
@@ -112,7 +113,7 @@ def list_seg_labels(filepath):
     """
     List unique values of the `segment_labels` column
     """
-    df = pl.read_csv(filepath, separator="\t")
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
 
     unique_labels = (
         df.select(pl.col("segment_labels"))
