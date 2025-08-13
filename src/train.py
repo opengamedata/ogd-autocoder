@@ -3,6 +3,7 @@ import time
 import joblib
 import json
 import pandas as pd
+import polars as pl
 import numpy as np
 from datetime import datetime
 
@@ -13,7 +14,6 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     f1_score,
-    log_loss,
     classification_report,
 )
 from sklearn.linear_model import LogisticRegression
@@ -34,7 +34,7 @@ RANDOM_STATE = 13
 def available_features(filepath):
     columns = []
     for c in (
-        preprocess_df(filepath).drop(columns=["segment_labels", "segment_id"]).columns
+        preprocess_df(filepath).drop(["segment_labels", "segment_id"]).columns
     ):
         if (len(columns) == 0) or (c.split("_")[-1] != columns[-1]["name"]):
             columns.append({"name": c.split("_")[-1], "children": [c]})
@@ -44,10 +44,10 @@ def available_features(filepath):
     columns.sort(key=lambda x: len(x["children"]))  # sort by number of children
 
     # load also OGD features
-    df = pd.read_csv(filepath, sep="\t")
-    game_name = df.app_id.unique()[0]
+    df = pl.read_csv(filepath, separator="\t")
+    game_name = df["app_id"].unique()[0]
     ogd_columns = GeneratorCollectionConfig.FromFile(game_name).ExtractorNames
-    ogd_columns = [{"name": c, "children": [c]} for c in ogd_columns]
+    ogd_columns = []#[{"name": c, "children": [c]} for c in ogd_columns]
     return ogd_columns + columns
 
 
@@ -56,7 +56,7 @@ def train_model(
 ):
     start_time = time.time()
 
-    train_df = preprocess_df(filepath)
+    train_df = preprocess_df(filepath).to_pandas()
     # train_df = clean_agg_df.categorize(columns=["job_name"])
     # train_df = dd.get_dummies(train_df, columns=["job_name"], dtype=float)
 
@@ -174,51 +174,58 @@ def train_model(
 
 def preprocess_df(filepath):
     # segment_id is the new task_id, segment_labels is the target
-    df = pd.read_csv(filepath, sep="\t")  # , dtype=COL_DTYPES)
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
     # fixme - add support for multiple labels
     # fixme - job_name dummies
-    df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
+    df = df.with_columns(
+        pl.col("timestamp").str.strptime(pl.Datetime, strict=False)
+    )
     # fixme - the ID is the segment_id + user_id
-    df["segment_id"] = df["user_id"] + "-" + df["segment_id"].astype(str)
-
+    df = df.with_columns(
+        (pl.col("user_id") + "_" + pl.col("segment_id")).alias("segment_id")
+    )
     # additional feature: segment duration in seconds
     duration_df = (
-        df.groupby("segment_id")["timestamp"]
-        .agg(segment_start="min", segment_end="max")
-        .assign(
-            segment_duration=lambda x: (
-                x["segment_end"] - x["segment_start"]
-            ).dt.total_seconds()
+        df.group_by("segment_id")
+        .agg([
+            pl.col("timestamp").min().alias("segment_start"),
+            pl.col("timestamp").max().alias("segment_end"),
+        ])
+        .with_columns(
+            (pl.col("segment_end") - pl.col("segment_start"))
+            .dt.total_seconds()
+            .alias("segment_duration")
         )
-        .reset_index()[["segment_id", "segment_duration"]]
+        .select(["segment_id", "segment_duration"])
     )
 
-    clean_df = df[["event_name", "segment_id", "segment_labels"]]  # , "job_name"
-    # remove NA's
     # fixme replace N/A method
-    clean_df.loc[:, "segment_labels"] = clean_df["segment_labels"].fillna(
-        "N/A"
-    )  # to include these rows, needed for inference
-    clean_df = clean_df.dropna()
+    clean_df = (
+        df.select(["event_name", "segment_id", "segment_labels"])
+        .with_columns(
+            pl.col("segment_labels").fill_null("N/A")  # to include these rows (needed for inference)
+        )
+        .drop_nulls()  # Drop rows with any remaining nulls
+    )
     # clean_df = clean_df.categorize(columns=["event_name"])
-    clean_1hot_df = pd.get_dummies(
-        clean_df, columns=["event_name"], dtype=float
-    )  # , "job_name"
-    grouped = clean_1hot_df.groupby(["segment_id", "segment_labels"])
+    clean_1hot_df = clean_df.to_dummies(columns=["event_name"])
 
-    percent_df = grouped.mean() * 100
+    grouped = clean_1hot_df.group_by(["segment_id", "segment_labels"])
+    count_df = grouped.len().rename({"len": "count_events"})
     sum_df = grouped.sum()
-    count_df = grouped.size().rename("row_count")
+    sum_df = sum_df.rename({
+        col: f"{col}_sum" for col in sum_df.columns if col not in ["segment_id", "segment_labels"]
+    })
 
     clean_agg_df = (
-        percent_df.reset_index()
-        .merge(
-            sum_df.reset_index(),
-            on=["segment_id", "segment_labels"],
-            suffixes=("_percent", "_sum"),
-        )
-        .merge(count_df.reset_index(), on=["segment_id", "segment_labels"])
-        .merge(duration_df, on="segment_id", how="left")
+        sum_df.join(count_df, on=["segment_id", "segment_labels"])
+        .join(duration_df, on="segment_id", how="left")
+    )
+
+    numeric_cols = [c for c in sum_df.columns if c not in ["segment_id", "segment_labels"]]
+    # add percentage columns
+    clean_agg_df = clean_agg_df.with_columns(
+        [(pl.col(c) / pl.col("count_events") * 100).alias(c + "_percent") for c in numeric_cols]
     )
     return clean_agg_df
 
@@ -237,7 +244,7 @@ def inference(filepath, model_path):
     df_processed = preprocess_df(filepath)
     model_info = find_model_info(filepath, model_path)
 
-    X = df_processed[model_info["include_features"]]
+    X = df_processed.select(model_info["include_features"]).to_numpy()
     if model_info["model_type"] == "neural-net":
         model = tf.keras.models.load_model(model_info["model_path"])
         probs = model.predict(X)
@@ -248,35 +255,48 @@ def inference(filepath, model_path):
     y_idx = np.argmax(probs, axis=1)
     y = [model_info["include_labels"][i] for i in y_idx]
     confidence = probs[np.arange(len(probs)), y_idx]
-    df_processed["predicted_labels"] = y
-    df_processed["prediction_confidence"] = confidence
+    df_processed = df_processed.with_columns([
+        pl.Series("predicted_labels", y),
+        pl.Series("prediction_confidence", confidence)
+    ])
 
-    df = pd.read_csv(filepath, sep="\t")
-    df = df.drop(columns=["predicted_labels", "prediction_confidence"], errors="ignore")
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    df = df.drop(["predicted_labels", "prediction_confidence"], strict=False)
 
-    df["old_segment_id"] = df["segment_id"]
-    df["segment_id"] = df["user_id"] + "-" + df["segment_id"].astype(str)
+    df = df.with_columns(
+        pl.col("segment_id").alias("old_segment_id"),
+        (pl.col("user_id") + "_" + pl.col("segment_id")).alias("segment_id")
+    )
 
-    df = df.merge(
-        df_processed[["segment_id", "predicted_labels", "prediction_confidence"]],
+    df = df.join(
+        df_processed.select(["segment_id", "predicted_labels", "prediction_confidence"]),
         how="left",
         on="segment_id",
     )
 
-    df["segment_id"] = df["old_segment_id"]
-
-    df.drop(columns=["old_segment_id"]).to_csv(filepath, index=False, sep="\t")
+    df = df.with_columns(
+        pl.col("old_segment_id").alias("segment_id")
+    )
+    df.drop("old_segment_id").write_csv(filepath, separator="\t")
 
 
 def get_predicted_label(filepath, user_id, segment_id):
-    df = pd.read_csv(filepath, sep="\t")
+    """
+    Get predicted label for selected `user_id` and `segment_id`
+    """
+    df = pl.read_csv(filepath, separator="\t")
+
     if "predicted_labels" not in df.columns:
         return None, None
-    filter = (df["user_id"] == user_id) & (
-        df["segment_id"] == int(segment_id)
-    )  # fixme maybe convert segment_id to string
 
-    return df[filter][["predicted_labels", "prediction_confidence"]].values[0]
+    filtered = df.filter(
+        (pl.col("user_id") == user_id) &
+        (pl.col("segment_id") == int(segment_id))
+    )
+
+    row = filtered.select(["predicted_labels", "prediction_confidence"]).row(0)
+
+    return row[0], row[1]
 
 
 def train_neural_net(

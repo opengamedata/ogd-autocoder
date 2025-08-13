@@ -1,7 +1,5 @@
 import json
 import os
-import numpy as np
-import pandas as pd
 import polars as pl
 # COL_DTYPES = {
 #     'app_branch': 'object',
@@ -137,7 +135,7 @@ def get_events_for_user(filepath, user_id, segment_id):
     List events for `user id`
     If `segment_id` is specified, also filter by `segment_id` 
     """
-    df = pl.read_csv(filepath, separator="\t")
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
 
     df = df.with_columns(
         pl.col("timestamp").str.strptime(pl.Datetime, strict=False)
@@ -151,7 +149,7 @@ def get_events_for_user(filepath, user_id, segment_id):
         df = df.filter(
             pl.col("segment_id").is_not_null()
             & (pl.col("user_id") == user_id)
-            & (pl.col("segment_id").cast(pl.Int64) == int(segment_id))
+            & (pl.col("segment_id") == str(segment_id))
         )
     else:
         df = df.filter(pl.col("user_id") == user_id)
@@ -171,12 +169,12 @@ def label_rows(filepath, user_id, segment_id, segment_labels, label_justificatio
     For a `user_id` and `segment_id` apply segment_labels and label_justification
     If `segment_id` is specified, also filter by `segment_id` 
     """
-    df = pl.read_csv(filepath, separator="\t")
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
 
     update_filter = (
         pl.col("segment_id").is_not_null()
         & (pl.col("user_id") == user_id)
-        & (pl.col("segment_id").cast(pl.Int64) == int(segment_id))
+        & (pl.col("segment_id") == str(segment_id))
     )
     update_val = None if segment_labels == "" else segment_labels
     df = df.with_columns(
@@ -197,7 +195,7 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
     For a `user_id` apply segment_id on selected_rows (row identifiers => index + session_id columns)
     Clears segment labels for all affected segments
     """
-    df = pl.read_csv(filepath, separator="\t")
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
 
     df = df.with_columns(
         (pl.col("index").cast(pl.String) + "_" + pl.col("session_id").cast(pl.String)).alias("row_id")
@@ -205,14 +203,14 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
     selected_row_ids = [f"{x[0]}_{x[1]}" for x in selected_rows]
     update_filter = (pl.col("user_id") == user_id) & pl.col("row_id").is_in(selected_row_ids)
 
-    old_segments = df.select(pl.col("segment_id").cast(pl.Int64))
-    update_val = None if segment_id == "" else int(segment_id)
+    old_segments = df.select(pl.col("segment_id"))
+    update_val = None if segment_id == "" else str(segment_id)
     df = df.with_columns(
         pl.when(update_filter).then(pl.lit(update_val)).otherwise(pl.col("segment_id")).alias("segment_id")
     )
 
     # clear labels for segment if changed
-    new_segments = df.select(pl.col("segment_id").cast(pl.Int64))
+    new_segments = df.select(pl.col("segment_id"))
     # affected segments
     changed_ids = set(
         old_segments.filter(pl.col("segment_id") != new_segments["segment_id"])
@@ -220,8 +218,9 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
     )
     if update_val is not None:
         # target segment also
-        changed_ids.add(int(update_val))
-    change_filter = (pl.col("user_id") == user_id) & pl.col("segment_id").cast(pl.Int64).is_in(changed_ids)    
+        changed_ids.add(str(update_val))
+
+    change_filter = (pl.col("user_id") == user_id) & pl.col("segment_id").is_in(changed_ids)    
 
     df = df.with_columns([
         pl.when(change_filter).then(pl.lit(None)).otherwise(pl.col("segment_labels")).alias("segment_labels"),
@@ -240,7 +239,7 @@ def autosegment_by_event_type(filepath, sep_event_types):
     sep_event_types: list of event types by which we should separate ito segments
     """
 
-    df = pl.read_csv(filepath, separator="\t")
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
     df = df.with_columns(
         pl.col("timestamp").str.strptime(pl.Datetime, strict=False)
     )
@@ -265,6 +264,7 @@ def autosegment_by_event_type(filepath, sep_event_types):
         pl.when(cutoff_filter)
         .then(pl.col("segment_id").cast(pl.Int64) - 1)
         .otherwise(pl.col("segment_id"))
+        .cast(pl.String)
         .alias("segment_id")
     )
 

@@ -120,9 +120,9 @@ function loadExisting(existing_filename) {
  */
 function onFileChange(load_models) {
     let promises = [fillUsersList(), fillEventTypes(), fillLabelsCount()];
-    // if (load_models) {
-    //     promises.push(fillModelsList());
-    // }
+    if (load_models) {
+        promises.push(fillModelsList());
+    }
 
     Promise.all(promises)
         .then(() => {
