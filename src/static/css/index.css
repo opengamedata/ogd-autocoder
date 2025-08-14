@@ -15,4 +15,9 @@
 .select2-container .select2-selection--single .select2-selection__arrow {
     height: 100%;
 }
-  
+
+/* DATATABLE CUSTOMIZATION */
+.dt-button-collection {
+    max-height: 300px;
+    overflow-y: auto !important;
+}

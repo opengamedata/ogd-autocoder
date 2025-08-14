@@ -96,6 +96,7 @@ function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id =
             let promises = [];
             promises.push(fillLabelDropdowns());
             promises.push(fillLabelsCount());
+            // maybe instead use https://stackoverflow.com/questions/37330407/jquery-select2-change-option-text
             promises.push(fillSegmentDropdown(table_id, seg_dropdown_id, false));
 
             Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});

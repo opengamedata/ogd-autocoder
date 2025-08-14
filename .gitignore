@@ -1,5 +1,6 @@
 # Custom
-/uploads/*
+/src/uploads/*
+/experiments/*
 /data_may_2024/*
 
 

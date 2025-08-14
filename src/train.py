@@ -81,12 +81,7 @@ def train_model(
         # fixme - maybe try bootstrap
     )
 
-    output = f"Row Count:\t{len(train_df)}\n"
-    output += f"Input Columns:\t{x_train_full.shape[1]}\n"
-    output += f"Classes Count:\n"
-    for label, count in train_df["segment_labels"].value_counts().items():
-        output += f"  {label}\t{count}\n"
-    output += "\n"
+    output = ""
 
     # add to (output +=)
     # print("x Train Shape: " + str(x_train.shape))
@@ -141,7 +136,13 @@ def train_model(
         output += "Invalid Model Selected"
 
     time_taken = time.time() - start_time
+
     output = f"{model_info['model_name']}: \t{round(time_taken, 2)} secs\n\n" + output
+    output += f"Row Count:\t{len(train_df)}\n"
+    output += f"Input Columns:\t{x_train_full.shape[1]}\n"
+    output += f"Classes Count:\n"
+    for label, count in train_df["segment_labels"].value_counts().items():
+        output += f"  {label}\t{count}\n"
 
     model_info["hyperparameters"] = (
         hyperparameters  # might have been updated inside train_ of specific model
@@ -350,10 +351,6 @@ def train_neural_net(
         callbacks=[early_stopping],
     )
     loss, accuracy = model.evaluate(x_test_tensor, y_test_tensor)
-    output += f"Class Weights (greater means error is more critical):\n"
-    for i, w in class_weights.items():
-        output += f"  {classes[i]}\t{round(w, 2)}\n"
-    output += "\n"
 
     metrics["test_accuracy"] = accuracy
     output += f"Test Accuracy:\t{accuracy}\n"
@@ -378,6 +375,10 @@ def train_neural_net(
 
     output += classification_report(y_test, y_pred_test, target_names=classes)
 
+    output += f"\nClass Weights (greater means error is more critical):\n"
+    for i, w in class_weights.items():
+        output += f"  {classes[i]}\t{round(w, 2)}\n"
+    output += "\n"
     metrics["model_path"] = os.path.join(
         models_dir, "neural_net_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".h5"
     )
@@ -415,11 +416,6 @@ def train_logistic(
     )
     model.fit(x_train, y_train)
 
-    output += f"Class Weights (greater means error is more critical):\n"
-    for i, w in class_weights.items():
-        output += f"  {classes[i]}\t{round(w, 2)}\n"
-    output += "\n"
-
     metrics["test_accuracy"] = model.score(x_test, y_test)
     output += f"Test Accuracy:\t{metrics['test_accuracy']}\n"
     # output += (f"Test Loss: {log_loss(y_test, model.predict(x_test))}\n\n")
@@ -437,6 +433,11 @@ def train_logistic(
     )
 
     output += classification_report(y_test, y_pred_test, target_names=classes)
+
+    output += f"\nClass Weights (greater means error is more critical):\n"
+    for i, w in class_weights.items():
+        output += f"  {classes[i]}\t{round(w, 2)}\n"
+    output += "\n"
 
     metrics["model_path"] = os.path.join(
         models_dir, "logistic_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl"
@@ -474,11 +475,6 @@ def train_random_forest(
     metrics["test_accuracy"] = model.score(x_test, y_test)
     metrics["train_accuracy"] = model.score(x_train, y_train)
 
-    output += f"Class Weights (greater means error is more critical):\n"
-    for i, w in class_weights.items():
-        output += f"  {classes[i]}\t{round(w, 2)}\n"
-    output += "\n"
-
     output += f"Test Accuracy:\t{metrics['test_accuracy']}\n"
     output += f"Train Accuracy:\t{metrics['train_accuracy']}\n\n"
 
@@ -491,6 +487,11 @@ def train_random_forest(
     )
 
     output += classification_report(y_test, y_pred_test, target_names=classes)
+
+    output += f"\nClass Weights (greater means error is more critical):\n"
+    for i, w in class_weights.items():
+        output += f"  {classes[i]}\t{round(w, 2)}\n"
+    output += "\n"
 
     metrics["model_path"] = os.path.join(
         models_dir,

@@ -225,7 +225,7 @@ debugger;
     
     // resize for horizontal scrollbar
     const wrapper = $('#chartCanvasWrapper');
-    const labelCount = modelHistChart.data.labels.length;
+    const labelCount = Math.max(2, modelHistChart.data.labels.length);
     const requiredWidth = labelCount * 120; // size for 2-4 bars
 
     wrapper.width(requiredWidth);
@@ -351,6 +351,13 @@ function fillModelParamsFromExisting(model_info) {
 }
 
 function highlightBar(index) {
+    $('#chartScrollWrapper').stop(true).animate(
+        { scrollLeft: 120 * index },
+        {
+            duration: 500,
+            easing: 'linear'
+        }
+    );
     modelHistChart.setActiveElements([
         { datasetIndex: 0, index },
         { datasetIndex: 1, index },
