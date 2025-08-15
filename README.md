@@ -20,4 +20,4 @@ Change dir to `src`
 
 Start server
 
-`$ uv run segmentator.py`
+`$ uv run app.py`

@@ -9,4 +9,4 @@ HOME_FOLDER = "placeholder home"
 # Specifying the path used in the hosting environment, there might be a better way to do this
 if not HOME_FOLDER in sys.path:
     sys.path.append(HOME_FOLDER)
-from segmentator import app
+from main import app

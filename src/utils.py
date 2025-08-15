@@ -11,6 +11,16 @@ import polars as pl
 #     'segment_labels': 'object'
 # }
 
+def read_dataset(filepath, filtered_only = True):
+    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+
+    if filtered_only:
+        df = df.filter(pl.col("filtered_in") == True)
+
+    return df
+
+def unique_count(df, col_name):
+        return df.select(pl.col(col_name).drop_nulls().n_unique()).item()
 
 def get_models_filename(filepath):
     name, ext = os.path.splitext(filepath)
@@ -27,16 +37,63 @@ def get_models_filename(filepath):
 
 
 def add_new_columns(filepath):
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    df = read_dataset(filepath)
     for col in ["segment_id", "segment_labels", "label_justification"]:
         if col not in df.columns:
             df = df.with_columns(pl.lit(None).alias(col))
 
+    df = df.with_columns(pl.lit(True).alias("filtered_in"))
     # df["job_name"] = df["game_state"].apply(extract_job_name)
     df = df.with_columns(pl.col("game_state").str.json_path_match("$.job_name").alias("job_name"))
 
     df.write_csv(filepath, separator="\t")
 
+
+"""
+Returns useful dataset info such as row count, segments count, user session count
+"""
+def get_dataset_info(filepath):
+    df = read_dataset(filepath, False)
+    df = df.with_columns(
+        pl.col("timestamp").str.strptime(pl.Datetime, strict=False)
+    )
+    timestamp_min = df.select(pl.col("timestamp").drop_nulls().min()).item()
+    timestamp_max = df.select(pl.col("timestamp").drop_nulls().max()).item()
+    date_range = f"{timestamp_min:%m/%d/%Y} - {timestamp_max:%m/%d/%Y}"
+
+    # Filtered / excluded subsets
+    df_filtered = df.filter(pl.col("filtered_in") == True)
+    df_excluded = df.filter(pl.col("filtered_in") != True)
+    return {
+        "models_count": len(get_models_list(filepath)),
+        "date_range": date_range,
+        "original": {
+            "rows": df.height,
+            "users": unique_count(df, "user_id"),
+            "segments": unique_count(df, "segment_id"),
+            "sessions": unique_count(df, "session_id"),
+        },
+        "filtered": {
+            "rows": df_filtered.height,
+            "users": unique_count(df_filtered, "user_id"),
+            "segments": unique_count(df_filtered, "segment_id"),
+            "sessions": unique_count(df_filtered, "session_id"),
+        },
+        "included_events": df_filtered.select(pl.col("event_name").unique()).to_series().to_list(),
+        "excluded_events": df_excluded.select(pl.col("event_name").unique()).to_series().to_list(),
+    }
+
+"""
+Updates filtered_in column setting to `True` if event_name in the included_events list
+"""
+def event_filtering(filepath, included_events):
+    df = read_dataset(filepath)
+
+    df = df.with_columns(
+        (pl.col("event_name").is_in(included_events)).alias("filtered_in")
+    )
+
+    df.write_csv(filepath, separator="\t")
 
 def get_models_list(filepath):
     models_filepath = get_models_filename(filepath)
@@ -51,7 +108,7 @@ def get_users_list(filepath):
     """
     List ordered user ids with segments count
     """
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    df = read_dataset(filepath)
 
     df = (
         df.drop_nulls("user_id").group_by("user_id")
@@ -65,7 +122,7 @@ def get_event_types(filepath):
     """
     List unique values of the `event_name` column
     """
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    df = read_dataset(filepath)
 
     return df.select(
             pl.col("event_name").drop_nulls()
@@ -77,7 +134,7 @@ def segment_labels_count(filepath):
     """
     For each label - number of segments with that label
     """
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    df = read_dataset(filepath)
 
     df = (
         df.unique(subset=["user_id", "segment_id"])
@@ -94,11 +151,11 @@ def segment_ids_for_user(filepath, user_id):
     """
     List ordered segment ids with their label for the selected `user_id`
     """
-    # cast to int to sort correctly - fixme sort by timestamp
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.Int64}) 
+    df = read_dataset(filepath)
 
     df = (
         df.filter(pl.col("user_id") == user_id)
+        .with_columns(pl.col("segment_id").cast(pl.Int64))  # cast to int to sort correctly - fixme sort by timestamp
         .select(["segment_id", "segment_labels"])
         .drop_nulls(subset=["segment_id"])
         .unique()
@@ -113,7 +170,7 @@ def list_seg_labels(filepath):
     """
     List unique values of the `segment_labels` column
     """
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    df = read_dataset(filepath)
 
     unique_labels = (
         df.select(pl.col("segment_labels"))
@@ -136,7 +193,7 @@ def get_events_for_user(filepath, user_id, segment_id):
     List events for `user id`
     If `segment_id` is specified, also filter by `segment_id` 
     """
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    df = read_dataset(filepath)
 
     df = df.with_columns(
         pl.col("timestamp").str.strptime(pl.Datetime, strict=False)
@@ -170,7 +227,7 @@ def label_rows(filepath, user_id, segment_id, segment_labels, label_justificatio
     For a `user_id` and `segment_id` apply segment_labels and label_justification
     If `segment_id` is specified, also filter by `segment_id` 
     """
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    df = read_dataset(filepath)
 
     update_filter = (
         pl.col("segment_id").is_not_null()
@@ -196,7 +253,7 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
     For a `user_id` apply segment_id on selected_rows (row identifiers => index + session_id columns)
     Clears segment labels for all affected segments
     """
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    df = read_dataset(filepath)
 
     df = df.with_columns(
         (pl.col("index").cast(pl.String) + "_" + pl.col("session_id").cast(pl.String)).alias("row_id")
@@ -240,7 +297,7 @@ def autosegment_by_event_type(filepath, sep_event_types):
     sep_event_types: list of event types by which we should separate ito segments
     """
 
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    df = read_dataset(filepath)
     df = df.with_columns(
         pl.col("timestamp").str.strptime(pl.Datetime, strict=False)
     )

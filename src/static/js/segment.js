@@ -25,7 +25,7 @@ function segmentRows() {
             let next_segment_id = parseInt($("#segmentIdInput").val()) + 1
             $("#segmentIdInput").val(next_segment_id);
             let promises = [];
-            promises.push(fillUsersList());
+            promises.push(fillUsersList(false));
             promises.push(fillLabelsCount());
 
             Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
@@ -52,7 +52,7 @@ function autoSegment() {
         contentType: "application/json",
         success: function (response) {
             let promises = [];
-            promises.push(fillUsersList());
+            promises.push(fillUsersList(false));
             promises.push(fillLabelsCount());
 
             Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});

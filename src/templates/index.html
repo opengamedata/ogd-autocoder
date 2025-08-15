@@ -5,14 +5,9 @@
 <link href="/static/css/index.css" rel="stylesheet" />
 {% endblock %}
 {% block content %}
-<div class="container py-3">
-  <div class="d-flex justify-content-end gap-3 mb-1">
-    <button class="btn btn-primary" id="downloadBtn" style="display:none;">
-      <i class="bi bi-download me-1"></i> Download
-    </button>
-  </div>
+<div class="container py-2">
   <h2 class="text-center">SE6MEN7AT0R</h2>
-  <h5 class="text-center" id="labelsValueCount"></h2>
+  <h5 class="text-center" id="labelsValueCount">&nbsp;</h2>
   
   <div id="spinner" class="d-none position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-50" style="z-index: 10;">
     <div class="spinner-border text-primary" role="status">
@@ -22,35 +17,100 @@
 
   <nav>
     <div class="nav nav-tabs" id="nav-tab" role="tablist">
-      <button class="nav-link active" id="nav-segment-tab" data-bs-toggle="tab" data-bs-target="#nav-segment" type="button" role="tab" aria-controls="nav-segment" aria-selected="true">SEGMENT</button>
-      <button class="nav-link" id="nav-label-tab" data-bs-toggle="tab" data-bs-target="#nav-label" type="button" role="tab" aria-controls="nav-label" aria-selected="false">LABEL</button>
-      <button class="nav-link" id="nav-train-tab" data-bs-toggle="tab" data-bs-target="#nav-train" type="button" role="tab" aria-controls="nav-train" aria-selected="false">TRAIN</button>
-      <button class="nav-link" id="nav-apply-tab" data-bs-toggle="tab" data-bs-target="#nav-apply" type="button" role="tab" aria-controls="nav-apply" aria-selected="false">APPLY</button>
+      <button class="nav-link active" id="nav-data-tab" data-bs-toggle="tab" data-bs-target="#nav-data" type="button" role="tab" aria-controls="nav-data" aria-selected="true">DATA</button>
+      <button class="nav-link disabled" id="nav-segment-tab" data-bs-toggle="tab" data-bs-target="#nav-segment" type="button" role="tab" aria-controls="nav-segment" aria-selected="true">SEGMENT</button>
+      <button class="nav-link disabled" id="nav-label-tab" data-bs-toggle="tab" data-bs-target="#nav-label" type="button" role="tab" aria-controls="nav-label" aria-selected="false">LABEL</button>
+      <button class="nav-link disabled" id="nav-train-tab" data-bs-toggle="tab" data-bs-target="#nav-train" type="button" role="tab" aria-controls="nav-train" aria-selected="false">TRAIN</button>
+      <button class="nav-link disabled" id="nav-apply-tab" data-bs-toggle="tab" data-bs-target="#nav-apply" type="button" role="tab" aria-controls="nav-apply" aria-selected="false">APPLY</button>
+      <button class="nav-link disabled" id="downloadBtn"><i class="bi bi-download me-1"></i> DOWNLOAD</button>
     </div>
   </nav>
-  <div id="load_and_user_panel" class="d-flex align-items-center gap-3 mb-4 py-2">
-    <button class="btn btn-primary" style="min-width: 100px;" onclick="triggerFilePicker()">Load TSV</button>
-    <input type="file" id="tsvFile" accept=".tsv" style="display: none;">
-    {% if uploaded_files %}
-      <div class="dropdown">
-        <button class="btn btn-secondary" type="button" id="historyDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Recent Files">
-          <i class="bi bi-clock-history"></i>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-right" aria-labelledby="historyDropdownBtn" id="recentFilesList" style="min-width: 200px;">
-          {% for file in uploaded_files %}
-            <li><a class="dropdown-item" href="#" onclick="loadExisting('{{ file.fullname }}')">{{ file.formatted }}</a></li>
-          {% endfor %}
-        </ul>
-      </div>
-    {% endif %}
+  <div id="user_panel" class="d-none d-flex align-items-center gap-3 mb-4 py-2">
     <select class="form-select" id="userDropdown" onchange="userChanged()" style="min-width: 200px; display:none;">
     </select>
   </div>
-
+    
   <div class="tab-content" id="nav-tabContent">
+    <!--DATA-->
+    <div class="tab-pane fade show active" id="nav-data" role="tabpanel" aria-labelledby="nav-data-tab">
+      <div class="card p-3 m-2">
+        <div class="row">
+          <div class="col-md-4 d-flex flex-column pe-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-bold">Datasets</span>
+              <div>
+                <button class="btn btn-primary" style="min-width: 100px;" onclick="triggerFilePicker()">Load TSV</button>
+                <input type="file" id="tsvFile" accept=".tsv" style="display: none;">
+              </div>
+            </div>            
+            <div id="datasetsScroll" class="overflow-auto flex-grow-1 min-vh-0">
+              {% for file in uploaded_files %}
+                <button class="btn btn-light w-100 text-start mb-2" data-filename="{{ file.fullname }}" onclick="loadExisting('{{ file.fullname }}')">{{ file.formatted }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          <div id="datasetInfo" class="col-md-8 d-flex flex-column p-3 border-start d-none">
+            <h5 class="mb-3">Dataset Information</h5>
+            <div class="list-group-item"><strong>Filename:</strong> <span data-field="filename">lol.tsv</span></div>
+            <div class="list-group-item"><strong>Date range:</strong> <span data-field="date-range"></span></div>
+            <div class="list-group-item"><strong>Models trained:</strong> <span data-field="models"></span></div>
+            <div class="table-responsive mt-2">
+              <table class="table table-sm mb-0 rounded border">
+                <thead class="table-light">
+                  <tr>
+                    <th></th>
+                    <th>Filtered</th>
+                    <th>Original</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Rows</strong></td>
+                    <td data-field="rows-filtered"></td>
+                    <td data-field="rows-original"></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Segments</strong></td>
+                    <td data-field="segments-filtered"></td>
+                    <td data-field="segments-original"></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Users</strong></td>
+                    <td data-field="users-filtered"></td>
+                    <td data-field="users-original"></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Sessions</strong></td>
+                    <td data-field="sessions-filtered"></td>
+                    <td data-field="sessions-original"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="d-flex my-3 gap-3 align-items-center">
+              <h5 class="my-0">Event Filtering</h5>
+              <button onclick="filterDataset()" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-floppy"></i>
+              </button>
+            </div>
+            
+            <div class="row m-1">
+              <div class="col border rounded p-2 d-flex flex-column">
+                <h6>Included Events</h6>
+                <ul id="includedEvents" class="list-group overflow-auto" style="max-height: 200px;"></ul>
+              </div>
+              <div class="col border rounded p-2 d-flex flex-column">
+                <h6>Excluded Events</h6>
+                <ul id="excludedEvents" class="list-group overflow-auto" style="max-height: 200px;"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <!--SEGMENT-->
-    <div class="tab-pane fade show active" id="nav-segment" role="tabpanel" aria-labelledby="nav-segment-tab">
-      
+    <div class="tab-pane fade" id="nav-segment" role="tabpanel" aria-labelledby="nav-segment-tab">
       <div class="mb-3 d-flex align-items-end">
         <div class="me-2" style="width: 150px;">
           <label for="segmentIdInput" class="form-label">Segment ID</label>
@@ -62,7 +122,9 @@
         <div class="border-start mx-5" style="height: 40px;"></div>
         <div class="me-2" style="width: 600px;">
           <label for="segmentEventTypeDropdown" class="form-label">Cutoff Event Types (apart from using sessions)</label>
-          <select id="segmentEventTypeDropdown" multiple="multiple" disabled="disabled" class="form-select"></select>
+          <div>
+            <select id="segmentEventTypeDropdown" multiple="multiple" disabled="disabled" class="form-select"></select>
+          </div>
         </div>
       
         <div class="d-flex align-items-end">
@@ -477,7 +539,7 @@
     </div>
   </div>
 </div>
-
+<script src="/static/js/dataset.js"></script>
 <script src="/static/js/segment.js"></script>
 <script src="/static/js/index.js"></script>
 <script src="/static/js/label.js"></script>

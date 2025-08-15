@@ -57,8 +57,8 @@ def upload_file():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     file.save(filepath)
     add_new_columns(filepath)
-
-    return jsonify({"filename": filename})
+    formatted = filename.split("_", 1)[1] + " " + filename.split("_", 1)[0].replace("T", " ")
+    return jsonify({"filename": filename, "formatted": formatted})
 
 
 @app.route("/models_list", methods=["POST"])
@@ -86,6 +86,25 @@ def event_types_list():
     )
 
     return jsonify({"users": get_event_types(filepath)})
+
+
+@app.route("/dataset_info", methods=["POST"])
+def dataset_info():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+
+    return jsonify({"data": get_dataset_info(filepath)})
+
+@app.route("/dataset_filter", methods=["POST"])
+def dataset_filter():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+    event_filtering(filepath, request.json["included_events"])
+
+    return jsonify({"success": True})
+
 
 
 @app.route("/list_segment_ids/<user_id>", methods=["POST"])

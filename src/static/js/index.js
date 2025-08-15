@@ -2,8 +2,9 @@ let filename = null; // only used for the download api
 document.cookie = "filename=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 
 // 1. dropdowns initialization
-$('#segmentEventTypeDropdown').select2();
-
+$('#segmentEventTypeDropdown').select2({
+    width: '100%',
+});
 $('#userDropdown').select2({
     placeholder: "Select a user",
     width: '100%',
@@ -44,14 +45,17 @@ $('#downloadBtn').on('click', function () {
 $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
     // when tab was switched
     const tabId = $('#nav-tab .nav-link.active').attr('id');
-    if (tabId == "nav-segment-tab") {
-        $("#load_and_user_panel").removeClass("d-none");
+    if (tabId == "nav-data-tab") {
+        $("#user_panel").addClass("d-none");
+        fillDatasetInfo();
+    } else if (tabId == "nav-segment-tab") {
+        $("#user_panel").removeClass("d-none");
         userChanged();
     } else if (tabId == "nav-label-tab") {
-        $("#load_and_user_panel").removeClass("d-none");
+        $("#user_panel").removeClass("d-none");
         userChanged();
     } else if (tabId == "nav-train-tab") {
-        $("#load_and_user_panel:not([class*='d-none'])").addClass("d-none");
+        $("#user_panel:not([class*='d-none'])").addClass("d-none");
         if (filename) {
             fillFeatureList();
             createUnitPerLayerInputs();
@@ -65,7 +69,7 @@ $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
         }
     } else {
         // apply tab
-        $("#load_and_user_panel").removeClass("d-none");
+        $("#user_panel").removeClass("d-none");
         userChanged();
     }
 });
@@ -90,7 +94,16 @@ function uploadFile() {
         success: function (response) {
             filename = response.filename;
             document.cookie = `filename=${filename}`;
-            onFileChange(false);
+            let $btn = $('<button></button>')
+                .addClass('btn btn-light w-100 text-start mb-2')
+                .attr('data-filename', filename)
+                .text(response.formatted);
+            $btn.on('click', () => {
+                loadExisting(filename);
+            });
+            $('#datasetsScroll').prepend($btn)
+
+            onFileChange(filename, false);
         },
         error: function (xhr, status, error) {
             console.error("Upload failed:", status, error);
@@ -107,9 +120,9 @@ function uploadFile() {
  */
 function loadExisting(existing_filename) {
     filename = existing_filename;
-    document.cookie = `filename=${filename}`;
+    document.cookie = `filename=${existing_filename}`;
     $('#spinner').removeClass("d-none");
-    onFileChange(true);
+    onFileChange(existing_filename, true);
 }
 
 /**
@@ -118,9 +131,14 @@ function loadExisting(existing_filename) {
  *
  * @param {boolean} load_models - to avoid loading models for newly uploaded files
  */
-function onFileChange(load_models) {
-    let promises = [fillUsersList(), fillEventTypes(), fillLabelsCount()];
+function onFileChange(filename, load_models) {
+    $('span[data-field="filename"]').text(filename);
+    $('#datasetsScroll').find('button').removeClass('btn-dark');
+    $(`#datasetsScroll button[data-filename="${filename}"]`).addClass('btn-dark');
+
+    let promises = [fillDatasetInfo(), fillUsersList(), fillEventTypes(), fillLabelsCount()];
     if (load_models) {
+        resetTrainView();
         promises.push(fillModelsList());
     }
 
@@ -134,7 +152,7 @@ function onFileChange(load_models) {
                 table.draw();
             }
 
-            $('#downloadBtn').show();
+            $('.nav-link.disabled').removeClass('disabled'); // enable navigation
             $('#trainModelBtn').show();
             $('#applyTrain').show();
             $('#applyBest').show();
@@ -148,9 +166,11 @@ function onFileChange(load_models) {
 
 /**
  * Populates the #userDropdown with the list of users (display user_id with number of segments)
- * Preserves the previously selected user if still available.
+ * if reset_value = false - preserves the previously selected user if available.
+ * 
+ *  * @param {boolean} reset_value - whether to preserves previous value
  */
-async function fillUsersList() {
+async function fillUsersList(reset_value = true) {
     const previousValue = $('#userDropdown').val();
     $('#userDropdown').empty().append('<option></option>');
     await $.ajax({
@@ -162,11 +182,11 @@ async function fillUsersList() {
                 $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
             });
 
-            if (previousValue && $(`#userDropdown option[value="${previousValue}"]`).length > 0) {
+            if (!reset_value && previousValue && $(`#userDropdown option[value="${previousValue}"]`).length > 0) {
                 $('#userDropdown').val(previousValue);
             }
 
-            $('#userDropdown').trigger('change').show();
+            $('#userDropdown').trigger('change')
         },
         error: function (xhr, status, error) {
             console.error("User list loading failed:", status, error);

@@ -121,8 +121,8 @@ async function fillLabelsCount() {
             response.data.forEach(label => {
                 text += `${label.segment_labels} (${label.count}), `;
             });
-            text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : "";
-            $("#labelsValueCount").text(text);
+            text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : "&nbsp;";
+            $("#labelsValueCount").html(text);
         },
         error: function (xhr, status, error) {
             console.error("User list loading failed:", status, error);

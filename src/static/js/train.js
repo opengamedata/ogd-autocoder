@@ -190,7 +190,6 @@ async function fillModelsList() {
 function addModel(model_info) {
     let accuracy = model_info["test_accuracy"];
     let modelName = model_info["model_name"];
-debugger;
     if (accuracy > bestModel.test_accuracy) {
         bestModel.test_accuracy = accuracy;
         bestModel.path = model_info["model_path"]
@@ -698,3 +697,29 @@ $('#applyBest').on('click', () => {
     if (bestModel.path)
         applyModel(bestModel.path);
 })
+
+/**
+ * Ensures old and new content are not displayed simultaneously.
+ */
+function resetTrainView() {
+    // reset state
+    metricsByLabel = {};
+    applyModelPath = null;
+    bestModel = {test_accuracy: 0, path: null};
+    
+    enableTrain();
+
+    $('#modelSummary').text("");
+    $('#modelScroll').empty();
+
+    $("#labelForMetrics").empty();
+    $("#labelForMetrics").append($('<option value="all">All Labels</option>'));
+
+    modelHistChart.data.labels = [];
+    modelHistChart.data.datasets.forEach(dataset => dataset.data = []);
+    modelHistChart.update();
+
+    const table = $('#modelMetricsTable').DataTable();
+    table.clear();
+    table.draw();
+}

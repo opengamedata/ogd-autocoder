@@ -26,7 +26,7 @@ from keras.layers import Input, Dense
 from keras.models import Sequential
 from keras.callbacks import EarlyStopping
 
-from utils import get_models_filename
+from utils import get_models_filename, read_dataset
 from ogd.core.configs.generators.GeneratorCollectionConfig import GeneratorCollectionConfig
 
 RANDOM_STATE = 13
@@ -45,7 +45,7 @@ def available_features(filepath):
     columns.sort(key=lambda x: len(x["children"]))  # sort by number of children
 
     # load also OGD features
-    df = pl.read_csv(filepath, separator="\t")
+    df = read_dataset(filepath)
     game_name = df["app_id"].unique()[0]
     ogd_columns = GeneratorCollectionConfig.FromFile(game_name).ExtractorNames
     ogd_columns = []#[{"name": c, "children": [c]} for c in ogd_columns]
@@ -176,7 +176,7 @@ def train_model(
 
 def preprocess_df(filepath):
     # segment_id is the new task_id, segment_labels is the target
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    df = read_dataset(filepath)
     # fixme - add support for multiple labels
     # fixme - job_name dummies
     df = df.with_columns(
@@ -262,7 +262,7 @@ def inference(filepath, model_path):
         pl.Series("prediction_confidence", confidence)
     ])
 
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    df = read_dataset(filepath)
     df = df.drop(["predicted_labels", "prediction_confidence"], strict=False)
 
     df = df.with_columns(
@@ -286,7 +286,7 @@ def get_predicted_label(filepath, user_id, segment_id):
     """
     Get predicted label for selected `user_id` and `segment_id`
     """
-    df = pl.read_csv(filepath, separator="\t")
+    df = read_dataset(filepath)
 
     if "predicted_labels" not in df.columns:
         return None, None
