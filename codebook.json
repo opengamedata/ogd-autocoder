@@ -1,4 +1,10 @@
 [
-    {"code": "Struggle", "definition": "Struggle is defined by behaviors x, y, z, blah blah blah"},
-    {"code": "Non-Struggle-Accidental-Complete", "definition": "This label applies to players that began a task, then accidentally completed another task"}
+    {
+        "code": "Struggle",
+        "definition": "Indicates moments when a player encounters significant difficulty in completing a job."
+    },
+    {
+        "code": "No Struggle",
+        "definition": "Applied when a player progresses through a task smoothly without evident setbacks."
+    }
 ]

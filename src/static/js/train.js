@@ -216,12 +216,14 @@ debugger;
     modelHistChart.data.labels.push(modelName);
     modelHistChart.data.datasets[0].data.push(model_info["test_accuracy"]);
     modelHistChart.data.datasets[1].data.push(model_info["test_f1"]);
-    modelHistChart.data.datasets[2].data.push(model_info["train_accuracy"]);
-    modelHistChart.data.datasets[3].data.push(model_info["train_f1"]);
-    modelHistChart.data.datasets[4].data.push(0); // just for hovers, otherwise it breaks
-    modelHistChart.data.datasets[5].data.push(0);
-    modelHistChart.data.datasets[6].data.push(0);
+    modelHistChart.data.datasets[2].data.push(model_info["test_auc"]);
+    modelHistChart.data.datasets[3].data.push(model_info["train_accuracy"]);
+    modelHistChart.data.datasets[4].data.push(model_info["train_f1"]);
+    modelHistChart.data.datasets[5].data.push(model_info["train_auc"]);
+    modelHistChart.data.datasets[6].data.push(0); // just for hovers, otherwise it breaks
     modelHistChart.data.datasets[7].data.push(0);
+    modelHistChart.data.datasets[8].data.push(0);
+    modelHistChart.data.datasets[9].data.push(0);
     
     // resize for horizontal scrollbar
     const wrapper = $('#chartCanvasWrapper');
@@ -247,8 +249,10 @@ debugger;
         model_info["timestamp_end"],
         model_info["test_accuracy"].toFixed(2),
         model_info["test_f1"].toFixed(2),
+        model_info["test_auc"].toFixed(2),
         model_info["train_accuracy"].toFixed(2),
         model_info["train_f1"].toFixed(2),
+        model_info["train_auc"].toFixed(2),
         model_info["num_features"],
         model_info["time_taken"].toFixed(2),
     ]).draw(true);
@@ -411,6 +415,14 @@ modelHistChart = new Chart(ctx, {
                 hidden: true
             },
             {
+                label: 'Test AUC Score',
+                data: [],
+                backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1,
+                hidden: true
+            },
+            {
                 label: 'Train Accuracy',
                 data: [],
                 backgroundColor: 'rgba(255, 159, 64, 0.6)',
@@ -423,6 +435,14 @@ modelHistChart = new Chart(ctx, {
                 data: [],
                 backgroundColor: 'rgba(153, 102, 255, 0.6)',
                 borderColor: 'rgba(153, 102, 255, 1)',
+                borderWidth: 1,
+                hidden: true
+            },
+            {
+                label: 'Train AUC Score',
+                data: [],
+                backgroundColor: 'rgba(0, 204, 102, 0.6)',
+                borderColor: 'rgba(0, 204, 102, 1)',
                 borderWidth: 1,
                 hidden: true
             },
@@ -525,16 +545,16 @@ toggleBarsForLabel();
 
 function toggleBarsForLabel() {
     let label = $("#labelForMetrics").val();
-    let columns = ["Test Accuracy", "Test F1 Score", "Train Accuracy", "Train F1 Score"];
-    let colToShow = ["Test Accuracy", "Test F1 Score"];
+    let columns = ["Test Accuracy", "Test F1 Score", "Test AUC Score", "Train Accuracy", "Train F1 Score", "Train AUC Score"];
+    let colToShow = ["Test Accuracy", "Test F1 Score", "Test AUC Score"];
     if (label != "all") {
         columns = ["Test Precision", "Test Recall", "Train Precision", "Train Recall"];
         colToShow = ["Test Precision", "Test Recall"];
 
-        modelHistChart.data.datasets[4].data = metricsByLabel[label]["test_precision"];
-        modelHistChart.data.datasets[5].data = metricsByLabel[label]["test_recall"];
-        modelHistChart.data.datasets[6].data = metricsByLabel[label]["train_precision"];
-        modelHistChart.data.datasets[7].data = metricsByLabel[label]["train_recall"];
+        modelHistChart.data.datasets[6].data = metricsByLabel[label]["test_precision"];
+        modelHistChart.data.datasets[7].data = metricsByLabel[label]["test_recall"];
+        modelHistChart.data.datasets[8].data = metricsByLabel[label]["train_precision"];
+        modelHistChart.data.datasets[9].data = metricsByLabel[label]["train_recall"];
         modelHistChart.update();
     }
 

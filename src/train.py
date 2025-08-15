@@ -14,6 +14,7 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     f1_score,
+    roc_auc_score,
     classification_report,
 )
 from sklearn.linear_model import LogisticRegression
@@ -361,13 +362,24 @@ def train_neural_net(
     output += f"Train Accuracy:\t{accuracy}\n\n"
     # output += (f"Train Loss:\t{loss}\n\n")
 
-    y_pred_test = np.argmax(model.predict(x_test_tensor), axis=1)
-    y_pred_train = np.argmax(model.predict(x_train_tensor), axis=1)
+    y_prob_test = model.predict(x_test_tensor)
+    y_prob_train = model.predict(x_train_tensor)
+
+    y_pred_test = np.argmax(y_prob_test, axis=1)
+    y_pred_train = np.argmax(y_prob_train, axis=1)
     y_test = np.argmax(y_test, axis=1)
     y_train = np.argmax(y_train, axis=1)
 
     metrics["train_f1"] = f1_score(y_train, y_pred_train, average="weighted")
     metrics["test_f1"] = f1_score(y_test, y_pred_test, average="weighted")
+
+    if len(np.unique(y_test)) == 2:
+        # binary
+        y_prob_test = y_prob_test[:, 1]
+        y_prob_train = y_prob_train[:, 1]
+
+    metrics["test_auc"] = roc_auc_score(y_test, y_prob_test, multi_class='ovr', average="weighted")
+    metrics["train_auc"] = roc_auc_score(y_train, y_prob_train, multi_class='ovr', average="weighted") # One-vs-rest
 
     add_label_oriented_metrics(
         metrics, y_test, y_pred_test, y_train, y_pred_train, classes
@@ -428,6 +440,17 @@ def train_logistic(
     y_pred_train = model.predict(x_train)
     metrics["train_f1"] = f1_score(y_train, model.predict(x_train), average="weighted")
     metrics["test_f1"] = f1_score(y_test, y_pred_test, average="weighted")
+
+    y_prob_test = model.predict_proba(x_test)
+    y_prob_train = model.predict_proba(x_train)
+    if len(np.unique(y_test)) == 2:
+        # binary
+        y_prob_test = y_prob_test[:, 1]
+        y_prob_train = y_prob_train[:, 1]
+
+    metrics["test_auc"] = roc_auc_score(y_test, y_prob_test, multi_class='ovr', average="weighted")
+    metrics["train_auc"] = roc_auc_score(y_train, y_prob_train, multi_class='ovr', average="weighted") # One-vs-rest
+
     add_label_oriented_metrics(
         metrics, y_test, y_pred_test, y_train, y_pred_train, classes
     )
@@ -482,6 +505,16 @@ def train_random_forest(
     y_pred_train = model.predict(x_train)
     metrics["train_f1"] = f1_score(y_train, model.predict(x_train), average="weighted")
     metrics["test_f1"] = f1_score(y_test, y_pred_test, average="weighted")
+
+    y_prob_test = model.predict_proba(x_test)
+    y_prob_train = model.predict_proba(x_train)
+    if len(np.unique(y_test)) == 2:
+        # binary
+        y_prob_test = y_prob_test[:, 1]
+        y_prob_train = y_prob_train[:, 1]
+
+    metrics["test_auc"] = roc_auc_score(y_test, y_prob_test, multi_class='ovr', average="weighted")
+    metrics["train_auc"] = roc_auc_score(y_train, y_prob_train, multi_class='ovr', average="weighted") # One-vs-rest
     add_label_oriented_metrics(
         metrics, y_test, y_pred_test, y_train, y_pred_train, classes
     )
