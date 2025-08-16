@@ -12,6 +12,11 @@ import polars as pl
 # }
 
 def read_dataset(filepath, filtered_only = True):
+    """
+    Returns the whole or filtered dataset
+
+    IMPORTANT: Set filtered_only = False if you want to write_csv afterwards
+    """
     df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
 
     if filtered_only:
@@ -37,22 +42,24 @@ def get_models_filename(filepath):
 
 
 def add_new_columns(filepath):
-    df = read_dataset(filepath)
+    df = read_dataset(filepath, False)
     for col in ["segment_id", "segment_labels", "label_justification"]:
         if col not in df.columns:
             df = df.with_columns(pl.lit(None).alias(col))
 
-    df = df.with_columns(pl.lit(True).alias("filtered_in"))
+    if "filtered_in" not in df.columns:
+        df = df.with_columns(pl.lit(True).alias("filtered_in"))
+
     # df["job_name"] = df["game_state"].apply(extract_job_name)
     df = df.with_columns(pl.col("game_state").str.json_path_match("$.job_name").alias("job_name"))
 
     df.write_csv(filepath, separator="\t")
 
 
-"""
-Returns useful dataset info such as row count, segments count, user session count
-"""
 def get_dataset_info(filepath):
+    """
+    Returns useful dataset info such as row count, segments count, user session count
+    """
     df = read_dataset(filepath, False)
     df = df.with_columns(
         pl.col("timestamp").str.strptime(pl.Datetime, strict=False)
@@ -63,7 +70,9 @@ def get_dataset_info(filepath):
 
     # Filtered / excluded subsets
     df_filtered = df.filter(pl.col("filtered_in") == True)
-    df_excluded = df.filter(pl.col("filtered_in") != True)
+    included_events = df_filtered.select(pl.col("event_name").unique()).to_series().to_list()
+    excluded_events = set(df.select(pl.col("event_name").unique()).to_series().to_list())
+    excluded_events = list(excluded_events.difference(set(included_events)))
     return {
         "models_count": len(get_models_list(filepath)),
         "date_range": date_range,
@@ -79,15 +88,15 @@ def get_dataset_info(filepath):
             "segments": unique_count(df_filtered, "segment_id"),
             "sessions": unique_count(df_filtered, "session_id"),
         },
-        "included_events": df_filtered.select(pl.col("event_name").unique()).to_series().to_list(),
-        "excluded_events": df_excluded.select(pl.col("event_name").unique()).to_series().to_list(),
+        "included_events": included_events,
+        "excluded_events": excluded_events
     }
 
-"""
-Updates filtered_in column setting to `True` if event_name in the included_events list
-"""
 def event_filtering(filepath, included_events):
-    df = read_dataset(filepath)
+    """
+    Updates filtered_in column setting to `True` if event_name in the included_events list
+    """
+    df = read_dataset(filepath, False)
 
     df = df.with_columns(
         (pl.col("event_name").is_in(included_events)).alias("filtered_in")
@@ -227,7 +236,7 @@ def label_rows(filepath, user_id, segment_id, segment_labels, label_justificatio
     For a `user_id` and `segment_id` apply segment_labels and label_justification
     If `segment_id` is specified, also filter by `segment_id` 
     """
-    df = read_dataset(filepath)
+    df = read_dataset(filepath, False)
 
     update_filter = (
         pl.col("segment_id").is_not_null()
@@ -253,7 +262,7 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
     For a `user_id` apply segment_id on selected_rows (row identifiers => index + session_id columns)
     Clears segment labels for all affected segments
     """
-    df = read_dataset(filepath)
+    df = read_dataset(filepath, False)
 
     df = df.with_columns(
         (pl.col("index").cast(pl.String) + "_" + pl.col("session_id").cast(pl.String)).alias("row_id")
@@ -297,7 +306,7 @@ def autosegment_by_event_type(filepath, sep_event_types):
     sep_event_types: list of event types by which we should separate ito segments
     """
 
-    df = read_dataset(filepath)
+    df = read_dataset(filepath, False)
     df = df.with_columns(
         pl.col("timestamp").str.strptime(pl.Datetime, strict=False)
     )

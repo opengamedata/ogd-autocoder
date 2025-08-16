@@ -262,7 +262,7 @@ def inference(filepath, model_path):
         pl.Series("prediction_confidence", confidence)
     ])
 
-    df = read_dataset(filepath)
+    df = read_dataset(filepath, False)
     df = df.drop(["predicted_labels", "prediction_confidence"], strict=False)
 
     df = df.with_columns(
@@ -293,7 +293,7 @@ def get_predicted_label(filepath, user_id, segment_id):
 
     filtered = df.filter(
         (pl.col("user_id") == user_id) &
-        (pl.col("segment_id") == int(segment_id))
+        (pl.col("segment_id") == str(segment_id))
     )
 
     row = filtered.select(["predicted_labels", "prediction_confidence"]).row(0)
