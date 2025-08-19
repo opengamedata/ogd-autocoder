@@ -11,7 +11,7 @@ HOME_FOLDER = "placeholder home"
 if not HOME_FOLDER in sys.path:
     sys.path.append(HOME_FOLDER)
 
-activation_file = Path(HOME_FOLDER) / ".venv" / "bin" / "activate"
+activation_file = Path(HOME_FOLDER) / ".venv" / "bin" / "activate_this.py"
 with open(activation_file) as activate:
     exec(activate.read())
 
