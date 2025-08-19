@@ -20,4 +20,4 @@ Change dir to `src`
 
 Start server
 
-`$ uv run app.py`
+`$ uv run main.py`

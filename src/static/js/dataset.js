@@ -1,3 +1,5 @@
+let labelChart, segmentChart;
+
 /**
  * Populates the dataset info
  */
@@ -25,6 +27,13 @@ async function fillDatasetInfo() {
             $('td[data-field="users-original"]').text(data.original.users.toLocaleString());
             $('td[data-field="sessions-original"]').text(data.original.sessions.toLocaleString());
 
+            fillLabelDistPie(data.labels_distribution);
+            let labelSegCount = data.labels_distribution.reduce((sum, item) => sum + parseInt(item.count), 0);
+            let notLabeled = data.filtered.segments - labelSegCount;
+            let notSelected = data.original.segments - notLabeled - labelSegCount;
+            // labels are ["Labeled", "Not Labeled", "Not Selected"]
+            segmentChart.data.datasets[0].data = [labelSegCount, notLabeled, notSelected];
+            segmentChart.update();
             fillEventLists(data.included_events, data.excluded_events)
         },
         error: function (xhr, status, error) {
@@ -47,6 +56,15 @@ function fillEventLists(includedEvents, excludedEvents) {
     excludedEvents.forEach(eventName => {
         excludedList.append(createListItem(eventName, false));
     });
+}
+
+function fillLabelDistPie(labelData) {
+    labelChart.data.datasets = [{
+        data: labelData.map(d => parseInt(d.count)),
+        backgroundColor: generateColors(labelData.length)
+    }];
+    labelChart.data.labels = labelData.map(d => d.segment_labels);
+    labelChart.update();
 }
 
 function createListItem(eventName, included) {
@@ -106,3 +124,66 @@ function filterDataset() {
         }
     });
 }
+
+function generateColors(n) {
+    // Generate colors automatically
+    return Array.from({ length: n }, (_, i) =>
+        `hsl(${Math.round((360 / n) * i)}, 70%, 55%)`
+    );
+}
+
+const ctxLD = $("#labelDistributionPlot")[0].getContext("2d");
+Chart.register(ChartDataLabels);
+
+labelChart = new Chart(ctxLD, {
+    type: "pie",
+    data: {
+        labels: [],
+        datasets: []
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: "top" },
+            title: { display: true, text: "Labels Count" },
+            datalabels: {
+                color: "#fff",
+                font: { weight: "bold", size: 16 },
+                formatter: function (value) {
+                    return value > 0 ? value : "";
+                }
+            }
+        }
+    }
+});
+
+const ctxSG = $("#segmentedLabeledDistribution")[0].getContext("2d");
+Chart.register(ChartDataLabels);
+
+segmentChart = new Chart(ctxSG, {
+    type: "pie",
+    data: {
+        labels: ["Labeled", "Not Labeled", "Not Selected"],
+        datasets: [{
+            data: [null, null, null],
+            backgroundColor: ["#28a745", "#dc3545", "#adb5bd"],
+            hoverOffset: 4,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: "top" },
+            title: { display: true, text: "Labeled Segments" },
+            datalabels: {
+                color: "#fff",
+                font: { weight: "bold", size: 16 },
+                formatter: function (value) {
+                    return value > 0 ? value : "";
+                }
+            }
+        }
+    }
+});

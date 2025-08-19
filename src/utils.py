@@ -89,7 +89,8 @@ def get_dataset_info(filepath):
             "sessions": unique_count(df_filtered, "session_id"),
         },
         "included_events": included_events,
-        "excluded_events": excluded_events
+        "excluded_events": excluded_events,
+        "labels_distribution": segment_labels_count(filepath), 
     }
 
 def event_filtering(filepath, included_events):

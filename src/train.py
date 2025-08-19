@@ -287,8 +287,7 @@ def get_predicted_label(filepath, user_id, segment_id):
     Get predicted label for selected `user_id` and `segment_id`
     """
     df = read_dataset(filepath)
-
-    if "predicted_labels" not in df.columns:
+    if ("predicted_labels" not in df.columns) or (segment_id is None):
         return None, None
 
     filtered = df.filter(
