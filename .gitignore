@@ -2,7 +2,7 @@
 /src/uploads/*
 /experiments/*
 /data_may_2024/*
-
+.vscode/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
