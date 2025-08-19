@@ -15,4 +15,5 @@ activation_file = Path(HOME_FOLDER) / ".venv" / "bin" / "activate_this.py"
 with open(activation_file) as activate:
     exec(activate.read())
 
+# pylint: disable-next=wrong-import-position, unused-import
 from main import app
