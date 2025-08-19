@@ -99,7 +99,7 @@ function uploadFile() {
                 .attr('data-filename', filename)
                 .text(response.formatted);
             $btn.on('click', () => {
-                loadExisting(filename);
+                loadExisting(response.filename);
             });
             $('#datasetsScroll').prepend($btn)
 
@@ -137,8 +137,8 @@ function onFileChange(filename, load_models) {
     $(`#datasetsScroll button[data-filename="${filename}"]`).addClass('btn-dark');
 
     let promises = [fillDatasetInfo(), fillUsersList(), fillEventTypes(), fillLabelsCount()];
+    resetTrainView();
     if (load_models) {
-        resetTrainView();
         promises.push(fillModelsList());
     }
 
