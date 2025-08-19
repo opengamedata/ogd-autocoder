@@ -34,6 +34,10 @@ jobs:
       uses: ./.github/actions/Autocoder_config
       with:
           api_base: ${{ env.DEPLOY_DIR }}
+    - name: Create requirements.txt file
+      run: |
+        python -m pip install uv
+        uv export --no-dev --format=requirements.txt
 
     # 2. Build 
 
