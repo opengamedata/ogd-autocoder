@@ -16,4 +16,4 @@ if not HOME_FOLDER in sys.path:
     sys.path.append(HOME_FOLDER)
 
 # pylint: disable-next=wrong-import-position, unused-import
-from main import app
+from main import app as application
