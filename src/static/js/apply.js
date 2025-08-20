@@ -71,13 +71,13 @@ function applyModel(model_path) {
 
 function acceptLabel() {
     labelRows('#applyTable', '#segmentDropdown_apply', '#labelsDropdown_apply', null);
-    
+
     numAccepts++;
     $('#accept-count').text(`Accepts: ${numAccepts}`);
 }
 
 function rejectLabel() {
-    nextSegment('#segmentDropdown_apply');
+    nextOption('#segmentDropdown_apply');
 
     numRejects++;
     $('#reject-count').text(`Rejects: ${numRejects}`);

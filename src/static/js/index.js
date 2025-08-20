@@ -247,7 +247,7 @@ async function loadEvents(table_id, seg_dropdown_id) {
             let data = response.data;
 
             data.forEach(row => {
-                table.row.add([
+                const values = [
                     row.index,
                     row.event_name,
                     row.job_name,
@@ -266,7 +266,8 @@ async function loadEvents(table_id, seg_dropdown_id) {
                     row.user_id,
                     row.user_data,
                     row.game_state
-                ]);
+                ].map(v => v ?? '-'); // in case there are null values
+                table.row.add(values);
             });
 
             table.draw();

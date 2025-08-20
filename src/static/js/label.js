@@ -131,7 +131,7 @@ async function fillLabelsCount() {
     });
 }
 
-function nextSegment(dropdown_id) {
+function nextOption(dropdown_id) {
     const select = $(dropdown_id);
     const options = select.find('option');
     const current = select.prop('selectedIndex');
@@ -140,7 +140,7 @@ function nextSegment(dropdown_id) {
     select.prop('selectedIndex', next).trigger('change');
 }
 
-function prevSegment(dropdown_id) {
+function prevOption(dropdown_id) {
     const select = $(dropdown_id);
     const options = select.find('option');
     const current = select.prop('selectedIndex');
