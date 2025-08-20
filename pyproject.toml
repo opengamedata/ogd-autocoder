@@ -11,8 +11,8 @@ dependencies = [
     "pandas>=2.3.1",
     "polars>=1.32.2",
     "scikit-learn>=1.7.0",
-    "tensorflow>=2.16.2",
     # ogd-core
+    "torch==2.2",
 ]
 
 [dependency-groups]
