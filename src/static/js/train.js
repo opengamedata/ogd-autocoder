@@ -168,7 +168,7 @@ function updateLabelFromValue() {
  */
 async function fillModelsList() {
     await $.ajax({
-        url: '/models_list',
+        url: 'models_list',
         method: "POST",
         success: function (response) {
             for (let row of response.data) {
@@ -580,7 +580,7 @@ function fillFeatureList() {
     container.empty();
     $('#spinner').removeClass("d-none");
     $.ajax({
-        url: "/list_available_features",
+        url: "list_available_features",
         method: "POST",
         success: function (response) {
             for (group of response.data) {

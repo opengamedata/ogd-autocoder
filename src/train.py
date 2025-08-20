@@ -30,7 +30,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import OneHotEncoder
 
 from utils import get_models_filename, read_dataset
-from ogd.core.configs.generators.GeneratorCollectionConfig import GeneratorCollectionConfig
+#from ogd.core.configs.generators.GeneratorCollectionConfig import GeneratorCollectionConfig
 
 RANDOM_STATE = 13
 
@@ -54,7 +54,7 @@ def available_features(filepath):
     # load also OGD features
     df = read_dataset(filepath)
     game_name = df["app_id"].unique()[0]
-    ogd_columns = GeneratorCollectionConfig.FromFile(game_name).ExtractorNames
+    #ogd_columns = GeneratorCollectionConfig.FromFile(game_name).ExtractorNames
     ogd_columns = []#[{"name": c, "children": [c]} for c in ogd_columns]
     return ogd_columns + columns
 

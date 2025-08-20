@@ -38,7 +38,7 @@ async function fillLabelDropdowns() {
 
     $('#spinner').removeClass("d-none");
     await $.ajax({
-        url: "/list_labels",
+        url: "list_labels",
         method: "POST",
         contentType: "application/json",
         success: function (response) {
@@ -114,7 +114,7 @@ function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id =
  */
 async function fillLabelsCount() {
     await $.ajax({
-        url: '/labels_value_count',
+        url: 'labels_value_count',
         method: "POST",
         success: function (response) {
             let text = "";

@@ -10,7 +10,8 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "secret"  # Needed for session
 
-UPLOAD_FOLDER = "uploads"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # directory of this app.py
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 

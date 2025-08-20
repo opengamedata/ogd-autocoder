@@ -86,7 +86,7 @@ function uploadFile() {
 
     $('#spinner').removeClass("d-none");
     $.ajax({
-        url: "/upload",
+        url: "upload",
         method: "POST",
         data: formData,
         processData: false,
@@ -174,7 +174,7 @@ async function fillUsersList(reset_value = true) {
     const previousValue = $('#userDropdown').val();
     $('#userDropdown').empty().append('<option></option>');
     await $.ajax({
-        url: '/users_list',
+        url: 'users_list',
         method: "POST",
         contentType: "application/json",
         success: function (response) {

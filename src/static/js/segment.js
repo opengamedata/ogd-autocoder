@@ -46,7 +46,7 @@ function autoSegment() {
 
     $('#spinner').removeClass("d-none");
     $.ajax({
-        url: '/autosegment',
+        url: 'autosegment',
         method: "POST",
         data: JSON.stringify({ sep_event_types: $('#segmentEventTypeDropdown').val()}),
         contentType: "application/json",
@@ -70,7 +70,7 @@ function autoSegment() {
 async function fillEventTypes() {
     $('#segmentEventTypeDropdown').empty();
     await $.ajax({
-        url: '/event_types_list',
+        url: 'event_types_list',
         method: "POST",
         success: function (response) {
             response.users.forEach(event_type => {
