@@ -168,7 +168,7 @@ function updateLabelFromValue() {
  */
 async function fillModelsList() {
     await $.ajax({
-        url: '/models_list',
+        url: 'models_list',
         method: "POST",
         success: function (response) {
             for (let row of response.data) {
@@ -580,7 +580,7 @@ function fillFeatureList() {
     container.empty();
     $('#spinner').removeClass("d-none");
     $.ajax({
-        url: "/list_available_features",
+        url: "list_available_features",
         method: "POST",
         success: function (response) {
             for (group of response.data) {
@@ -617,6 +617,7 @@ function fillFeatureList() {
                 }
             }
             $('.feature-checkbox').on('change', function () {
+                updateNumSelectedFeatures();
                 $('.group-checkbox').each(function () {
                     const groupId = $(this).attr('id');
                     const allChecked = $(`#${groupId}-features .feature-checkbox`).length > 0 &&
@@ -629,6 +630,7 @@ function fillFeatureList() {
             $('.group-checkbox').on('change', function () {
                 const groupId = $(this).attr('id');
                 $(`#${groupId}-features input[type=checkbox]`).prop('checked', this.checked);
+                updateNumSelectedFeatures();
             });
 
             $('#featureSearch').on('input', function () {
@@ -652,7 +654,7 @@ function fillFeatureList() {
                         $(this).parent().hide();
                 });
             });
-
+            updateNumSelectedFeatures();
             $('#spinner').addClass("d-none");
         },
         error: function (xhr, status, error) {
@@ -660,6 +662,14 @@ function fillFeatureList() {
             console.log("Server response:", xhr.responseText);
         }
     });
+}
+
+function updateNumSelectedFeatures() {
+    let features = [];
+    $('#featureSelector input.feature-checkbox:checked').each(function () {
+        features.push($(this).val());
+    });
+    $("#numSelFeatures").text(features.length);
 }
 
 function enableTrain() {

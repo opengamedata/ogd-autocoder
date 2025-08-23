@@ -29,7 +29,7 @@ $('#segmentDropdown_apply').on('change', function () {
 
 async function getPredictedLabels() {
     await $.ajax({
-        url: '/predicted_label',
+        url: 'predicted_label',
         method: "POST",
         data: JSON.stringify({ 
             user_id: $('#userDropdown').val(),
@@ -55,7 +55,7 @@ function applyModel(model_path) {
     $('#nav-apply-tab').click();
     $('#spinner').removeClass("d-none");
     $.ajax({
-        url: '/infere',
+        url: 'infere',
         method: "POST",
         data: JSON.stringify({ model_path: model_path}),
         contentType: "application/json",
@@ -71,13 +71,13 @@ function applyModel(model_path) {
 
 function acceptLabel() {
     labelRows('#applyTable', '#segmentDropdown_apply', '#labelsDropdown_apply', null);
-    
+
     numAccepts++;
     $('#accept-count').text(`Accepts: ${numAccepts}`);
 }
 
 function rejectLabel() {
-    nextSegment('#segmentDropdown_apply');
+    nextOption('#segmentDropdown_apply');
 
     numRejects++;
     $('#reject-count').text(`Rejects: ${numRejects}`);

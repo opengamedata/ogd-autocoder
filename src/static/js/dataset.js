@@ -7,7 +7,7 @@ async function fillDatasetInfo() {
     $('#datasetInfo').removeClass('d-none');
 
     await $.ajax({
-        url: '/dataset_info',
+        url: 'dataset_info',
         method: "POST",
         contentType: "application/json",
         success: function (response) {
@@ -109,7 +109,7 @@ function filterDataset() {
     }).get();
 
     $.ajax({
-        url: "/dataset_filter",
+        url: "dataset_filter",
         method: "POST",
         contentType: "application/json",
         data: JSON.stringify({ 
