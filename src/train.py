@@ -24,13 +24,11 @@ from sklearn.utils.class_weight import compute_class_weight
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-from sklearn.preprocessing import OneHotEncoder
+from ogd_features import list_ogd_features, calculate_ogd_features
 
 from utils import get_models_filename, read_dataset
-#from ogd.core.configs.generators.GeneratorCollectionConfig import GeneratorCollectionConfig
 
 RANDOM_STATE = 13
 
@@ -42,7 +40,7 @@ else:
 def available_features(filepath):
     columns = []
     for c in (
-        preprocess_df(filepath).drop(["segment_labels", "segment_id"]).columns
+        preprocess_df_no_ogd(filepath).drop(["segment_labels", "segment_id", "user_id"]).columns
     ):
         if (len(columns) == 0) or (c.split("_")[-1] != columns[-1]["name"]):
             columns.append({"name": c.split("_")[-1], "children": [c]})
@@ -52,10 +50,8 @@ def available_features(filepath):
     columns.sort(key=lambda x: len(x["children"]))  # sort by number of children
 
     # load also OGD features
-    df = read_dataset(filepath)
-    game_name = df["app_id"].unique()[0]
-    #ogd_columns = GeneratorCollectionConfig.FromFile(game_name).ExtractorNames
-    ogd_columns = []#[{"name": c, "children": [c]} for c in ogd_columns]
+    game_id = get_game_id(filepath)
+    ogd_columns = [{"name": c, "children": [c], "unselect": True} for c in list_ogd_features(game_id)]
     return ogd_columns + columns
 
 
@@ -76,10 +72,11 @@ def train_model(
     if model_type == "neural-net":
         target_col = nn.functional.one_hot(torch.tensor(target_col).long(), num_classes=len(le.classes_))
 
+    train_cols = [c for c in include_features if c in train_df.columns]
+    empty_cols = [c for c in include_features if c not in train_df.columns]
+
     x_train_full, x_test, y_train_full, y_test = train_test_split(
-        train_df[
-            include_features
-        ],  # train_df.drop(columns=['segment_labels', 'segment_id']),
+        train_df[train_cols],
         target_col,
         train_size=float(hyperparameters["train_test_ratio"]),
         random_state=RANDOM_STATE,
@@ -87,7 +84,7 @@ def train_model(
         # fixme - maybe try bootstrap
     )
 
-    output = ""
+    output = "[WARN] Empty columns (not selected): " + str(empty_cols) + "\n\n"
 
     # add to (output +=)
     # print("x Train Shape: " + str(x_train.shape))
@@ -179,7 +176,11 @@ def train_model(
     return output, model_info
 
 
-def preprocess_df(filepath):
+def preprocess_df_no_ogd(filepath):
+    """
+    Preprocess using one hot encoding (no ogd features)
+    """
+    # fixme - add support for multiple labels
     # segment_id is the new task_id, segment_labels is the target
     df = read_dataset(filepath)
     # fixme - add support for multiple labels
@@ -187,13 +188,10 @@ def preprocess_df(filepath):
     df = df.with_columns(
         pl.col("timestamp").str.strptime(pl.Datetime, strict=False)
     )
-    # fixme - the ID is the segment_id + user_id
-    df = df.with_columns(
-        (pl.col("user_id") + "_" + pl.col("segment_id")).alias("segment_id")
-    )
+
     # additional feature: segment duration in seconds
     duration_df = (
-        df.group_by("segment_id")
+        df.group_by(["user_id", "segment_id"])
         .agg([
             pl.col("timestamp").min().alias("segment_start"),
             pl.col("timestamp").max().alias("segment_end"),
@@ -203,12 +201,12 @@ def preprocess_df(filepath):
             .dt.total_seconds()
             .alias("segment_duration")
         )
-        .select(["segment_id", "segment_duration"])
+        .select(["user_id", "segment_id", "segment_duration"])
     )
 
     # fixme replace N/A method
     clean_df = (
-        df.select(["event_name", "segment_id", "segment_labels"])
+        df.select(["event_name", "user_id", "segment_id", "segment_labels"])
         .with_columns(
             pl.col("segment_labels").fill_null("N/A")  # to include these rows (needed for inference)
         )
@@ -217,25 +215,49 @@ def preprocess_df(filepath):
     # clean_df = clean_df.categorize(columns=["event_name"])
     clean_1hot_df = clean_df.to_dummies(columns=["event_name"])
 
-    grouped = clean_1hot_df.group_by(["segment_id", "segment_labels"])
+    grouped = clean_1hot_df.group_by(["user_id", "segment_id", "segment_labels"])
     count_df = grouped.len().rename({"len": "count_events"})
     sum_df = grouped.sum()
     sum_df = sum_df.rename({
-        col: f"{col}_sum" for col in sum_df.columns if col not in ["segment_id", "segment_labels"]
+        col: f"{col}_sum" for col in sum_df.columns if col not in ["user_id", "segment_id", "segment_labels"]
     })
 
     clean_agg_df = (
-        sum_df.join(count_df, on=["segment_id", "segment_labels"])
-        .join(duration_df, on="segment_id", how="left")
+        sum_df.join(count_df, on=["user_id", "segment_id", "segment_labels"])
+        .join(duration_df, on=["user_id", "segment_id"], how="left")
     )
 
-    numeric_cols = [c for c in sum_df.columns if c not in ["segment_id", "segment_labels"]]
+    numeric_cols = [c for c in sum_df.columns if c not in ["user_id", "segment_id", "segment_labels"]]
     # add percentage columns
     clean_agg_df = clean_agg_df.with_columns(
         [(pl.col(c) / pl.col("count_events") * 100).alias(c + "_percent") for c in numeric_cols]
     )
+    
     return clean_agg_df
 
+def get_game_id(filepath):
+    # read first row for app_id
+    df = pl.read_csv(filepath, n_rows=1, separator="\t", dtypes={"segment_id": pl.String})
+    return df[0, "app_id"]
+
+def preprocess_df(filepath):
+    # merge with ogd features
+    df_no_ogd = preprocess_df_no_ogd(filepath)
+    game_id = get_game_id(filepath)
+
+    df_features = calculate_ogd_features(game_id, filepath)
+    if len(df_features):
+        clean_agg_df_ogd = df_no_ogd.join(df_features, how="left", on=["user_id"])
+    else:
+        clean_agg_df_ogd = df_no_ogd
+
+    # fixme - the ID is the segment_id + user_id
+    clean_agg_df_ogd = clean_agg_df_ogd.with_columns(
+        (pl.col("user_id") + "_" + pl.col("segment_id")).alias("segment_id")
+    )
+    clean_agg_df_ogd = clean_agg_df_ogd.drop(["user_id"])
+
+    return clean_agg_df_ogd
 
 def find_model_info(filepath, model_path):
     models_filepath = get_models_filename(filepath)
