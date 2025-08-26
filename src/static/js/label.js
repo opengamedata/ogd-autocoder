@@ -38,7 +38,7 @@ async function fillLabelDropdowns() {
 
     $('#spinner').removeClass("d-none");
     await $.ajax({
-        url: "/list_labels",
+        url: "list_labels",
         method: "POST",
         contentType: "application/json",
         success: function (response) {
@@ -114,7 +114,7 @@ function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id =
  */
 async function fillLabelsCount() {
     await $.ajax({
-        url: '/labels_value_count',
+        url: 'labels_value_count',
         method: "POST",
         success: function (response) {
             let text = "";
@@ -131,7 +131,7 @@ async function fillLabelsCount() {
     });
 }
 
-function nextSegment(dropdown_id) {
+function nextOption(dropdown_id) {
     const select = $(dropdown_id);
     const options = select.find('option');
     const current = select.prop('selectedIndex');
@@ -140,7 +140,7 @@ function nextSegment(dropdown_id) {
     select.prop('selectedIndex', next).trigger('change');
 }
 
-function prevSegment(dropdown_id) {
+function prevOption(dropdown_id) {
     const select = $(dropdown_id);
     const options = select.find('option');
     const current = select.prop('selectedIndex');

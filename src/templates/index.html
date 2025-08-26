@@ -2,7 +2,7 @@
 {% block title %}Home{% endblock %}
 {% block head %}
 {{ super() }}
-<link href="/static/css/index.css" rel="stylesheet" />
+<link href="static/css/index.css" rel="stylesheet" />
 {% endblock %}
 {% block content %}
 <div class="container py-2">
@@ -176,9 +176,11 @@
         <div class="col-md-4">
           <label for="segmentDropdown" class="form-label">Segment ID</label>
           <div class="d-flex align-items-center">
-            <button class="btn btn-primary me-1" type="button" onclick="prevSegment('#segmentDropdown')">&lt;</button>
+            <button class="btn btn-primary me-1" type="button" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
+            <button class="btn btn-primary me-1" type="button" onclick="prevOption('#segmentDropdown')">&lt;</button>
             <select class="form-control flex-grow-1" id="segmentDropdown"></select>
-            <button class="btn btn-primary ms-1" type="button" onclick="nextSegment('#segmentDropdown')">&gt;</button>
+            <button class="btn btn-primary ms-1" type="button" onclick="nextOption('#segmentDropdown')">&gt;</button>
+            <button class="btn btn-primary ms-1" type="button" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
           </div>          
         </div>
     
@@ -352,7 +354,7 @@
             <select id="trainLabelsDropdown" style="width: 100%;" class="form-control" multiple="multiple"></select>
           </div>
           <div class="mb-3">
-            <label class="form-label fw-bold">Features</label>
+            <label class="form-label fw-bold">Features (Selected: <span id="numSelFeatures">0</span>)</label>
             <input type="text" id="featureSearch" class="form-control mb-2" placeholder="Search features...">
             <div id="featureSelector" class="border rounded p-2" style="height: 400px; overflow-y: auto;"></div>
           </div>
@@ -454,9 +456,11 @@
         <div class="col-md-4">
           <label for="segmentDropdown_apply" class="form-label">Segment ID</label>
           <div class="d-flex align-items-center">
-            <button class="btn btn-primary me-1" type="button" onclick="prevSegment('#segmentDropdown_apply')">&lt;</button>
+            <button class="btn btn-primary me-1" type="button" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
+            <button class="btn btn-primary me-1" type="button" onclick="prevOption('#segmentDropdown_apply')">&lt;</button>
             <select class="form-control flex-grow-1 me-1" id="segmentDropdown_apply"></select>
-            <button class="btn btn-primary ms-1" type="button" onclick="nextSegment('#segmentDropdown_apply')">&gt;</button>
+            <button class="btn btn-primary ms-1" type="button" onclick="nextOption('#segmentDropdown_apply')">&gt;</button>
+            <button class="btn btn-primary ms-1" type="button" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
           </div>          
         </div>
     
@@ -548,10 +552,10 @@
     </div>
   </div>
 </div>
-<script src="/static/js/dataset.js"></script>
-<script src="/static/js/segment.js"></script>
-<script src="/static/js/index.js"></script>
-<script src="/static/js/label.js"></script>
-<script src="/static/js/train.js"></script>
-<script src="/static/js/apply.js"></script>
+<script src="static/js/dataset.js"></script>
+<script src="static/js/segment.js"></script>
+<script src="static/js/index.js"></script>
+<script src="static/js/label.js"></script>
+<script src="static/js/train.js"></script>
+<script src="static/js/apply.js"></script>
 {% endblock %}
