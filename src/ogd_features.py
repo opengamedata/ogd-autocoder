@@ -17,10 +17,16 @@ import polars as pl
 
 # Set the root logger level
 logging.basicConfig(level=logging.INFO)
+broken_features = ["EventList"]
 
 def list_ogd_features(app_id):
     features = []
-    for ext_name, extractor in GeneratorCollectionConfig.FromFile(app_id).EnabledExtractors().items():
+    generators = GeneratorCollectionConfig.FromFile(app_id)
+    for feat in broken_features:
+        generators.Extractors.AggregateExtractors.pop(feat, None)
+        generators.Extractors.IteratedExtractors.pop(feat, None)
+
+    for ext_name, extractor in generators.EnabledExtractors().items():
         allowed_types = ["float", "bool", "int"]
         if extractor._return_type in allowed_types:
             features.append(ext_name)
@@ -32,14 +38,11 @@ def list_ogd_features(app_id):
 
 
 def calculate_ogd_features(app_id, filepath):
-    ogd_columns = GeneratorCollectionConfig.FromFile(app_id)
+    generators = GeneratorCollectionConfig.FromFile(app_id)
 
-    # for name, e in ogd_columns.Extractors.IteratedExtractors.items():
-    #     e.Enabled = False
-
-    # for name, e in ogd_columns.Extractors.AggregateExtractors.items():
-    #     if name != 'JobsCompleted':
-    #         e.Enabled = False
+    for feat in broken_features:
+        generators.Extractors.AggregateExtractors.pop(feat, None)
+        generators.Extractors.IteratedExtractors.pop(feat, None)
 
     corecfg = CoreConfig.Default()
     corecfg.FailFast = True
@@ -62,7 +65,7 @@ def calculate_ogd_features(app_id, filepath):
         {ExportMode.PLAYER},
         DatasetFilterCollection(),
         corecfg,
-        ogd_columns,
+        generators,
         custom_game_stores=GameStoreConfig("default", app_id, events_from=[fromDT], events_to=[], feats_to=[toDT], feats_from=[]),
         custom_dataset_key=DatasetKey(game_id=app_id, full_file=filepath)
     )
@@ -70,14 +73,16 @@ def calculate_ogd_features(app_id, filepath):
     r.Interfaces["default"]._data.dropna(inplace=True)
     ExportManager(CoreConfig.Default()).ExecuteRequest(r)
     dict_out = r.Outerfaces["default"]._out
-    processed_out = []
+    processed_out = {}
     for entry in dict_out['players']['vals']:
         metrics = entry[7]
         values = entry[8]
-        
-        record = dict(zip(metrics, values))  # map metrics -> values
-        record["user_id"] = entry[5]
-        processed_out.append(record)
+        user_id = entry[5]
 
-    return pl.DataFrame(processed_out)
+        if user_id not in processed_out:
+            processed_out[user_id] = {"user_id": user_id}
+
+        processed_out[user_id].update(dict(zip(metrics, values)))
+
+    return pl.DataFrame(list(processed_out.values()))
 #user_data {}, offset, app_version	app_branch	log_version event_source GAME

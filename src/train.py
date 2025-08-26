@@ -84,7 +84,7 @@ def train_model(
         # fixme - maybe try bootstrap
     )
 
-    output = "[WARN] Empty columns (not selected): " + str(empty_cols) + "\n\n"
+    output = "[WARN] Empty columns (not selected): " + str(empty_cols) + "\n\n" if len(empty_cols) > 0 else ""
 
     # add to (output +=)
     # print("x Train Shape: " + str(x_train.shape))
