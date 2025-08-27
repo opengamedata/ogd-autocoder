@@ -47,6 +47,8 @@ def add_new_columns(filepath):
         if col not in df.columns:
             df = df.with_columns(pl.lit(None).alias(col))
 
+    df = df.with_columns(df["event_name"].alias("event_description"))
+
     if "filtered_in" not in df.columns:
         df = df.with_columns(pl.lit(True).alias("filtered_in"))
 
@@ -337,4 +339,14 @@ def autosegment_by_event_type(filepath, sep_event_types):
     )
 
     df = df.with_columns(pl.lit(None).alias("segment_labels"))
+    df.write_csv(filepath, separator="\t")
+
+def describe_events(filepath, descriptions_map):
+    """
+    Fills new column "event_description" using descriptions_map (dictionary mapping event_name to template)
+    """
+    df = read_dataset(filepath, False)
+    df = df.with_columns(
+        df["event_name"].replace(descriptions_map).alias("event_description")
+    )
     df.write_csv(filepath, separator="\t")

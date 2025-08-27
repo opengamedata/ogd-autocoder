@@ -79,6 +79,14 @@ def users_list():
 
     return jsonify({"users": get_users_list(filepath)})
 
+@app.route("/update_event_descriptions", methods=["POST"])
+def update_event_descriptions():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+    describe_events(filepath, request.json["descriptions_map"])
+
+    return jsonify({"success": True})
 
 @app.route("/event_types_list", methods=["POST"])
 def event_types_list():

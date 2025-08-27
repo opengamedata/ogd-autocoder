@@ -69,7 +69,7 @@ def calculate_ogd_features(app_id, filepath):
         custom_game_stores=GameStoreConfig("default", app_id, events_from=[fromDT], events_to=[], feats_to=[toDT], feats_from=[]),
         custom_dataset_key=DatasetKey(game_id=app_id, full_file=filepath)
     )
-    r.Interfaces["default"]._data.drop(columns=["segment_id", "segment_labels", "label_justification", "filtered_in", "job_name", "predicted_labels", "prediction_confidence"], errors='ignore', inplace=True)
+    r.Interfaces["default"]._data.drop(columns=["segment_id", "segment_labels", "label_justification", "filtered_in", "job_name", "predicted_labels", "prediction_confidence", "event_description"], errors='ignore', inplace=True)
     r.Interfaces["default"]._data.dropna(inplace=True)
     ExportManager(CoreConfig.Default()).ExecuteRequest(r)
     dict_out = r.Outerfaces["default"]._out
