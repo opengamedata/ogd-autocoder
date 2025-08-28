@@ -588,7 +588,7 @@ function fillFeatureList() {
                     group_content = $(`
                     <div class="mb-1">
                         <div class="form-check">
-                            <input class="form-check-input group-checkbox" type="checkbox" id="${group.name}" checked>
+                            <input class="form-check-input group-checkbox" type="checkbox" id="${group.name}" ${group.unselect ? "" : "checked"}>
                             <label class="form-check-label fw-bold" for="${group.name}">${group.name}</label>
                         </div>
                     </div>`);
@@ -596,7 +596,7 @@ function fillFeatureList() {
                     group.children.forEach(feature => {
                         features.append(`
                             <div class="form-check">
-                                <input class="form-check-input feature-checkbox" type="checkbox" value="${feature}" id="feature-${feature}" checked>
+                                <input class="form-check-input feature-checkbox" type="checkbox" value="${feature}" id="feature-${feature}" ${group.unselect ? "" : "checked"}>
                                 <label class="form-check-label" for="feature-${feature}">
                                     ${feature}
                                 </label>
@@ -609,7 +609,7 @@ function fillFeatureList() {
                     feature = group.children[0]
                     container.append($(
                         `<div class="form-check">
-                        <input class="form-check-input feature-checkbox" type="checkbox" value="${feature}" id="feature-${feature}" checked>
+                        <input class="form-check-input feature-checkbox" type="checkbox" value="${feature}" id="feature-${feature}" ${group.unselect ? "" : "checked"}>
                         <label class="form-check-label" for="feature-${feature}">
                             ${feature}
                         </label>
