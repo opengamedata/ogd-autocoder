@@ -276,6 +276,21 @@
               </label>
             </div>
           </div>
+          <div class="preprocessing-params mb-4">
+            <label class="form-label fw-bold mb-3">Preprocessing</label>
+            <div class="form-check form-switch">
+              <input class="form-check-input me-2" checked="false" type="checkbox" id="scalingCheckbox">
+              <label class="form-check-label fs-6" for="scalingCheckbox">
+                Use Scaling to Range 0-1 (can improve optimization)
+              </label>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input me-2" checked="false" type="checkbox" id="pcaCheckbox">
+              <label class="form-check-label fs-6" for="pcaCheckbox">
+                Use Dimensionality Reduction (PCA, can improve performance)
+              </label>
+            </div>
+          </div>
           <div class="tab-content" id="modelTabsContent">
             <div class="tab-pane fade show active" id="logistic" role="tabpanel" aria-labelledby="logistic-tab">
               <div class="model-params">
@@ -358,7 +373,15 @@
           <div class="mb-3">
             <label class="form-label fw-bold">Features (Selected: <span id="numSelFeatures">0</span>)</label>
             <input type="text" id="featureSearch" class="form-control mb-2" placeholder="Search features...">
-            <div id="featureSelector" class="border rounded p-2" style="height: 400px; overflow-y: auto;"></div>
+            <!-- <div id="featureSelector" class="border rounded p-2" style="height: 400px; overflow-y: auto;"></div> -->
+            <div class="col border rounded p-2 d-flex flex-column">
+              <h6>Included</h6>
+              <ul id="includedFeatures" class="list-group overflow-auto" style="max-height: 200px;"></ul>
+            </div>
+            <div class="col border rounded p-2 d-flex flex-column">
+              <h6>Excluded</h6>
+              <ul id="excludedFeatures" class="list-group overflow-auto" style="max-height: 200px;"></ul>
+            </div>
           </div>
         </div>
       

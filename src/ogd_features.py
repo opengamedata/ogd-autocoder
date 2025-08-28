@@ -32,12 +32,12 @@ def list_ogd_features(app_id):
     for ext_name, extractor in generators.EnabledExtractors().items():
         allowed_types = ["float", "bool", "int"]
         if extractor._return_type in allowed_types:
-            features.append(ext_name + " - " + extractor.Description)
+            features.append({"name": ext_name, "description": extractor.Description})
 
         if extractor.Subfeatures:
             features.extend(
                 [
-                    ext_name + "." + n + " - " + s.Description
+                    {"name": ext_name + "." + n, "description": s.Description}
                     for n, s in extractor.Subfeatures.items()
                     if s._return_type in allowed_types
                 ]
