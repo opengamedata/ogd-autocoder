@@ -37,10 +37,13 @@ if torch.cuda.is_available():
 else:
     device = "cpu"
 
+
 def available_features(filepath):
     columns = []
     for c in (
-        preprocess_df_no_ogd(filepath).drop(["segment_labels", "segment_id", "user_id"]).columns
+        preprocess_df_no_ogd(filepath)
+        .drop(["segment_labels", "segment_id", "user_id"])
+        .columns
     ):
         if (len(columns) == 0) or (c.split("_")[-1] != columns[-1]["name"]):
             columns.append({"name": c.split("_")[-1], "children": [c]})
@@ -51,7 +54,10 @@ def available_features(filepath):
 
     # load also OGD features
     game_id = get_game_id(filepath)
-    ogd_columns = [{"name": c, "children": [c], "unselect": True} for c in list_ogd_features(game_id)]
+    ogd_columns = [
+        {"name": c, "children": [c], "unselect": True}
+        for c in list_ogd_features(game_id)
+    ]
     return ogd_columns + columns
 
 
@@ -70,7 +76,9 @@ def train_model(
     le = LabelEncoder()
     target_col = le.fit_transform(train_df["segment_labels"])  # converts to ints
     if model_type == "neural-net":
-        target_col = nn.functional.one_hot(torch.tensor(target_col).long(), num_classes=len(le.classes_))
+        target_col = nn.functional.one_hot(
+            torch.tensor(target_col).long(), num_classes=len(le.classes_)
+        )
 
     train_cols = [c for c in include_features if c in train_df.columns]
     empty_cols = [c for c in include_features if c not in train_df.columns]
@@ -84,7 +92,11 @@ def train_model(
         # fixme - maybe try bootstrap
     )
 
-    output = "[WARN] Empty columns (not selected): " + str(empty_cols) + "\n\n" if len(empty_cols) > 0 else ""
+    output = (
+        "[WARN] Empty columns (not selected): " + str(empty_cols) + "\n\n"
+        if len(empty_cols) > 0
+        else ""
+    )
 
     # add to (output +=)
     # print("x Train Shape: " + str(x_train.shape))
@@ -185,17 +197,17 @@ def preprocess_df_no_ogd(filepath):
     df = read_dataset(filepath)
     # fixme - add support for multiple labels
     # fixme - job_name dummies
-    df = df.with_columns(
-        pl.col("timestamp").str.strptime(pl.Datetime, strict=False)
-    )
+    df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))
 
     # additional feature: segment duration in seconds
     duration_df = (
         df.group_by(["user_id", "segment_id"])
-        .agg([
-            pl.col("timestamp").min().alias("segment_start"),
-            pl.col("timestamp").max().alias("segment_end"),
-        ])
+        .agg(
+            [
+                pl.col("timestamp").min().alias("segment_start"),
+                pl.col("timestamp").max().alias("segment_end"),
+            ]
+        )
         .with_columns(
             (pl.col("segment_end") - pl.col("segment_start"))
             .dt.total_seconds()
@@ -208,7 +220,9 @@ def preprocess_df_no_ogd(filepath):
     clean_df = (
         df.select(["event_name", "user_id", "segment_id", "segment_labels"])
         .with_columns(
-            pl.col("segment_labels").fill_null("N/A")  # to include these rows (needed for inference)
+            pl.col("segment_labels").fill_null(
+                "N/A"
+            )  # to include these rows (needed for inference)
         )
         .drop_nulls()  # Drop rows with any remaining nulls
     )
@@ -218,27 +232,41 @@ def preprocess_df_no_ogd(filepath):
     grouped = clean_1hot_df.group_by(["user_id", "segment_id", "segment_labels"])
     count_df = grouped.len().rename({"len": "count_events"})
     sum_df = grouped.sum()
-    sum_df = sum_df.rename({
-        col: f"{col}_sum" for col in sum_df.columns if col not in ["user_id", "segment_id", "segment_labels"]
-    })
-
-    clean_agg_df = (
-        sum_df.join(count_df, on=["user_id", "segment_id", "segment_labels"])
-        .join(duration_df, on=["user_id", "segment_id"], how="left")
+    sum_df = sum_df.rename(
+        {
+            col: f"{col}_sum"
+            for col in sum_df.columns
+            if col not in ["user_id", "segment_id", "segment_labels"]
+        }
     )
 
-    numeric_cols = [c for c in sum_df.columns if c not in ["user_id", "segment_id", "segment_labels"]]
+    clean_agg_df = sum_df.join(
+        count_df, on=["user_id", "segment_id", "segment_labels"]
+    ).join(duration_df, on=["user_id", "segment_id"], how="left")
+
+    numeric_cols = [
+        c
+        for c in sum_df.columns
+        if c not in ["user_id", "segment_id", "segment_labels"]
+    ]
     # add percentage columns
     clean_agg_df = clean_agg_df.with_columns(
-        [(pl.col(c) / pl.col("count_events") * 100).alias(c + "_percent") for c in numeric_cols]
+        [
+            (pl.col(c) / pl.col("count_events") * 100).alias(c + "_percent")
+            for c in numeric_cols
+        ]
     )
-    
+
     return clean_agg_df
+
 
 def get_game_id(filepath):
     # read first row for app_id
-    df = pl.read_csv(filepath, n_rows=1, separator="\t", dtypes={"segment_id": pl.String})
+    df = pl.read_csv(
+        filepath, n_rows=1, separator="\t", dtypes={"segment_id": pl.String}
+    )
     return df[0, "app_id"]
+
 
 def preprocess_df(filepath):
     # merge with ogd features
@@ -258,6 +286,7 @@ def preprocess_df(filepath):
     clean_agg_df_ogd = clean_agg_df_ogd.drop(["user_id"])
 
     return clean_agg_df_ogd
+
 
 def find_model_info(filepath, model_path):
     models_filepath = get_models_filename(filepath)
@@ -284,28 +313,30 @@ def inference(filepath, model_path):
     y_idx = np.argmax(probs, axis=1)
     y = [model_info["include_labels"][i] for i in y_idx]
     confidence = probs[np.arange(len(probs)), y_idx]
-    df_processed = df_processed.with_columns([
-        pl.Series("predicted_labels", y),
-        pl.Series("prediction_confidence", confidence)
-    ])
+    df_processed = df_processed.with_columns(
+        [
+            pl.Series("predicted_labels", y),
+            pl.Series("prediction_confidence", confidence),
+        ]
+    )
 
     df = read_dataset(filepath, False)
     df = df.drop(["predicted_labels", "prediction_confidence"], strict=False)
 
     df = df.with_columns(
         pl.col("segment_id").alias("old_segment_id"),
-        (pl.col("user_id") + "_" + pl.col("segment_id")).alias("segment_id")
+        (pl.col("user_id") + "_" + pl.col("segment_id")).alias("segment_id"),
     )
 
     df = df.join(
-        df_processed.select(["segment_id", "predicted_labels", "prediction_confidence"]),
+        df_processed.select(
+            ["segment_id", "predicted_labels", "prediction_confidence"]
+        ),
         how="left",
         on="segment_id",
     )
 
-    df = df.with_columns(
-        pl.col("old_segment_id").alias("segment_id")
-    )
+    df = df.with_columns(pl.col("old_segment_id").alias("segment_id"))
     df.drop("old_segment_id").write_csv(filepath, separator="\t")
 
 
@@ -318,8 +349,7 @@ def get_predicted_label(filepath, user_id, segment_id):
         return None, None
 
     filtered = df.filter(
-        (pl.col("user_id") == user_id) &
-        (pl.col("segment_id") == str(segment_id))
+        (pl.col("user_id") == user_id) & (pl.col("segment_id") == str(segment_id))
     )
 
     row = filtered.select(["predicted_labels", "prediction_confidence"]).row(0)
@@ -350,14 +380,16 @@ def train_neural_net(
         classes=class_labels,
         y=y_train_int,
     )
-    #class_weights = dict(zip(class_labels, class_weights))
+    # class_weights = dict(zip(class_labels, class_weights))
 
     hyperparameters["epochs"] = hyperparameters.get("epochs", 10)
     hyperparameters["learning_rate"] = hyperparameters.get("learning_rate", 0.01)
     hyperparameters["n_layers"] = hyperparameters.get("n_layers", 0)
     hyperparameters["units_per_layer"] = hyperparameters.get("units_per_layer", [])
 
-    model = CustomNeuralNet(x_train_tensor.shape[1], hyperparameters["units_per_layer"], len(classes))
+    model = CustomNeuralNet(
+        x_train_tensor.shape[1], hyperparameters["units_per_layer"], len(classes)
+    )
     criterion = nn.CrossEntropyLoss(weight=torch.tensor(class_weights))
     optimizer = optim.Adam(model.parameters(), lr=hyperparameters["learning_rate"])
 
@@ -409,8 +441,12 @@ def train_neural_net(
         y_prob_test = y_prob_test[:, 1]
         y_prob_train = y_prob_train[:, 1]
 
-    metrics["test_auc"] = roc_auc_score(y_test, y_prob_test, multi_class='ovr', average="weighted")
-    metrics["train_auc"] = roc_auc_score(y_train, y_prob_train, multi_class='ovr', average="weighted") # One-vs-rest
+    metrics["test_auc"] = roc_auc_score(
+        y_test, y_prob_test, multi_class="ovr", average="weighted"
+    )
+    metrics["train_auc"] = roc_auc_score(
+        y_train, y_prob_train, multi_class="ovr", average="weighted"
+    )  # One-vs-rest
 
     add_label_oriented_metrics(
         metrics, y_test, y_pred_test, y_train, y_pred_train, classes
@@ -478,8 +514,12 @@ def train_logistic(
         y_prob_test = y_prob_test[:, 1]
         y_prob_train = y_prob_train[:, 1]
 
-    metrics["test_auc"] = roc_auc_score(y_test, y_prob_test, multi_class='ovr', average="weighted")
-    metrics["train_auc"] = roc_auc_score(y_train, y_prob_train, multi_class='ovr', average="weighted") # One-vs-rest
+    metrics["test_auc"] = roc_auc_score(
+        y_test, y_prob_test, multi_class="ovr", average="weighted"
+    )
+    metrics["train_auc"] = roc_auc_score(
+        y_train, y_prob_train, multi_class="ovr", average="weighted"
+    )  # One-vs-rest
 
     add_label_oriented_metrics(
         metrics, y_test, y_pred_test, y_train, y_pred_train, classes
@@ -543,8 +583,12 @@ def train_random_forest(
         y_prob_test = y_prob_test[:, 1]
         y_prob_train = y_prob_train[:, 1]
 
-    metrics["test_auc"] = roc_auc_score(y_test, y_prob_test, multi_class='ovr', average="weighted")
-    metrics["train_auc"] = roc_auc_score(y_train, y_prob_train, multi_class='ovr', average="weighted") # One-vs-rest
+    metrics["test_auc"] = roc_auc_score(
+        y_test, y_prob_test, multi_class="ovr", average="weighted"
+    )
+    metrics["train_auc"] = roc_auc_score(
+        y_train, y_prob_train, multi_class="ovr", average="weighted"
+    )  # One-vs-rest
     add_label_oriented_metrics(
         metrics, y_test, y_pred_test, y_train, y_pred_train, classes
     )
@@ -580,6 +624,7 @@ def add_label_oriented_metrics(
         metrics[f"train_precision_{key_safe}"] = train_precisions[i]
         metrics[f"train_recall_{key_safe}"] = train_recalls[i]
 
+
 def neural_evaluate(model, dataloader, loss_fn):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
@@ -590,11 +635,14 @@ def neural_evaluate(model, dataloader, loss_fn):
             X, y = X.to(device), y.to(device)
             pred = model(X)
             test_loss += loss_fn(pred, y).item()
-            accuracy += (torch.argmax(pred, 1) == torch.argmax(y, 1)).float().sum().item()
+            accuracy += (
+                (torch.argmax(pred, 1) == torch.argmax(y, 1)).float().sum().item()
+            )
     test_loss /= num_batches
     accuracy /= size
 
     return test_loss, accuracy
+
 
 def neural_train(model, dataloader, loss_fn, optimizer):
     # Training loop with DataLoader
@@ -616,6 +664,7 @@ def neural_train(model, dataloader, loss_fn, optimizer):
             loss, current = loss.item(), (batch + 1) * len(X)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
+
 class CustomNeuralNet(nn.Module):
     def __init__(self, input_dim, hidden_units, num_classes):
         super().__init__()
@@ -628,7 +677,7 @@ class CustomNeuralNet(nn.Module):
         self.hidden = nn.ModuleList(layers)
         self.act = nn.ReLU()
         self.output = nn.Linear(layer_in_dim, num_classes)
-        
+
     def forward(self, x):
         for layer in self.hidden:
             x = self.act(layer(x))

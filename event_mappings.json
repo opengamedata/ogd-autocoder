@@ -1,4 +1,4 @@
 {
-    "switch_job": "Switched from job A to job B",
-    "complete_task": "Completed task 1 within job A"
+    "switch_job": "Switched from job {event_data[prev_job_name]} to job {game_state[job_name]}",
+    "complete_task": "Completed task {event_data[task_id]} within job {game_state[job_name]}"
 }
