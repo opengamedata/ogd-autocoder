@@ -91,7 +91,7 @@ jobs:
         "if ! [ -d ${{ env.DEPLOY_DIR }}/uploads ]; then
           mkdir -p ${{ env.DEPLOY_DIR }}/uploads;
           sudo chgrp ${{ secrets.EXEC_GROUP }} ${{ env.DEPLOY_DIR }}/uploads/;
-          sudo chmod g+rwx ${{ env.DEPLOY_DIR }}/uploads/
+          sudo chmod g+rwx ${{ env.DEPLOY_DIR }}/uploads/;
         fi"
 
     # 4. Cleanup & complete
