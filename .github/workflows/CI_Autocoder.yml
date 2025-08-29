@@ -95,7 +95,7 @@ jobs:
         ssh -o StrictHostKeyChecking=no -T
         -i ./key.txt
         ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}
-        "! [ -d ${{ env.DEPLOY_DIR }}/uploads ] && mkdir -p ${{ env.DEPLOY_DIR }}/uploads && chgrp ${{ secrets.EXEC_GROUP }} ${{ env.DEPLOY_DIR }}/uploads/ && chmod g+rwx ${{ env.DEPLOY_DIR }}/uploads/"
+        "! [ -d ${{ env.DEPLOY_DIR }}/uploads ] && mkdir -p ${{ env.DEPLOY_DIR }}/uploads && sudo chgrp ${{ secrets.EXEC_GROUP }} ${{ env.DEPLOY_DIR }}/uploads/ && sudo chmod g+rwx ${{ env.DEPLOY_DIR }}/uploads/"
 
     # 4. Cleanup & complete
     - name: Restart httpd via ssh
