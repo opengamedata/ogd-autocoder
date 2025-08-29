@@ -82,6 +82,8 @@ jobs:
       run: ssh -o StrictHostKeyChecking=no -T -i ./key.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "cd ${{ env.DEPLOY_DIR }}; python -m uv venv; python -m uv sync --no-dev --cache-dir ${{ env.PROJECT_DIR }}/.cache"
 
     - name: Setup uploads folder
+      # Note: `! [ -d ${{ env.DEPLOY_DIR }}/uploads ]` tests whether given directory is a directory (-d) and negates it (!)
+      #       So the `if` below is effectively `if not uploads.is_dir()` in pseudo-Python
       run: >
         ssh -o StrictHostKeyChecking=no -T
         -i ./key.txt
