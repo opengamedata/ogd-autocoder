@@ -37,7 +37,8 @@ def index():
             for f in os.listdir(UPLOAD_FOLDER)
             if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))
             and not os.path.splitext(f)[0].endswith("_models")
-            and f.endswith(".tsv") and "_" in f
+            and f.endswith(".tsv")
+            and "_" in f
         ]
 
         # timestamp descending order
@@ -58,7 +59,9 @@ def upload_file():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     file.save(filepath)
     add_new_columns(filepath)
-    formatted = filename.split("_", 1)[1] + " " + filename.split("_", 1)[0].replace("T", " ")
+    formatted = (
+        filename.split("_", 1)[1] + " " + filename.split("_", 1)[0].replace("T", " ")
+    )
     return jsonify({"filename": filename, "formatted": formatted})
 
 
@@ -80,6 +83,16 @@ def users_list():
     return jsonify({"users": get_users_list(filepath)})
 
 
+@app.route("/update_event_descriptions", methods=["POST"])
+def update_event_descriptions():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+    describe_events(filepath, request.json["descriptions_map"])
+
+    return jsonify({"success": True})
+
+
 @app.route("/event_types_list", methods=["POST"])
 def event_types_list():
     filepath = os.path.join(
@@ -97,6 +110,7 @@ def dataset_info():
 
     return jsonify({"data": get_dataset_info(filepath)})
 
+
 @app.route("/dataset_filter", methods=["POST"])
 def dataset_filter():
     filepath = os.path.join(
@@ -107,16 +121,13 @@ def dataset_filter():
     return jsonify({"success": True})
 
 
-
 @app.route("/list_segment_ids/<user_id>", methods=["POST"])
 def list_segment_ids(user_id):
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
 
-    return jsonify(
-        {"data": segment_ids_for_user(filepath, user_id)}
-    )
+    return jsonify({"data": segment_ids_for_user(filepath, user_id)})
 
 
 @app.route("/labels_value_count", methods=["POST"])

@@ -249,7 +249,7 @@ async function loadEvents(table_id, seg_dropdown_id) {
             data.forEach(row => {
                 const values = [
                     row.index,
-                    row.event_name,
+                    row.event_description,
                     row.job_name,
                     row.timestamp,
                     row.segment_id,
@@ -278,3 +278,44 @@ async function loadEvents(table_id, seg_dropdown_id) {
         }
     });
 }
+
+$("#describeEventsBtn").click(function() {
+    $("#eventDescriptionsFile").click();
+});
+
+/**
+ * Adds description using dictionary {event_name: event_description}, e.g.:
+ * {
+ *  "switch_job": "Switched from job A to job B",
+ *  "complete_task": "Completed task 1 within job A"
+ * }
+*/
+$('#eventDescriptionsFile').on('change', function (event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+        try {
+            const mapping = JSON.parse(e.target.result);
+            $.ajax({
+                url: 'update_event_descriptions',
+                method: "POST",
+                data: JSON.stringify({"descriptions_map": mapping}),
+                contentType: "application/json",
+                success: function (response) {
+
+                },
+                error: function (xhr, status, error) {
+                    console.error("Event description update failed:", status, error);
+                    console.log("Server response:", xhr.responseText);
+                }
+            });
+        } catch (err) {
+            alert('Invalid JSON file, please check the format, e.g. {"switch_job": "Switched from job A to job B", "complete_task": "Completed task 1 within job A"}.');
+        }
+    };
+
+    reader.readAsText(file);
+});
