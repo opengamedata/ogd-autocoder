@@ -12,7 +12,8 @@ on:
 
 env:
   DEPLOY_HOST: ${{ vars.OGD_STAGING_HOST }}
-  DEPLOY_DIR:                              ${{ vars.WSGI_PATH }}/${{ github.event.repository.name }}/${{ github.ref_name }}
+  PROJECT_DIR:                 ${{ vars.WSGI_PATH }}/${{ github.event.repository.name }}
+  DEPLOY_DIR:                  ${{ vars.WSGI_PATH }}/${{ github.event.repository.name }}/${{ github.ref_name }}
   DEPLOY_URL:  ${{ vars.OGD_STAGING_HOST }}/wsgi-bin/${{ github.event.repository.name }}/${{ github.ref_name }}/app.wsgi
 
 jobs:
@@ -82,7 +83,7 @@ jobs:
       run: scp -o StrictHostKeyChecking=no -T -i ./key.txt ./pyproject.toml ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.DEPLOY_DIR }}
 
     - name: Set up venv for the deploy
-      run: ssh -o StrictHostKeyChecking=no -T -i ./key.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "cd ${{ env.DEPLOY_DIR }}; python -m uv venv; python -m uv sync --no-dev"
+      run: ssh -o StrictHostKeyChecking=no -T -i ./key.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "cd ${{ env.DEPLOY_DIR }}; python -m uv venv; python -m uv sync --no-dev --cache-dir ${{ env.PROJECT_DIR }}/.cache"
 
     - name: Setup uploads folder
       run: ssh -o StrictHostKeyChecking=no -T -i ./key.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "mkdir -p ${{ env.DEPLOY_DIR }}/uploads; chgrp www-data ${{ env.DEPLOY_DIR }}/uploads/; chmod g+rwx ${{ env.DEPLOY_DIR }}/uploads/"
