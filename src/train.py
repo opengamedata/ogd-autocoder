@@ -39,27 +39,23 @@ else:
 
 
 def available_features(filepath):
-    columns = []
-    for c in (
-        preprocess_df_no_ogd(filepath)
-        .drop(["segment_labels", "segment_id", "user_id"])
-        .columns
-    ):
-        if (len(columns) == 0) or (c.split("_")[-1] != columns[-1]["name"]):
-            columns.append({"name": c.split("_")[-1], "children": [c]})
-        else:
-            columns[-1]["children"].append(c)
-
-    columns.sort(key=lambda x: len(x["children"]))  # sort by number of children
+    # preprocess without using ogd pipeline to save some calculations
+    columns = preprocess_df_no_ogd(filepath).drop(["segment_labels", "segment_id", "user_id"]).columns
 
     # load also OGD features
     game_id = get_game_id(filepath)
-    ogd_columns = [
-        {"name": c, "children": [c], "unselect": True}
-        for c in list_ogd_features(game_id)
-    ]
-    return ogd_columns + columns
+    ogd_columns = list_ogd_features(game_id)
+    return {"included_features": [{"name": c} for c in columns], "excluded_features": ogd_columns}
 
+
+def correlation(filepath):
+    df = preprocess_df(filepath).drop(["segment_labels", "segment_id"])
+
+    corr_matrix = df.corr().to_pandas().abs()
+    corr_matrix.index = corr_matrix.columns
+    np.fill_diagonal(corr_matrix.values, 0) # fill 0s in self correlation
+    
+    return corr_matrix.fillna("null").to_dict(orient="dict")
 
 def train_model(
     filepath, model_type, hyperparameters, include_labels, include_features, models_dir

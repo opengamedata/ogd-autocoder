@@ -2,7 +2,7 @@ import os
 import time
 import traceback
 from utils import *
-from train import train_model, available_features, inference, get_predicted_label
+from train import train_model, available_features, inference, get_predicted_label, correlation
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort
 from datetime import datetime
@@ -154,6 +154,13 @@ def list_available_features():
     )
     return jsonify({"data": available_features(filepath)})
 
+
+@app.route("/correlation_matrix", methods=["POST"])
+def correlation_matrix():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+    return jsonify({"data": correlation(filepath)})
 
 @app.route("/events/<user_id>", methods=["POST"])
 def events(user_id):

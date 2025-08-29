@@ -80,10 +80,10 @@ def get_dataset_info(filepath):
     included_events = (
         df_filtered.select(pl.col("event_name").unique()).to_series().to_list()
     )
-    excluded_events = set(
+    all_events = set(
         df.select(pl.col("event_name").unique()).to_series().to_list()
     )
-    excluded_events = list(excluded_events.difference(set(included_events)))
+    excluded_events = list(all_events.difference(set(included_events)))
     return {
         "models_count": len(get_models_list(filepath)),
         "date_range": date_range,
@@ -99,8 +99,8 @@ def get_dataset_info(filepath):
             "segments": unique_count(df_filtered, "segment_id"),
             "sessions": unique_count(df_filtered, "session_id"),
         },
-        "included_events": included_events,
-        "excluded_events": excluded_events,
+        "included_events": [{"name": ev} for ev in included_events],
+        "excluded_events": [{"name": ev} for ev in excluded_events],
         "labels_distribution": segment_labels_count(filepath),
     }
 

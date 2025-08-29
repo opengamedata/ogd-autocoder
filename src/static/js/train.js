@@ -3,6 +3,7 @@ let modelHistChart;
 let metricsByLabel = {};
 let applyModelPath = null;
 let bestModel = {test_accuracy: 0, path: null}; // best selected by test accuracy
+let correlationMatrix = null; // used for correlations
 
 // dropdowns initialization
 
@@ -39,8 +40,8 @@ function trainModel() {
     $('#spinner').removeClass("d-none");
     let model_type = $('#modelTabs .nav-link.active').attr('id').replace('-tab', '');
     let features = [];
-    $('#featureSelector input.feature-checkbox:checked').each(function () {
-        features.push($(this).val());
+    $('#includedFeatures').children('li').each(function () {
+        features.push($(this).data("event-name"));
     });
     $.ajax({
         url: `/train_model`,
@@ -300,6 +301,18 @@ function addModel(model_info) {
     }
 }
 
+$("#allToExcluded").on('click', () => {
+    $('#includedFeatures').children("li:visible").each(function () {
+        $(this).find("button").click();
+    });
+})
+
+$("#allToIncluded").on('click', () => {
+    $('#excludedFeatures').children("li:visible").each(function () {
+        $(this).find("button").click();
+    });
+})
+
 /**
  * Fill the input parameters (model type, features, hyperparameters, summary)
  * from existing selected model and sets them to read-only.
@@ -320,11 +333,23 @@ function fillModelParamsFromExisting(model_info) {
     
     setHyperparameters(model_info["model_type"], model_info["hyperparameters"]);
 
-    $('#featureSelector input.feature-checkbox').each(function () {
-        let check = model_info["include_features"].includes($(this).val())
-        $(this).prop('checked', check).trigger('change');
+    $('#includedFeatures').children("li").each(function () {
+        if (!model_info["include_features"].includes($(this).data("event-name"))) {
+            // excluding feature
+            $(this).find("button").click();
+        }
     });
-    $('#featureSelector input[type="checkbox"]').prop('disabled', true);
+    $('#excludedFeatures').children("li").each(function () {
+        if (model_info["include_features"].includes($(this).data("event-name"))) {
+            // include feature
+            $(this).find("button").click();
+        }
+    });
+
+    $('#includedFeatures button').prop('disabled', true);
+    $('#excludedFeatures button').prop('disabled', true);
+    updateNumSelectedFeatures();
+
     $('#logisticLambda').prop('disabled', true);
     $('#logisticPenalty').prop('disabled', true);
 
@@ -576,86 +601,43 @@ function toggleBarsForLabel() {
  * Supports grouping features under parent checkboxes and allows search/filter functionality.
  */
 function fillFeatureList() {
-    const container = $('#featureSelector');
-    container.empty();
     $('#spinner').removeClass("d-none");
     $.ajax({
         url: "list_available_features",
         method: "POST",
-        success: function (response) {
-            for (group of response.data) {
-                if (group.children.length > 1) {
-                    group_content = $(`
-                    <div class="mb-1">
-                        <div class="form-check">
-                            <input class="form-check-input group-checkbox" type="checkbox" id="${group.name}" ${group.unselect ? "" : "checked"}>
-                            <label class="form-check-label fw-bold" for="${group.name}">${group.name}</label>
-                        </div>
-                    </div>`);
-                    features = $(`<div class="ms-3" id="${group.name}-features"></div>`)
-                    group.children.forEach(feature => {
-                        features.append(`
-                            <div class="form-check">
-                                <input class="form-check-input feature-checkbox" type="checkbox" value="${feature}" id="feature-${feature}" ${group.unselect ? "" : "checked"}>
-                                <label class="form-check-label" for="feature-${feature}">
-                                    ${feature}
-                                </label>
-                            </div>
-                        `);
-                    });
-                    features.appendTo(group_content);
-                    group_content.appendTo(container);
-                } else {
-                    feature = group.children[0]
-                    container.append($(
-                        `<div class="form-check">
-                        <input class="form-check-input feature-checkbox" type="checkbox" value="${feature}" id="feature-${feature}" ${group.unselect ? "" : "checked"}>
-                        <label class="form-check-label" for="feature-${feature}">
-                            ${feature}
-                        </label>
-                    </div>`));
-                }
-            }
-            $('.feature-checkbox').on('change', function () {
-                updateNumSelectedFeatures();
-                $('.group-checkbox').each(function () {
-                    const groupId = $(this).attr('id');
-                    const allChecked = $(`#${groupId}-features .feature-checkbox`).length > 0 &&
-                        $(`#${groupId}-features .feature-checkbox:not(:checked)`).length === 0;
-
-                    $(this).prop('checked', allChecked);
-                });
-            });
-
-            $('.group-checkbox').on('change', function () {
-                const groupId = $(this).attr('id');
-                $(`#${groupId}-features input[type=checkbox]`).prop('checked', this.checked);
-                updateNumSelectedFeatures();
-            });
+        success: async function (response) {
+            let data = response.data;
+            // fillInclExcLists has a handling for updating num selected features (moveEvent function)
+            fillInclExcLists(data.included_features, data.excluded_features, "#includedFeatures", "#excludedFeatures");
+            await updateCorrelationMatrix();
+            updateNumSelectedFeatures();
+            recalculateMaxCorrelation();
+            $('#spinner').addClass("d-none");
 
             $('#featureSearch').on('input', function () {
                 const query = $(this).val().toLowerCase();
 
-                $('.feature-checkbox').each(function () {
-                    // $(this).next() is the label element
-                    const featureName = $(this).next().text().toLowerCase();
+                $('#includedFeatures').children('li').each(function () {
+                    const featureName = $(this).data("event-name").toLowerCase();
+
                     if (featureName.includes(query)) {
-                        $(this).parent().show();
-                    } else {
-                        $(this).parent().hide();
+                        $(this).removeClass('d-none');
+                    } else if (!$(this).hasClass('d-none')) {
+                        $(this).addClass('d-none');
                     }
                 });
 
-                $('.group-checkbox').each(function () {
-                    const hasVisibleChild = $(this).parent().parent().find('.feature-checkbox:visible').length > 0;
-                    if (hasVisibleChild)
-                        $(this).parent().show();
-                    else
-                        $(this).parent().hide();
+                $('#excludedFeatures').children('li').each(function () {
+                    const featureName = $(this).data("event-name").toLowerCase();
+
+                    if (featureName.includes(query)) {
+                        $(this).removeClass('d-none');
+                    } else if (!$(this).hasClass('d-none')) {
+                        $(this).addClass('d-none');
+                    }
                 });
+                updateNumSelectedFeatures();
             });
-            updateNumSelectedFeatures();
-            $('#spinner').addClass("d-none");
         },
         error: function (xhr, status, error) {
             console.error("Feature list loading failed:", status, error);
@@ -664,12 +646,62 @@ function fillFeatureList() {
     });
 }
 
-function updateNumSelectedFeatures() {
-    let features = [];
-    $('#featureSelector input.feature-checkbox:checked').each(function () {
-        features.push($(this).val());
+async function updateCorrelationMatrix() {
+    return $.ajax({
+        url: "correlation_matrix",
+        method: "POST",
+        success: function (response) {
+            correlationMatrix = response.data;
+        },
+        error: function (xhr, status, error) {
+            console.error("Correlation matrix loading failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
     });
-    $("#numSelFeatures").text(features.length);
+}
+
+function recalculateMaxCorrelation() {
+    let included_features = [];
+    let all_features = [];
+    $('#includedFeatures').children('li').each(function () {
+        included_features.push($(this).data("event-name"));
+        all_features.push($(this).data("event-name"));
+    });
+    $('#excludedFeatures').children('li').each(function () {
+        all_features.push($(this).data("event-name"));
+    });
+    if (included_features.length < 2) {
+        $(`#includedFeatures li`).css("background-color", "white");
+        $(`#excludedFeatures li`).css("background-color", "white");
+    } else {
+        for (let feat of all_features) {
+            const values = Object.entries(correlationMatrix[feat])
+                .filter(([col, value]) => included_features.includes(col) && col !== feat && value !== "null")
+                .map(([, value]) => value);
+
+            let max_corr = values.length ? Math.max(...values) : null;
+            if (max_corr) {
+                let r, g, b = 0;
+
+                if (max_corr < 0.5) {
+                  r = Math.round(255 * (max_corr * 2));
+                  g = 255;
+                } else {
+                  r = 255;
+                  g = Math.round(255 * ((1 - max_corr) * 2));
+                }
+            
+                let elem = $(`[data-event-name="${feat}"]`);
+                elem.css("background-color", `rgb(${r}, ${g}, ${b}, 0.2)`);
+            }
+        }
+    }
+}
+
+function updateNumSelectedFeatures() {
+    $("#numSelFeatures").text($('#includedFeatures').children().length);
+    $("#countFilteredIncluded").text($('#includedFeatures').children(":visible").length);
+    $("#countFilteredExcluded").text($('#excludedFeatures').children(":visible").length);
 }
 
 function enableTrain() {
@@ -692,7 +724,8 @@ function enableTrain() {
     $('#trainTestSplitValue').prop('disabled', false);
     $('#balanceClassesCheckbox').prop('disabled', false);
 
-    $('#featureSelector input[type="checkbox"]').prop('disabled', false);
+    $('#includedFeatures button').prop('disabled', false);
+    $('#excludedFeatures button').prop('disabled', false);
     $('#trainModelBtn').show();
     $('#modelScroll').find('button').removeClass('btn-dark');
 
