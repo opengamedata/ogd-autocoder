@@ -48,6 +48,15 @@ def available_features(filepath):
     return {"included_features": [{"name": c} for c in columns], "excluded_features": ogd_columns}
 
 
+def correlation(filepath):
+    df = preprocess_df(filepath).drop(["segment_labels", "segment_id"])
+
+    corr_matrix = df.corr().to_pandas().abs()
+    corr_matrix.index = corr_matrix.columns
+    np.fill_diagonal(corr_matrix.values, 0) # fill 0s in self correlation
+    
+    return corr_matrix.fillna("null").to_dict(orient="dict")
+
 def train_model(
     filepath, model_type, hyperparameters, include_labels, include_features, models_dir
 ):

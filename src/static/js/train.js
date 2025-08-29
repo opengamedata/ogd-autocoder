@@ -3,6 +3,7 @@ let modelHistChart;
 let metricsByLabel = {};
 let applyModelPath = null;
 let bestModel = {test_accuracy: 0, path: null}; // best selected by test accuracy
+let correlationMatrix = null; // used for correlations
 
 // dropdowns initialization
 
@@ -592,12 +593,13 @@ function fillFeatureList() {
     $.ajax({
         url: "list_available_features",
         method: "POST",
-        success: function (response) {
+        success: async function (response) {
             let data = response.data;
-            // fillInclExcLists has a handling for updating num selected features
+            // fillInclExcLists has a handling for updating num selected features (moveEvent function)
             fillInclExcLists(data.included_features, data.excluded_features, "#includedFeatures", "#excludedFeatures");
+            await updateCorrelationMatrix();
             updateNumSelectedFeatures();
-
+            recalculateMaxCorrelation();
             $('#spinner').addClass("d-none");
 
             $('#featureSearch').on('input', function () {
@@ -629,6 +631,46 @@ function fillFeatureList() {
             console.log("Server response:", xhr.responseText);
         }
     });
+}
+
+async function updateCorrelationMatrix() {
+    return $.ajax({
+        url: "correlation_matrix",
+        method: "POST",
+        success: function (response) {
+            correlationMatrix = response.data;
+        },
+        error: function (xhr, status, error) {
+            console.error("Correlation matrix loading failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
+}
+
+function recalculateMaxCorrelation() {
+    let included_features = [];
+    $('#includedFeatures').children('li').each(function () {
+        included_features.push($(this).data("event-name"));
+    });
+    for (let feat of included_features) {
+        const values = Object.entries(correlationMatrix[feat])
+            .filter(([col]) => included_features.includes(col) && col !== feat)
+            .map(([_, value]) => value);
+
+        let max_corr = values.length ? Math.max(...values) : null;
+        if (max_corr) {
+            const r = max_corr < 0.5 ? 255 * (max_corr * 2) : 255;
+            const g = max_corr < 0.5 ? 255 : 255 - 255 * ((max_corr - 0.5) * 2);
+            const b = 0;
+          
+            let elem = $(`#includedFeatures [data-event-name="${feat}"]`);
+            elem.css("background-color", `rgb(${Math.round(r)}, ${Math.round(g)}, ${b}, 0.4)`);
+
+            //let textElem = $(elem.children().get(0));
+            //textElem.text(textElem.text())
+        }
+        $(`#excludedFeatures li`).css("background-color", "white");
+    }
 }
 
 function updateNumSelectedFeatures() {

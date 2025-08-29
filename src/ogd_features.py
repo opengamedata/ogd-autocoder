@@ -19,7 +19,7 @@ import polars as pl
 
 # Set the root logger level
 logging.basicConfig(level=logging.INFO)
-broken_features = ["EventList"]
+broken_features = ["EventList", "SessionDuration"]
 
 
 def list_ogd_features(app_id):
@@ -27,7 +27,8 @@ def list_ogd_features(app_id):
     generators = GeneratorCollectionConfig.FromFile(app_id)
     for feat in broken_features:
         generators.Extractors.AggregateExtractors.pop(feat, None)
-        generators.Extractors.IteratedExtractors.pop(feat, None)
+
+    generators.Extractors.IteratedExtractors.clear()
 
     for ext_name, extractor in generators.EnabledExtractors().items():
         allowed_types = ["float", "bool", "int"]
@@ -37,7 +38,7 @@ def list_ogd_features(app_id):
         if extractor.Subfeatures:
             features.extend(
                 [
-                    {"name": ext_name + "." + n, "description": s.Description}
+                    {"name": ext_name + "-" + n, "description": s.Description}
                     for n, s in extractor.Subfeatures.items()
                     if s._return_type in allowed_types
                 ]
@@ -51,7 +52,8 @@ def calculate_ogd_features(app_id, filepath):
 
     for feat in broken_features:
         generators.Extractors.AggregateExtractors.pop(feat, None)
-        generators.Extractors.IteratedExtractors.pop(feat, None)
+
+    generators.Extractors.IteratedExtractors.clear()
 
     corecfg = CoreConfig.Default()
     corecfg.FailFast = True
@@ -112,5 +114,9 @@ def calculate_ogd_features(app_id, filepath):
             processed_out[user_id] = {"user_id": user_id}
 
         processed_out[user_id].update(dict(zip(metrics, values)))
+    
+    df = pl.DataFrame(list(processed_out.values()))
 
-    return pl.DataFrame(list(processed_out.values()))
+    columns_filter = [c["name"] for c in list_ogd_features(app_id)] # only select available columns
+    columns_filter.append("user_id")
+    return df.select(columns_filter)

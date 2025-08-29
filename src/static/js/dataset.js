@@ -71,7 +71,7 @@ function fillLabelDistPie(labelData) {
 function createListItem(element, included, includedId, excludedId) {
     const li = $(`
         <li data-event-name="${element.name}" class="list-group-item d-flex justify-content-between align-items-center" data-toggle="tooltip" title="${element.description ?? element.name}">
-            ${element.name}
+            <span>${element.name}</span>
             <button data-include="${included}" class="btn btn-sm ${included ? 'btn-outline-danger' : 'btn-outline-success'}" 
                     onclick="moveEvent(this, '${includedId}', '${excludedId}')">
                 <i class="bi ${included ? 'bi-arrow-right' : 'bi-arrow-left'}"></i>
@@ -110,6 +110,7 @@ function moveEvent(button, includedId, excludedId) {
 
     if (includedId.toLowerCase().includes("features"))
         updateNumSelectedFeatures();
+        recalculateMaxCorrelation();
 }
 
 function filterDataset() {
