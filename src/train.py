@@ -26,7 +26,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-from ogd_features import list_ogd_features, calculate_ogd_features
+# from ogd_features import list_ogd_features, calculate_ogd_features
 
 from utils import get_models_filename, read_dataset
 
@@ -54,10 +54,11 @@ def available_features(filepath):
 
     # load also OGD features
     game_id = get_game_id(filepath)
-    ogd_columns = [
-        {"name": c, "children": [c], "unselect": True}
-        for c in list_ogd_features(game_id)
-    ]
+    ogd_columns = []
+    # ogd_columns = [
+    #     {"name": c, "children": [c], "unselect": True}
+    #     for c in list_ogd_features(game_id)
+    # ]
     return ogd_columns + columns
 
 
@@ -271,13 +272,13 @@ def get_game_id(filepath):
 def preprocess_df(filepath):
     # merge with ogd features
     df_no_ogd = preprocess_df_no_ogd(filepath)
-    game_id = get_game_id(filepath)
+    # game_id = get_game_id(filepath)
 
-    df_features = calculate_ogd_features(game_id, filepath)
-    if len(df_features):
-        clean_agg_df_ogd = df_no_ogd.join(df_features, how="left", on=["user_id"])
-    else:
-        clean_agg_df_ogd = df_no_ogd
+    # df_features = calculate_ogd_features(game_id, filepath)
+    # if len(df_features):
+    #     clean_agg_df_ogd = df_no_ogd.join(df_features, how="left", on=["user_id"])
+    # else:
+    clean_agg_df_ogd = df_no_ogd
 
     # fixme - the ID is the segment_id + user_id
     clean_agg_df_ogd = clean_agg_df_ogd.with_columns(
