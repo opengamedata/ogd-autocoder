@@ -383,7 +383,7 @@
               </h6>
               <ul id="includedFeatures" class="list-group overflow-auto" style="max-height: 200px;"></ul>
             </div>
-            <div class="col border rounded p-2 d-flex flex-column">
+            <div class="col border rounded p-2 mt-2 d-flex flex-column">
               <h6>
                 Excluded
                 <button id="allToIncluded" class="btn btn-sm btn-outline-success ms-2">
@@ -391,6 +391,19 @@
                 </button>
               </h6>
               <ul id="excludedFeatures" class="list-group overflow-auto" style="max-height: 200px;"></ul>
+            </div>
+            <div id="correlationLegend" class="d-flex align-items-center gap-2 p-2 mt-2 border rounded">
+              <div style="width: 20px; height: 20px; background-color: rgb(0, 255, 0, 0.2); border: 1px solid #ccc;"></div>
+              <span>Low correlation</span>
+
+              <div style="width: 20px; height: 20px; background-color: rgb(255, 255, 0, 0.2); border: 1px solid #ccc;"></div>
+              <span>Medium correlation</span>
+
+              <div style="width: 20px; height: 20px; background-color: rgb(255, 0, 0, 0.2); border: 1px solid #ccc;"></div>
+              <span>High correlation</span>
+
+              <div style="width: 20px; height: 20px; background-color: white; border: 1px solid #ccc;"></div>
+              <span>Null correlation</span>
             </div>
           </div>
         </div>

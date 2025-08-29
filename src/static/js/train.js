@@ -681,12 +681,18 @@ function recalculateMaxCorrelation() {
 
             let max_corr = values.length ? Math.max(...values) : null;
             if (max_corr) {
-                const r = max_corr < 0.5 ? 255 * (max_corr * 2) : 255;
-                const g = max_corr < 0.5 ? 255 : 255 - 255 * ((max_corr - 0.5) * 2);
-                const b = 0;
+                let r, g, b = 0;
+
+                if (max_corr < 0.5) {
+                  r = Math.round(255 * (max_corr * 2));
+                  g = 255;
+                } else {
+                  r = 255;
+                  g = Math.round(255 * ((1 - max_corr) * 2));
+                }
             
                 let elem = $(`[data-event-name="${feat}"]`);
-                elem.css("background-color", `rgb(${Math.round(r)}, ${Math.round(g)}, ${b}, 0.2)`);
+                elem.css("background-color", `rgb(${r}, ${g}, ${b}, 0.2)`);
             }
         }
     }
