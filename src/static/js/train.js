@@ -301,6 +301,18 @@ function addModel(model_info) {
     }
 }
 
+$("#allToExcluded").on('click', () => {
+    $('#includedFeatures').children("li:visible").each(function () {
+        $(this).find("button").click();
+    });
+})
+
+$("#allToIncluded").on('click', () => {
+    $('#excludedFeatures').children("li:visible").each(function () {
+        $(this).find("button").click();
+    });
+})
+
 /**
  * Fill the input parameters (model type, features, hyperparameters, summary)
  * from existing selected model and sets them to read-only.
@@ -624,6 +636,7 @@ function fillFeatureList() {
                         $(this).addClass('d-none');
                     }
                 });
+                updateNumSelectedFeatures();
             });
         },
         error: function (xhr, status, error) {
@@ -649,32 +662,40 @@ async function updateCorrelationMatrix() {
 
 function recalculateMaxCorrelation() {
     let included_features = [];
+    let all_features = [];
     $('#includedFeatures').children('li').each(function () {
         included_features.push($(this).data("event-name"));
+        all_features.push($(this).data("event-name"));
     });
-    for (let feat of included_features) {
-        const values = Object.entries(correlationMatrix[feat])
-            .filter(([col]) => included_features.includes(col) && col !== feat)
-            .map(([_, value]) => value);
-
-        let max_corr = values.length ? Math.max(...values) : null;
-        if (max_corr) {
-            const r = max_corr < 0.5 ? 255 * (max_corr * 2) : 255;
-            const g = max_corr < 0.5 ? 255 : 255 - 255 * ((max_corr - 0.5) * 2);
-            const b = 0;
-          
-            let elem = $(`#includedFeatures [data-event-name="${feat}"]`);
-            elem.css("background-color", `rgb(${Math.round(r)}, ${Math.round(g)}, ${b}, 0.4)`);
-
-            //let textElem = $(elem.children().get(0));
-            //textElem.text(textElem.text())
-        }
+    $('#excludedFeatures').children('li').each(function () {
+        all_features.push($(this).data("event-name"));
+    });
+    if (included_features.length < 2) {
+        $(`#includedFeatures li`).css("background-color", "white");
         $(`#excludedFeatures li`).css("background-color", "white");
+    } else {
+        for (let feat of all_features) {
+            const values = Object.entries(correlationMatrix[feat])
+                .filter(([col, value]) => included_features.includes(col) && col !== feat && value !== "null")
+                .map(([, value]) => value);
+
+            let max_corr = values.length ? Math.max(...values) : null;
+            if (max_corr) {
+                const r = max_corr < 0.5 ? 255 * (max_corr * 2) : 255;
+                const g = max_corr < 0.5 ? 255 : 255 - 255 * ((max_corr - 0.5) * 2);
+                const b = 0;
+            
+                let elem = $(`[data-event-name="${feat}"]`);
+                elem.css("background-color", `rgb(${Math.round(r)}, ${Math.round(g)}, ${b}, 0.2)`);
+            }
+        }
     }
 }
 
 function updateNumSelectedFeatures() {
     $("#numSelFeatures").text($('#includedFeatures').children().length);
+    $("#countFilteredIncluded").text($('#includedFeatures').children(":visible").length);
+    $("#countFilteredExcluded").text($('#excludedFeatures').children(":visible").length);
 }
 
 function enableTrain() {

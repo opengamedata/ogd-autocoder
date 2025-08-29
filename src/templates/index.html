@@ -375,11 +375,21 @@
             <input type="text" id="featureSearch" class="form-control mb-2" placeholder="Search features...">
             <!-- <div id="featureSelector" class="border rounded p-2" style="height: 400px; overflow-y: auto;"></div> -->
             <div class="col border rounded p-2 d-flex flex-column">
-              <h6>Included</h6>
+              <h6>
+                Included
+                <button id="allToExcluded" class="btn btn-sm btn-outline-danger ms-2">
+                  <i class="bi bi-arrow-right"></i> Move All Filtered (<span id="countFilteredIncluded">0</span>)
+                </button>
+              </h6>
               <ul id="includedFeatures" class="list-group overflow-auto" style="max-height: 200px;"></ul>
             </div>
             <div class="col border rounded p-2 d-flex flex-column">
-              <h6>Excluded</h6>
+              <h6>
+                Excluded
+                <button id="allToIncluded" class="btn btn-sm btn-outline-success ms-2">
+                  <i class="bi bi-arrow-left"></i> Move All Filtered (<span id="countFilteredExcluded">0</span>)
+                </button>
+              </h6>
               <ul id="excludedFeatures" class="list-group overflow-auto" style="max-height: 200px;"></ul>
             </div>
           </div>
