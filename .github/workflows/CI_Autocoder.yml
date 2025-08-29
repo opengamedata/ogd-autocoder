@@ -82,16 +82,15 @@ jobs:
       run: ssh -o StrictHostKeyChecking=no -T -i ./key.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "cd ${{ env.DEPLOY_DIR }}; python -m uv venv; python -m uv sync --no-dev --cache-dir ${{ env.PROJECT_DIR }}/.cache"
 
     - name: Setup uploads folder
-      # Parts of the ssh multiline:
-      # a. `! [ -d ${{ env.DEPLOY_DIR }}/uploads ]`                         : checks if the uploads directory already exists
-      # b. `mkdir -p ${{ env.DEPLOY_DIR }}/uploads`                         : if directory didn't exist, (a) returns true, and we create it
-      # c. `chgrp ${{ secrets.EXEC_GROUP }} ${{ env.DEPLOY_DIR }}/uploads/` : if (b) ran, then change group to the execution group
-      # d. `chmod g+rwx ${{ env.DEPLOY_DIR }}/uploads/"`                    : if (c) ran, then ensure group has read, write, & exec on the uploads
       run: >
         ssh -o StrictHostKeyChecking=no -T
         -i ./key.txt
         ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}
-        "if ! [ -d ${{ env.DEPLOY_DIR }}/uploads ]; then mkdir -p ${{ env.DEPLOY_DIR }}/uploads; sudo chgrp ${{ secrets.EXEC_GROUP }} ${{ env.DEPLOY_DIR }}/uploads/; sudo chmod g+rwx ${{ env.DEPLOY_DIR }}/uploads/ fi"
+        "if ! [ -d ${{ env.DEPLOY_DIR }}/uploads ]; then
+          mkdir -p ${{ env.DEPLOY_DIR }}/uploads;
+          sudo chgrp ${{ secrets.EXEC_GROUP }} ${{ env.DEPLOY_DIR }}/uploads/;
+          sudo chmod g+rwx ${{ env.DEPLOY_DIR }}/uploads/
+        fi"
 
     # 4. Cleanup & complete
     - name: Restart httpd via ssh
