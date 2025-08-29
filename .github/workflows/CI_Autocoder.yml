@@ -34,10 +34,10 @@ jobs:
       uses: ./.github/actions/Autocoder_config
       with:
           api_base: ${{ env.DEPLOY_DIR }}
-    - name: Create requirements.txt file
-      run: |
-        python -m pip install uv
-        uv export --no-hashes --no-dev --format=requirements.txt > requirements.txt
+    # - name: Create requirements.txt file
+    #   run: |
+    #     python -m pip install uv
+    #     uv export --no-hashes --no-dev --format=requirements.txt > requirements.txt
 
     # 2. Build 
 
@@ -76,11 +76,13 @@ jobs:
         remote_user: ${{ secrets.DEPLOY_USER }}
         remote_key:  ${{ secrets.DEPLOY_KEY  }}
 
-    - name: Upload requirements.txt
-      run: scp -o StrictHostKeyChecking=no -T -i ./key.txt ./requirements.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.DEPLOY_DIR }}
+    - name: Upload uv.lock
+      run: scp -o StrictHostKeyChecking=no -T -i ./key.txt ./uv.lock ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.DEPLOY_DIR }}
+    - name: Upload pyproject.toml
+      run: scp -o StrictHostKeyChecking=no -T -i ./key.txt ./pyproject.toml ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.DEPLOY_DIR }}
 
     - name: Set up venv for the deploy
-      run: ssh -o StrictHostKeyChecking=no -T -i ./key.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "cd ${{ env.DEPLOY_DIR }}; python -m virtualenv .venv; source .venv/bin/activate; python -m pip install -r requirements.txt; deactivate"
+      run: ssh -o StrictHostKeyChecking=no -T -i ./key.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "cd ${{ env.DEPLOY_DIR }}; python -m uv venv; python -m uv sync"
 
     - name: Setup uploads folder
       run: ssh -o StrictHostKeyChecking=no -T -i ./key.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "mkdir -p ${{ env.DEPLOY_DIR }}/uploads; chgrp www-data ${{ env.DEPLOY_DIR }}/uploads/; chmod g+rwx ${{ env.DEPLOY_DIR }}/uploads/"
