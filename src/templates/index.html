@@ -178,11 +178,11 @@
         <div class="col-md-4">
           <label for="segmentDropdown" class="form-label">Segment ID</label>
           <div class="d-flex align-items-center">
-            <button class="btn btn-primary me-1" type="button" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
-            <button class="btn btn-primary me-1" type="button" onclick="prevOption('#segmentDropdown')">&lt;</button>
+            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
+            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" onclick="prevOption('#segmentDropdown')">&lt;</button>
             <select class="form-control flex-grow-1" id="segmentDropdown"></select>
-            <button class="btn btn-primary ms-1" type="button" onclick="nextOption('#segmentDropdown')">&gt;</button>
-            <button class="btn btn-primary ms-1" type="button" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
+            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" onclick="nextOption('#segmentDropdown')">&gt;</button>
+            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
           </div>          
         </div>
     
@@ -504,11 +504,11 @@
         <div class="col-md-4">
           <label for="segmentDropdown_apply" class="form-label">Segment ID</label>
           <div class="d-flex align-items-center">
-            <button class="btn btn-primary me-1" type="button" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
-            <button class="btn btn-primary me-1" type="button" onclick="prevOption('#segmentDropdown_apply')">&lt;</button>
+            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
+            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" onclick="prevOption('#segmentDropdown_apply')">&lt;</button>
             <select class="form-control flex-grow-1 me-1" id="segmentDropdown_apply"></select>
-            <button class="btn btn-primary ms-1" type="button" onclick="nextOption('#segmentDropdown_apply')">&gt;</button>
-            <button class="btn btn-primary ms-1" type="button" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
+            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" onclick="nextOption('#segmentDropdown_apply')">&gt;</button>
+            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
           </div>          
         </div>
     
@@ -606,4 +606,5 @@
 <script src="static/js/label.js"></script>
 <script src="static/js/train.js"></script>
 <script src="static/js/apply.js"></script>
+<script src="static/js/on_ready.js"></script>
 {% endblock %}
