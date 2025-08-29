@@ -3,7 +3,7 @@ let numAccepts = 0;
 
 $('#segmentDropdown_apply').select2({
     placeholder: "...",
-    width: '40%',
+    width: '60%',
 });
 
 $('#labelsDropdown_apply').select2({
