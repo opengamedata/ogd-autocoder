@@ -300,8 +300,15 @@ def inference(filepath, model_path):
 
     X = df_processed.select(model_info["include_features"]).to_numpy()
     if model_info["model_type"] == "neural-net":
-        model = model.load_state_dict(torch.load(model_info["model_path"]))
-        probs = nn.functional.softmax(model(X), dim=1)
+        model = CustomNeuralNet(
+            X.shape[1], model_info["hyperparameters"]["units_per_layer"], len(model_info["include_labels"])
+        )
+        model.load_state_dict(torch.load(model_info["model_path"]))
+        model.eval()
+
+        with torch.no_grad():
+            X = torch.tensor(X, dtype=torch.float32)
+            probs = nn.functional.softmax(model(X), dim=1)
     else:
         model = joblib.load(model_info["model_path"])
         probs = model.predict_proba(X)
