@@ -12,7 +12,8 @@ on:
 
 env:
   DEPLOY_HOST: ${{ vars.OGD_STAGING_HOST }}
-  DEPLOY_DIR:                              ${{ vars.WSGI_PATH }}/${{ github.event.repository.name }}/${{ github.ref_name }}
+  PROJECT_DIR:                 ${{ vars.WSGI_PATH }}/${{ github.event.repository.name }}
+  DEPLOY_DIR:                  ${{ vars.WSGI_PATH }}/${{ github.event.repository.name }}/${{ github.ref_name }}
   DEPLOY_URL:  ${{ vars.OGD_STAGING_HOST }}/wsgi-bin/${{ github.event.repository.name }}/${{ github.ref_name }}/app.wsgi
 
 jobs:
@@ -34,10 +35,6 @@ jobs:
       uses: ./.github/actions/Autocoder_config
       with:
           api_base: ${{ env.DEPLOY_DIR }}
-    - name: Create requirements.txt file
-      run: |
-        python -m pip install uv
-        uv export --no-hashes --no-dev --format=requirements.txt > requirements.txt
 
     # 2. Build 
 
@@ -76,14 +73,26 @@ jobs:
         remote_user: ${{ secrets.DEPLOY_USER }}
         remote_key:  ${{ secrets.DEPLOY_KEY  }}
 
-    - name: Upload requirements.txt
-      run: scp -o StrictHostKeyChecking=no -T -i ./key.txt ./requirements.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.DEPLOY_DIR }}
+    - name: Upload uv.lock
+      run: scp -o StrictHostKeyChecking=no -T -i ./key.txt ./uv.lock ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.DEPLOY_DIR }}
+    - name: Upload pyproject.toml
+      run: scp -o StrictHostKeyChecking=no -T -i ./key.txt ./pyproject.toml ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.DEPLOY_DIR }}
 
     - name: Set up venv for the deploy
-      run: ssh -o StrictHostKeyChecking=no -T -i ./key.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "cd ${{ env.DEPLOY_DIR }}; python -m virtualenv .venv; source .venv/bin/activate; python -m pip install -r requirements.txt; deactivate"
+      run: ssh -o StrictHostKeyChecking=no -T -i ./key.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "cd ${{ env.DEPLOY_DIR }}; python -m uv venv; python -m uv sync --no-dev --cache-dir ${{ env.PROJECT_DIR }}/.cache"
 
     - name: Setup uploads folder
-      run: ssh -o StrictHostKeyChecking=no -T -i ./key.txt ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} "mkdir -p ${{ env.DEPLOY_DIR }}/uploads; chgrp www-data ${{ env.DEPLOY_DIR }}/uploads/; chmod g+rwx ${{ env.DEPLOY_DIR }}/uploads/"
+      # Note: `! [ -d ${{ env.DEPLOY_DIR }}/uploads ]` tests whether given directory is a directory (-d) and negates it (!)
+      #       So the `if` below is effectively `if not uploads.is_dir()` in pseudo-Python
+      run: >
+        ssh -o StrictHostKeyChecking=no -T
+        -i ./key.txt
+        ${{ secrets.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}
+        "if ! [ -d ${{ env.DEPLOY_DIR }}/uploads ]; then
+          mkdir -p ${{ env.DEPLOY_DIR }}/uploads;
+          sudo chgrp ${{ secrets.EXEC_GROUP }} ${{ env.DEPLOY_DIR }}/uploads/;
+          sudo chmod g+rwx ${{ env.DEPLOY_DIR }}/uploads/;
+        fi"
 
     # 4. Cleanup & complete
     - name: Restart httpd via ssh
