@@ -86,7 +86,7 @@ function uploadFile() {
 
     $('#spinner').removeClass("d-none");
     $.ajax({
-        url: "upload",
+        url: 'upload',
         method: "POST",
         data: formData,
         processData: false,
@@ -239,7 +239,7 @@ async function loadEvents(table_id, seg_dropdown_id) {
     }
 
     await $.ajax({
-        url: `/events/${user_id}`,
+        url: `events/${user_id}`,
         method: "POST",
         data: JSON.stringify({ segment_id: segment_id }),
         contentType: "application/json",

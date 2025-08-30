@@ -12,7 +12,7 @@ function segmentRows() {
     }
     $('#spinner').removeClass("d-none");
     $.ajax({
-        url: `/segment/${user_id}`,
+        url: `segment/${user_id}`,
         method: "POST",
         // select the index and the session column (will be the row identifier)
         data: JSON.stringify({
