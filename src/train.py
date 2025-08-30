@@ -9,7 +9,7 @@ from datetime import datetime
 import numpy as np
 import copy
 
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, RobustScaler
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
@@ -106,6 +106,17 @@ def train_model(
     # to avoid saving label encoder object, may have different order from include_labels
     model_info["include_labels"] = le.classes_.tolist()
     model_info["include_features"] = include_features
+
+    if hyperparameters.get("scaling", False):
+        scaler = RobustScaler()
+        # important - only fit on train data to avoid leaks
+        x_train_full = scaler.fit_transform(x_train_full)
+        x_test = scaler.transform(x_test)
+        model_info["scaler_path"] = os.path.join(
+            models_dir, "scaler_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl"
+        )
+        joblib.dump(scaler, model_info["scaler_path"])
+
     if model_type == "logistic":
         model_info["model_name"] = "Logistic Regression"
         output += train_logistic(
@@ -299,6 +310,11 @@ def inference(filepath, model_path):
     model_info = find_model_info(filepath, model_path)
 
     X = df_processed.select(model_info["include_features"]).to_numpy()
+
+    if model_info["scaler_path"]:
+        scaler = joblib.load(model_info["scaler_path"])
+        X = scaler.transform(X)
+    
     if model_info["model_type"] == "neural-net":
         model = model.load_state_dict(torch.load(model_info["model_path"]))
         probs = nn.functional.softmax(model(X), dim=1)
