@@ -120,7 +120,7 @@ function filterDataset() {
     }).get();
 
     $.ajax({
-        url: "dataset_filter",
+        url: 'dataset_filter',
         method: "POST",
         contentType: "application/json",
         data: JSON.stringify({ 

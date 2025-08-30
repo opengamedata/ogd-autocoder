@@ -38,7 +38,7 @@ async function fillLabelDropdowns() {
 
     $('#spinner').removeClass("d-none");
     await $.ajax({
-        url: "list_labels",
+        url: 'list_labels',
         method: "POST",
         contentType: "application/json",
         success: function (response) {
@@ -82,7 +82,7 @@ function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id =
     let selectedLabels = $(lbl_dropdown_id).val().join(', ');
     let justification = jus_dropdown_id ? $(jus_dropdown_id).val() : null;
     $.ajax({
-        url: `/label/${user_id}`,
+        url: `label/${user_id}`,
         method: "POST",
         // select the index and the time column (will be the row identifier)
         data: JSON.stringify({
@@ -165,7 +165,7 @@ async function fillSegmentDropdown(table_id, dropdown_id, reset_value = true) {
     if (user_id) {
         $('#spinner').removeClass("d-none");
         await $.ajax({
-            url: `/list_segment_ids/${user_id}`,
+            url: `list_segment_ids/${user_id}`,
             method: "POST",
             success: async function (response) {
                 response.data.forEach(seg => {

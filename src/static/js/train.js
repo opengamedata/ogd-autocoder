@@ -44,7 +44,7 @@ function trainModel() {
         features.push($(this).data("event-name"));
     });
     $.ajax({
-        url: `/train_model`,
+        url: 'train_model',
         method: "POST",
         data: JSON.stringify({
             model_type: model_type,
@@ -603,7 +603,7 @@ function toggleBarsForLabel() {
 function fillFeatureList() {
     $('#spinner').removeClass("d-none");
     $.ajax({
-        url: "list_available_features",
+        url: 'list_available_features',
         method: "POST",
         success: async function (response) {
             let data = response.data;
@@ -648,7 +648,7 @@ function fillFeatureList() {
 
 async function updateCorrelationMatrix() {
     return $.ajax({
-        url: "correlation_matrix",
+        url: 'correlation_matrix',
         method: "POST",
         success: function (response) {
             correlationMatrix = response.data;
