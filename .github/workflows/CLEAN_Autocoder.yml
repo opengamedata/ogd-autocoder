@@ -8,7 +8,7 @@ on:
 
 env:
   DEPLOY_HOST: ${{ vars.OGD_STAGING_HOST }}
-  DEPLOY_DIR:                              /${{ github.event.repository.name }}/${{ github.event.ref }}
+  DEPLOY_DIR:         ${{ vars.WSGI_PATH }}/${{ github.event.repository.name }}/${{ github.event.ref }}
   DEPLOY_URL:  ${{ vars.OGD_STAGING_HOST }}/${{ github.event.repository.name }}/${{ github.event.ref }}/app.wsgi
     
 jobs:
