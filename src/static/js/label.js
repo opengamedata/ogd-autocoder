@@ -2,7 +2,7 @@
 
 $('#segmentDropdown').select2({
     placeholder: "...",
-    width: '40%',
+    width: '60%',
 });
 
 $('#labelsDropdown').select2({
@@ -169,8 +169,12 @@ async function fillSegmentDropdown(table_id, dropdown_id, reset_value = true) {
             method: "POST",
             success: async function (response) {
                 response.data.forEach(seg => {
-                    let lbl = seg.segment_labels ? "(" + seg.segment_labels + ")" : "---";
-                    $(dropdown_id).append(`<option value="${seg.segment_id}">${seg.segment_id} ${lbl}</option>`);
+                    let lbl = seg.segment_labels;
+                    if (seg.job_name) {
+                        lbl = lbl ? (seg.job_name + ", " + lbl) : seg.job_name;
+                    }
+                    
+                    $(dropdown_id).append(`<option value="${seg.segment_id}">${seg.segment_id} (${lbl ?? "---"})</option>`);
                 });
 
                 if (!reset_value && previousValue && $(`${dropdown_id} option[value="${previousValue}"]`).length > 0) {

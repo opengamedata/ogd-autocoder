@@ -80,10 +80,10 @@ def get_dataset_info(filepath):
     included_events = (
         df_filtered.select(pl.col("event_name").unique()).to_series().to_list()
     )
-    excluded_events = set(
+    all_events = set(
         df.select(pl.col("event_name").unique()).to_series().to_list()
     )
-    excluded_events = list(excluded_events.difference(set(included_events)))
+    excluded_events = list(all_events.difference(set(included_events)))
     return {
         "models_count": len(get_models_list(filepath)),
         "date_range": date_range,
@@ -99,8 +99,8 @@ def get_dataset_info(filepath):
             "segments": unique_count(df_filtered, "segment_id"),
             "sessions": unique_count(df_filtered, "session_id"),
         },
-        "included_events": included_events,
-        "excluded_events": excluded_events,
+        "included_events": [{"name": ev} for ev in included_events],
+        "excluded_events": [{"name": ev} for ev in excluded_events],
         "labels_distribution": segment_labels_count(filepath),
     }
 
@@ -179,18 +179,19 @@ def segment_ids_for_user(filepath, user_id):
     """
     df = read_dataset(filepath)
 
-    df = (
-        df.filter(pl.col("user_id") == user_id)
-        .with_columns(
-            pl.col("segment_id").cast(pl.Int64)
-        )  # cast to int to sort correctly - fixme sort by timestamp
-        .select(["segment_id", "segment_labels"])
-        .drop_nulls(subset=["segment_id"])
-        .unique()
-        .sort("segment_id")
-    )
+    # cast to int to sort correctly - fixme sort by timestamp
+    df_user = df.filter(pl.col("user_id") == user_id).with_columns(pl.col("segment_id").cast(pl.Int64))
+    
+    cols = ["segment_id", "segment_labels"]
+    if "job_name" in df_user.columns:
+        cols.append("job_name")
 
-    return df.to_dicts()
+    df_user = df_user.drop_nulls(subset=["segment_id"])
+
+    # order by timestamp so we get the first job
+    df_segments = df_user.sort("timestamp").unique(subset=["segment_id", "segment_labels"])
+
+    return df_segments.select(cols).sort("segment_id").to_dicts()
 
 
 def list_seg_labels(filepath):

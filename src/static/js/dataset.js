@@ -34,7 +34,7 @@ async function fillDatasetInfo() {
             // labels are ["Labeled", "Not Labeled", "Not Selected"]
             segmentChart.data.datasets[0].data = [labelSegCount, notLabeled, notSelected];
             segmentChart.update();
-            fillEventLists(data.included_events, data.excluded_events)
+            fillInclExcLists(data.included_events, data.excluded_events, "#includedEvents", "#excludedEvents")
         },
         error: function (xhr, status, error) {
             console.error("User list loading failed:", status, error);
@@ -45,17 +45,18 @@ async function fillDatasetInfo() {
 
 
 
-function fillEventLists(includedEvents, excludedEvents) {
-    const includedList = $("#includedEvents").empty();
-    const excludedList = $("#excludedEvents").empty();
+function fillInclExcLists(includedElems, excludedElems, includedId, excludedId) {
+    const includedList = $(includedId).empty();
+    const excludedList = $(excludedId).empty();
 
-    includedEvents.forEach(eventName => {
-        includedList.append(createListItem(eventName, true));
+    includedElems.forEach(el => {
+        includedList.append(createListItem(el, true, includedId, excludedId));
     });
 
-    excludedEvents.forEach(eventName => {
-        excludedList.append(createListItem(eventName, false));
+    excludedElems.forEach(el => {
+        excludedList.append(createListItem(el, false, includedId, excludedId));
     });
+    $('[data-toggle="tooltip"]').tooltip();
 }
 
 function fillLabelDistPie(labelData) {
@@ -67,12 +68,12 @@ function fillLabelDistPie(labelData) {
     labelChart.update();
 }
 
-function createListItem(eventName, included) {
+function createListItem(element, included, includedId, excludedId) {
     const li = $(`
-        <li data-event-name="${eventName}" class="list-group-item d-flex justify-content-between align-items-center">
-            ${eventName}
+        <li data-event-name="${element.name}" class="list-group-item d-flex justify-content-between align-items-center" data-toggle="tooltip" title="${element.description ?? element.name}">
+            <span>${element.name}</span>
             <button data-include="${included}" class="btn btn-sm ${included ? 'btn-outline-danger' : 'btn-outline-success'}" 
-                    onclick="moveEvent(this)">
+                    onclick="moveEvent(this, '${includedId}', '${excludedId}')">
                 <i class="bi ${included ? 'bi-arrow-right' : 'bi-arrow-left'}"></i>
             </button>
         </li>
@@ -80,11 +81,16 @@ function createListItem(eventName, included) {
     return li;
 }
 
-function moveEvent(button) {
+function moveEvent(button, includedId, excludedId) {
     let $button = $(button);
     var $li = $button.closest('li');
     var included = $button.attr("data-include") === "true";
-    var $targetList = $("#" + (included ? "excludedEvents" : "includedEvents"));
+    var $targetList = $(included ? excludedId : includedId);
+
+    let tooltipInstance = bootstrap.Tooltip.getInstance($li[0])
+    if (tooltipInstance) {
+        tooltipInstance.dispose();
+    }
 
     if (included) {
         $button
@@ -100,6 +106,11 @@ function moveEvent(button) {
 
     $button.attr("data-include", !included);
     $li.appendTo($targetList);
+    bootstrap.Tooltip.getOrCreateInstance($li[0]);
+
+    if (includedId.toLowerCase().includes("features"))
+        updateNumSelectedFeatures();
+        recalculateMaxCorrelation();
 }
 
 function filterDataset() {

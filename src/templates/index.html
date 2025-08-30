@@ -178,11 +178,11 @@
         <div class="col-md-4">
           <label for="segmentDropdown" class="form-label">Segment ID</label>
           <div class="d-flex align-items-center">
-            <button class="btn btn-primary me-1" type="button" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
-            <button class="btn btn-primary me-1" type="button" onclick="prevOption('#segmentDropdown')">&lt;</button>
+            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
+            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" onclick="prevOption('#segmentDropdown')">&lt;</button>
             <select class="form-control flex-grow-1" id="segmentDropdown"></select>
-            <button class="btn btn-primary ms-1" type="button" onclick="nextOption('#segmentDropdown')">&gt;</button>
-            <button class="btn btn-primary ms-1" type="button" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
+            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" onclick="nextOption('#segmentDropdown')">&gt;</button>
+            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
           </div>          
         </div>
     
@@ -276,6 +276,21 @@
               </label>
             </div>
           </div>
+          <div class="preprocessing-params mb-4">
+            <label class="form-label fw-bold mb-3">Preprocessing</label>
+            <div class="form-check form-switch">
+              <input class="form-check-input me-2" checked="false" type="checkbox" id="scalingCheckbox">
+              <label class="form-check-label fs-6" for="scalingCheckbox">
+                Use Scaling to Range 0-1 (can improve optimization)
+              </label>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input me-2" checked="false" type="checkbox" id="pcaCheckbox">
+              <label class="form-check-label fs-6" for="pcaCheckbox">
+                Use Dimensionality Reduction (PCA, can improve performance)
+              </label>
+            </div>
+          </div>
           <div class="tab-content" id="modelTabsContent">
             <div class="tab-pane fade show active" id="logistic" role="tabpanel" aria-labelledby="logistic-tab">
               <div class="model-params">
@@ -358,7 +373,38 @@
           <div class="mb-3">
             <label class="form-label fw-bold">Features (Selected: <span id="numSelFeatures">0</span>)</label>
             <input type="text" id="featureSearch" class="form-control mb-2" placeholder="Search features...">
-            <div id="featureSelector" class="border rounded p-2" style="height: 400px; overflow-y: auto;"></div>
+            <!-- <div id="featureSelector" class="border rounded p-2" style="height: 400px; overflow-y: auto;"></div> -->
+            <div class="col border rounded p-2 d-flex flex-column">
+              <h6>
+                Included
+                <button id="allToExcluded" class="btn btn-sm btn-outline-danger ms-2">
+                  <i class="bi bi-arrow-right"></i> Exclude All Filtered (<span id="countFilteredIncluded">0</span>)
+                </button>
+              </h6>
+              <ul id="includedFeatures" class="list-group overflow-auto" style="max-height: 200px;"></ul>
+            </div>
+            <div class="col border rounded p-2 mt-2 d-flex flex-column">
+              <h6>
+                Excluded
+                <button id="allToIncluded" class="btn btn-sm btn-outline-success ms-2">
+                  <i class="bi bi-arrow-left"></i> Include All Filtered (<span id="countFilteredExcluded">0</span>)
+                </button>
+              </h6>
+              <ul id="excludedFeatures" class="list-group overflow-auto" style="max-height: 200px;"></ul>
+            </div>
+            <div id="correlationLegend" class="d-flex align-items-center gap-2 p-2 mt-2 border rounded">
+              <div style="width: 20px; height: 20px; background-color: rgb(0, 255, 0, 0.2); border: 1px solid #ccc;"></div>
+              <span>Low correlation</span>
+
+              <div style="width: 20px; height: 20px; background-color: rgb(255, 255, 0, 0.2); border: 1px solid #ccc;"></div>
+              <span>Medium correlation</span>
+
+              <div style="width: 20px; height: 20px; background-color: rgb(255, 0, 0, 0.2); border: 1px solid #ccc;"></div>
+              <span>High correlation</span>
+
+              <div style="width: 20px; height: 20px; background-color: white; border: 1px solid #ccc;"></div>
+              <span>Null correlation</span>
+            </div>
           </div>
         </div>
       
@@ -458,11 +504,11 @@
         <div class="col-md-4">
           <label for="segmentDropdown_apply" class="form-label">Segment ID</label>
           <div class="d-flex align-items-center">
-            <button class="btn btn-primary me-1" type="button" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
-            <button class="btn btn-primary me-1" type="button" onclick="prevOption('#segmentDropdown_apply')">&lt;</button>
+            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
+            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" onclick="prevOption('#segmentDropdown_apply')">&lt;</button>
             <select class="form-control flex-grow-1 me-1" id="segmentDropdown_apply"></select>
-            <button class="btn btn-primary ms-1" type="button" onclick="nextOption('#segmentDropdown_apply')">&gt;</button>
-            <button class="btn btn-primary ms-1" type="button" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
+            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" onclick="nextOption('#segmentDropdown_apply')">&gt;</button>
+            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
           </div>          
         </div>
     
@@ -560,4 +606,5 @@
 <script src="static/js/label.js"></script>
 <script src="static/js/train.js"></script>
 <script src="static/js/apply.js"></script>
+<script src="static/js/on_ready.js"></script>
 {% endblock %}
