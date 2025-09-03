@@ -114,6 +114,8 @@ function getHyperparameters(model) {
     params.train_test_ratio = $('#trainTestSplit').val();
     params.balance_classes = $("#balanceClassesCheckbox").is(':checked');
     params.scaling = $("#scalerSelect").val();
+    let val = parseInt($('#pcaComps').val());
+    params.pca_comps = isNaN(val) ? 0 : val;
     return params;
 }
 
@@ -121,6 +123,7 @@ function setHyperparameters(model, params) {
     $('#trainTestSplit').val(params.train_test_ratio);
     $("#balanceClassesCheckbox").prop('checked', params.balance_classes);
     $("#scalerSelect").val(params.scaling).trigger('change');
+    $('#pcaComps').val(params.pca_comps);
     updateLabelFromValue();
     if (model === 'logistic') {
         $('#logisticLambda').val(params.lambda);
@@ -373,6 +376,7 @@ function fillModelParamsFromExisting(model_info) {
     $('#trainTestSplitValue').prop('disabled', true);
     $('#balanceClassesCheckbox').prop('disabled', true);
     $('#scalerSelect').prop('disabled', true);
+    $('#pcaComps').prop('disabled', true);
     $('#trainModelBtn').hide()
     $('#enableTrainBtn').show();
 
@@ -729,6 +733,7 @@ function enableTrain() {
     $('#trainTestSplitValue').prop('disabled', false);
     $('#balanceClassesCheckbox').prop('disabled', false);
     $('#scalerSelect').prop('disabled', false);
+    $('#pcaComps').prop('disabled', false);
 
     $('#includedFeatures button').prop('disabled', false);
     $('#excludedFeatures button').prop('disabled', false);

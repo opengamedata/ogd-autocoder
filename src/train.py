@@ -19,6 +19,8 @@ from sklearn.metrics import (
     roc_auc_score,
     classification_report,
 )
+from sklearn.pipeline import Pipeline
+from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils.class_weight import compute_class_weight
 
@@ -114,16 +116,25 @@ def train_model(
     model_info["include_labels"] = le.classes_.tolist()
     model_info["include_features"] = include_features
 
+    preprocess_pipe = []
+
     scaler_choice = hyperparameters.get("scaling", False)
     if scaler_choice in AVAILABLE_SCALERS:
-        scaler = AVAILABLE_SCALERS[scaler_choice]()
+        preprocess_pipe.append(('scaler', AVAILABLE_SCALERS[scaler_choice]()))
+
+    pca_comps = hyperparameters.get("pca_comps", 0)
+    if pca_comps > 0:
+        preprocess_pipe.append(('pca', PCA(n_components=pca_comps)))
+
+    if len(preprocess_pipe):
+        pipe = Pipeline(preprocess_pipe)
         # important - only fit on train data to avoid leaks
-        x_train_full = scaler.fit_transform(x_train_full)
-        x_test = scaler.transform(x_test)
-        model_info["scaler_path"] = os.path.join(
-            models_dir, "scaler_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl"
+        x_train_full = pipe.fit_transform(x_train_full)
+        x_test = pipe.transform(x_test)
+        model_info["preprocessor_path"] = os.path.join(
+            models_dir, "preprocessor_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl"
         )
-        joblib.dump(scaler, model_info["scaler_path"])
+        joblib.dump(pipe, model_info["preprocessor_path"])
 
     if model_type == "logistic":
         model_info["model_name"] = "Logistic Regression"
@@ -319,9 +330,9 @@ def inference(filepath, model_path):
 
     X = df_processed.select(model_info["include_features"]).to_numpy()
 
-    if model_info["scaler_path"]:
-        scaler = joblib.load(model_info["scaler_path"])
-        X = scaler.transform(X)
+    if model_info["preprocessor_path"]:
+        pipe = joblib.load(model_info["preprocessor_path"])
+        X = pipe.transform(X)
     
     if model_info["model_type"] == "neural-net":
         model = model.load_state_dict(torch.load(model_info["model_path"]))

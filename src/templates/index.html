@@ -290,12 +290,12 @@
                 </select>
               </div>
             </div>
-            <!-- <div class="form-check form-switch">
-              <input class="form-check-input me-2" checked="false" type="checkbox" id="pcaCheckbox">
-              <label class="form-check-label fs-6" for="pcaCheckbox">
-                Use Dimensionality Reduction (PCA, can improve performance)
-              </label>
-            </div> -->
+            <div class="mb-2 row">
+              <label for="pcaComps" class="col-sm-4 col-form-label">PCA (0 to disable)</label>
+              <div class="col-sm-8">
+                <input type="number" min="0" value="0" id="pcaComps" class="form-control">
+              </div>
+            </div>
           </div>
           <div class="tab-content" id="modelTabsContent">
             <div class="tab-pane fade show active" id="logistic" role="tabpanel" aria-labelledby="logistic-tab">
