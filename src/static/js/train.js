@@ -9,6 +9,7 @@ let correlationMatrix = null; // used for correlations
 
 $('#labelForMetrics').select2();
 $('#logisticPenalty').select2();
+$('#scalerSelect').select2();
 
 $('#trainLabelsDropdown').select2({
     tags: false,
@@ -112,14 +113,14 @@ function getHyperparameters(model) {
 
     params.train_test_ratio = $('#trainTestSplit').val();
     params.balance_classes = $("#balanceClassesCheckbox").is(':checked');
-    params.scaling = $("#scalingCheckbox").is(':checked');
+    params.scaling = $("#scalerSelect").val();
     return params;
 }
 
 function setHyperparameters(model, params) {
     $('#trainTestSplit').val(params.train_test_ratio);
     $("#balanceClassesCheckbox").prop('checked', params.balance_classes);
-    $("#scalingCheckbox").prop('checked', params.scaling);
+    $("#scalerSelect").val(params.scaling).trigger('change');
     updateLabelFromValue();
     if (model === 'logistic') {
         $('#logisticLambda').val(params.lambda);
@@ -371,7 +372,7 @@ function fillModelParamsFromExisting(model_info) {
     $('#trainTestSplit').prop('disabled', true);
     $('#trainTestSplitValue').prop('disabled', true);
     $('#balanceClassesCheckbox').prop('disabled', true);
-    $('#scalingCheckbox').prop('disabled', true);
+    $('#scalerSelect').prop('disabled', true);
     $('#trainModelBtn').hide()
     $('#enableTrainBtn').show();
 
@@ -727,7 +728,7 @@ function enableTrain() {
     $('#trainTestSplit').prop('disabled', false);
     $('#trainTestSplitValue').prop('disabled', false);
     $('#balanceClassesCheckbox').prop('disabled', false);
-    $('#scalingCheckbox').prop('disabled', false);
+    $('#scalerSelect').prop('disabled', false);
 
     $('#includedFeatures button').prop('disabled', false);
     $('#excludedFeatures button').prop('disabled', false);

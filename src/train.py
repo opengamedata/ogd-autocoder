@@ -9,7 +9,7 @@ from datetime import datetime
 import numpy as np
 import copy
 
-from sklearn.preprocessing import LabelEncoder, RobustScaler
+from sklearn.preprocessing import LabelEncoder, RobustScaler, StandardScaler, MinMaxScaler, MaxAbsScaler
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
@@ -36,6 +36,13 @@ if torch.cuda.is_available():
     device = "cuda"
 else:
     device = "cpu"
+
+AVAILABLE_SCALERS = {
+    "StandardScaler": StandardScaler,
+    "MinMaxScaler": MinMaxScaler,
+    "MaxAbsScaler": MaxAbsScaler,
+    "RobustScaler": RobustScaler,
+}
 
 
 def available_features(filepath):
@@ -107,8 +114,9 @@ def train_model(
     model_info["include_labels"] = le.classes_.tolist()
     model_info["include_features"] = include_features
 
-    if hyperparameters.get("scaling", False):
-        scaler = RobustScaler()
+    scaler_choice = hyperparameters.get("scaling", False)
+    if scaler_choice in AVAILABLE_SCALERS:
+        scaler = AVAILABLE_SCALERS[scaler_choice]()
         # important - only fit on train data to avoid leaks
         x_train_full = scaler.fit_transform(x_train_full)
         x_test = scaler.transform(x_test)

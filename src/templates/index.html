@@ -278,11 +278,17 @@
           </div>
           <div class="preprocessing-params mb-4">
             <label class="form-label fw-bold mb-3">Preprocessing</label>
-            <div class="form-check form-switch">
-              <input class="form-check-input me-2" checked="false" type="checkbox" id="scalingCheckbox">
-              <label class="form-check-label fs-6" for="scalingCheckbox">
-                Use Scaling to Range 0-1 (can improve optimization)
-              </label>
+            <div class="mb-2 row">
+              <label for="scalerSelect" class="col-sm-4 col-form-label">Scaler (ignore in R. Forest)</label>
+              <div class="col-sm-8">
+                <select id="scalerSelect" style="width: 100%" class="form-select">
+                  <option value="" selected>None</option>
+                  <option value="RobustScaler">Robust Scaler (robust to outliers)</option>
+                  <option value="StandardScaler">Standard Scaler (mean=0, variance=1)</option>
+                  <option value="MinMaxScaler">Min-Max Scaler (range 0-1)</option>
+                  <option value="MaxAbsScaler">Max-Abs Scaler (makes abs max = 1.0)</option>
+                </select>
+              </div>
             </div>
             <!-- <div class="form-check form-switch">
               <input class="form-check-input me-2" checked="false" type="checkbox" id="pcaCheckbox">
