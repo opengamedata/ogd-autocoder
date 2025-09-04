@@ -59,12 +59,33 @@ def available_features(filepath):
 
 def correlation(filepath):
     df = preprocess_df(filepath).drop(["segment_labels", "segment_id"])
-
+    # FIXME - calculated for whole dataframe, but should filter by segment_labels
     corr_matrix = df.corr().to_pandas().abs()
     corr_matrix.index = corr_matrix.columns
     np.fill_diagonal(corr_matrix.values, 0) # fill 0s in self correlation
-    
+
     return corr_matrix.fillna("null").to_dict(orient="dict")
+
+def pca_details(filepath, hyperparameters, include_labels, include_features):
+    df = preprocess_df(filepath).to_pandas()
+    # FIXME - calculated on whole dataframe, no splitting in train/test
+    df = df[df["segment_labels"].isin(include_labels)]
+    cols = [c for c in include_features if c in df.columns]
+    df = df[cols]
+
+    # FIXME notify the user that scaling is required or do this by default
+    scaler_choice = hyperparameters.get("scaling", False)
+    if scaler_choice in AVAILABLE_SCALERS:
+        scaler = AVAILABLE_SCALERS[scaler_choice]()
+        df = scaler.fit_transform(df)
+
+    pca = PCA(n_components=df.shape[1])
+    pca.fit(df)
+    
+    explained_variance = pca.explained_variance_ratio_.tolist()
+    cumulative_variance = np.cumsum(explained_variance).tolist()
+
+    return {"explained_variance": explained_variance, "cumulative": cumulative_variance}
 
 def train_model(
     filepath, model_type, hyperparameters, include_labels, include_features, models_dir

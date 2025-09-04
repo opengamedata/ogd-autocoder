@@ -2,7 +2,7 @@ import os
 import time
 import traceback
 from utils import *
-from train import train_model, available_features, inference, get_predicted_label, correlation
+from train import train_model, pca_details, available_features, inference, get_predicted_label, correlation
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort
 from datetime import datetime
@@ -231,6 +231,18 @@ def predicted_label():
 
     return jsonify({"label": label, "confidence": confidence})
 
+@app.route("/pca_details", methods=["POST"])
+def get_pca_details():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+
+    return jsonify(pca_details(
+        filepath,
+        request.json["hyperparameters"],
+        request.json["include_labels"],
+        request.json["include_features"],
+    ))
 
 @app.route("/train_model", methods=["POST"])
 def train():

@@ -1,8 +1,8 @@
-let modelHistChart;
+let modelHistChart, pcaChart;
 // dictionary of this shape {label: {metric: [...]} }
 let metricsByLabel = {};
 let applyModelPath = null;
-let bestModel = {test_accuracy: 0, path: null}; // best selected by test accuracy
+let bestModel = { test_accuracy: 0, path: null }; // best selected by test accuracy
 let correlationMatrix = null; // used for correlations
 
 // dropdowns initialization
@@ -32,6 +32,43 @@ $('#modelMetricsTable').DataTable({
     scrollY: '400px',
     scrollCollapse: true
 });
+
+$('#collapsePca').on('shown.bs.collapse', function () {
+    fillPCAPlot(); // Call when shown
+});
+
+/**
+ * Updates PCA plot with explained variance and its cumulative value for n_components in the range of (1, n_columns) 
+ */
+function fillPCAPlot() {
+    $('#spinner').removeClass("d-none");
+    let model_type = $('#modelTabs .nav-link.active').attr('id').replace('-tab', '');
+    let features = [];
+    $('#includedFeatures').children('li').each(function () {
+        features.push($(this).data("event-name"));
+    });
+    $.ajax({
+        url: 'pca_details',
+        method: "POST",
+        data: JSON.stringify({
+            include_labels: $('#trainLabelsDropdown').val(),
+            include_features: features,
+            hyperparameters: getHyperparameters(model_type)
+        }),
+        contentType: "application/json",
+        success: function (response) {
+            $('#spinner').addClass("d-none");
+            pcaChart.data.datasets[0].data = response["explained_variance"];
+            pcaChart.data.datasets[1].data = response["cumulative"];
+            pcaChart.data.labels = response["explained_variance"].map((val, ind) => ind + 1);
+            pcaChart.update();
+        },
+        error: function (xhr, status, error) {
+            console.error("PCA Plot refresh failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
+}
 
 /**
  * Model training using selected parameters: Model type, labels, hyperparameters and features.
@@ -137,7 +174,7 @@ function setHyperparameters(model, params) {
         $('#nnLayers').val(params.n_layers).trigger('input');
 
         params.units_per_layer.forEach((val, i) => {
-            $(`input[name="nn_units_layer_${i+1}"]`).val(val);
+            $(`input[name="nn_units_layer_${i + 1}"]`).val(val);
         });
     }
 }
@@ -147,21 +184,21 @@ function createUnitPerLayerInputs() {
     const numLayers = parseInt($('#nnLayers').val()) || 0;
     const $container = $('#nnUnitsPerLayerContainer');
     $container.empty();
-  
+
     if (numLayers > 0) {
-      const $flexDiv = $('<div class="d-flex flex-wrap gap-2"></div>'); // inline flex container with gaps
-  
-      for (let i = 1; i <= numLayers; i++) {
-        const $inputGroup = $(`
+        const $flexDiv = $('<div class="d-flex flex-wrap gap-2"></div>'); // inline flex container with gaps
+
+        for (let i = 1; i <= numLayers; i++) {
+            const $inputGroup = $(`
           <div class="d-flex flex-column align-items-center">
             <label class="form-label mb-0" style="font-size: 0.75rem;">Layer ${i}</label>
             <input type="number" min="1" class="form-control form-control-sm" 
                    placeholder="Units" value="10" name="nn_units_layer_${i}" style="width: 80px;">
           </div>
         `);
-        $flexDiv.append($inputGroup);
-      }
-      $container.append($flexDiv);
+            $flexDiv.append($inputGroup);
+        }
+        $container.append($flexDiv);
     }
 };
 
@@ -230,7 +267,7 @@ function addModel(model_info) {
     modelHistChart.data.datasets[7].data.push(0);
     modelHistChart.data.datasets[8].data.push(0);
     modelHistChart.data.datasets[9].data.push(0);
-    
+
     // resize for horizontal scrollbar
     const wrapper = $('#chartCanvasWrapper');
     const labelCount = Math.max(2, modelHistChart.data.labels.length);
@@ -281,7 +318,7 @@ function addModel(model_info) {
 
         metricsByLabel[label] ??= {}; // ??= assigns if null
         metricsByLabel[label][metricKey] ??= [];
-        
+
         // fill with nulls for those models that dont use this labels (missing metrics)
         while (metricsByLabel[label][metricKey].length < modelIndex) {
             metricsByLabel[label][metricKey].push(null);
@@ -298,11 +335,11 @@ function addModel(model_info) {
     // fill with nulls for those models that dont use this labels (missing metrics)
     for (const label in metricsByLabel) {
         for (const metricKey in metricsByLabel[label]) {
-          if (metricsByLabel[label][metricKey]) {
-            while (metricsByLabel[label][metricKey].length < modelIndex) {
-                metricsByLabel[label][metricKey].push(null);
+            if (metricsByLabel[label][metricKey]) {
+                while (metricsByLabel[label][metricKey].length < modelIndex) {
+                    metricsByLabel[label][metricKey].push(null);
+                }
             }
-          }
         }
     }
 }
@@ -336,7 +373,7 @@ function fillModelParamsFromExisting(model_info) {
 
     $(tabId).addClass('active');
     $(paneId).addClass('show active');
-    
+
     setHyperparameters(model_info["model_type"], model_info["hyperparameters"]);
 
     $('#includedFeatures').children("li").each(function () {
@@ -693,13 +730,13 @@ function recalculateMaxCorrelation() {
                 let r, g, b = 0;
 
                 if (max_corr < 0.5) {
-                  r = Math.round(255 * (max_corr * 2));
-                  g = 255;
+                    r = Math.round(255 * (max_corr * 2));
+                    g = 255;
                 } else {
-                  r = 255;
-                  g = Math.round(255 * ((1 - max_corr) * 2));
+                    r = 255;
+                    g = Math.round(255 * ((1 - max_corr) * 2));
                 }
-            
+
                 let elem = $(`[data-event-name="${feat}"]`);
                 elem.css("background-color", `rgb(${r}, ${g}, ${b}, 0.2)`);
             }
@@ -754,6 +791,55 @@ $('#applyBest').on('click', () => {
         applyModel(bestModel.path);
 })
 
+const pcaCtx = $('#pcaChart')[0].getContext('2d');
+pcaChart = new Chart(pcaCtx, {
+    data: {
+        labels: [], // Fill this with 1, 2... dynamically
+        datasets: [
+            {
+                type: 'bar',
+                label: 'Variance Explained',
+                data: [],
+                backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            },
+            {
+                type: 'line',
+                label: 'Cumulative Variance',
+                data: [],
+                borderColor: 'rgba(255, 99, 132, 1)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                fill: false,
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: 'PCA Components',
+                    font: {
+                        size: 14,
+                        weight: 'bold'
+                    }
+                }
+            },
+            y: {
+                beginAtZero: true,
+                max: 1,
+            }
+        },
+        plugins: {
+            datalabels: {
+                display: false
+            }
+        }
+    }
+});
+
 /**
  * Ensures old and new content are not displayed simultaneously.
  */
@@ -761,8 +847,8 @@ function resetTrainView() {
     // reset state
     metricsByLabel = {};
     applyModelPath = null;
-    bestModel = {test_accuracy: 0, path: null};
-    
+    bestModel = { test_accuracy: 0, path: null };
+
     enableTrain();
 
     $('#modelSummary').text("");
