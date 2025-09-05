@@ -692,10 +692,22 @@ function fillFeatureList() {
     });
 }
 
+$('#trainLabelsDropdown').on('change', function () {
+    $('#spinner').removeClass("d-none");
+    updateCorrelationMatrix().finally(() => {
+        recalculateMaxCorrelation();
+        $('#spinner').addClass("d-none");
+    });
+});
+
 async function updateCorrelationMatrix() {
     return $.ajax({
         url: "correlation_matrix",
         method: "POST",
+        data: JSON.stringify({
+            include_labels: $('#trainLabelsDropdown').val(),
+        }),
+        contentType: "application/json",
         success: function (response) {
             correlationMatrix = response.data;
         },
@@ -811,6 +823,7 @@ pcaChart = new Chart(pcaCtx, {
                 borderColor: 'rgba(255, 99, 132, 1)',
                 backgroundColor: 'rgba(255, 99, 132, 0.2)',
                 fill: false,
+                hidden: true
             }
         ]
     },
@@ -827,10 +840,6 @@ pcaChart = new Chart(pcaCtx, {
                     }
                 }
             },
-            y: {
-                beginAtZero: true,
-                max: 1,
-            }
         },
         plugins: {
             datalabels: {

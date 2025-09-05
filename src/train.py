@@ -57,9 +57,11 @@ def available_features(filepath):
     return {"included_features": [{"name": c} for c in columns], "excluded_features": ogd_columns}
 
 
-def correlation(filepath):
-    df = preprocess_df(filepath).drop(["segment_labels", "segment_id"])
-    # FIXME - calculated for whole dataframe, but should filter by segment_labels
+def correlation(filepath, include_labels):
+    df = preprocess_df(filepath).drop(["segment_id"])
+    # FIXME - calculated on whole dataframe, no splitting in train/test
+    df = df.filter(pl.col("segment_labels").is_in(include_labels))
+    df = df.drop(["segment_labels"])
     corr_matrix = df.corr().to_pandas().abs()
     corr_matrix.index = corr_matrix.columns
     np.fill_diagonal(corr_matrix.values, 0) # fill 0s in self correlation
@@ -68,19 +70,24 @@ def correlation(filepath):
 
 def pca_details(filepath, hyperparameters, include_labels, include_features):
     df = preprocess_df(filepath).to_pandas()
-    # FIXME - calculated on whole dataframe, no splitting in train/test
     df = df[df["segment_labels"].isin(include_labels)]
     cols = [c for c in include_features if c in df.columns]
-    df = df[cols]
+    x_train, _ = train_test_split(
+        df[cols],
+        train_size=float(hyperparameters["train_test_ratio"]),
+        random_state=RANDOM_STATE,
+        stratify=df["segment_labels"],
+    )
 
     # FIXME notify the user that scaling is required or do this by default
     scaler_choice = hyperparameters.get("scaling", False)
     if scaler_choice in AVAILABLE_SCALERS:
         scaler = AVAILABLE_SCALERS[scaler_choice]()
-        df = scaler.fit_transform(df)
+        x_train = scaler.fit_transform(x_train)
 
-    pca = PCA(n_components=df.shape[1])
-    pca.fit(df)
+    # n_components == min(n_samples, n_features)
+    pca = PCA()
+    pca.fit(x_train)
     
     explained_variance = pca.explained_variance_ratio_.tolist()
     cumulative_variance = np.cumsum(explained_variance).tolist()

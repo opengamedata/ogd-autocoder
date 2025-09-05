@@ -160,7 +160,7 @@ def correlation_matrix():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    return jsonify({"data": correlation(filepath)})
+    return jsonify({"data": correlation(filepath, request.json["include_labels"])})
 
 @app.route("/events/<user_id>", methods=["POST"])
 def events(user_id):
