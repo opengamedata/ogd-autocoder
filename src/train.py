@@ -12,6 +12,7 @@ import copy
 from sklearn.preprocessing import LabelEncoder, RobustScaler, StandardScaler, MinMaxScaler, MaxAbsScaler
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_selection import SelectFromModel
 from sklearn.metrics import (
     precision_score,
     recall_score,
@@ -398,6 +399,20 @@ def inference(filepath, model_path):
     df = df.with_columns(pl.col("old_segment_id").alias("segment_id"))
     df.drop("old_segment_id").write_csv(filepath, separator="\t")
 
+def autoselect_features(filepath, include_labels):
+    df = preprocess_df(filepath)
+    # fixme maybe we should also use the target col?
+    df = df.filter(pl.col("segment_labels").is_in(include_labels))
+    df = df.to_pandas()
+    X, y = df.drop(columns=["segment_labels", "segment_id"]), df["segment_labels"]
+    # fixme, maybe differ for each model_type
+    selector = SelectFromModel(LogisticRegression(random_state=RANDOM_STATE))
+    selector.fit(X, y)
+    
+    selected_features = X.columns[selector.get_support()].tolist()
+
+    return selected_features
+    
 
 def get_predicted_label(filepath, user_id, segment_id):
     """

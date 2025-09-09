@@ -2,7 +2,7 @@ import os
 import time
 import traceback
 from utils import *
-from train import train_model, pca_details, available_features, inference, get_predicted_label, correlation
+from train import *
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort
 from datetime import datetime
@@ -208,6 +208,14 @@ def autosegment():
     autosegment_by_event_type(filepath, request.json["sep_event_types"])
 
     return jsonify({"success": True})
+
+@app.route("/autoselect", methods=["POST"])
+def autoselect():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+
+    return jsonify({"features": autoselect_features(filepath, request.json["include_labels"])})
 
 
 @app.route("/infere", methods=["POST"])

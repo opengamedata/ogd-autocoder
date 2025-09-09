@@ -642,6 +642,37 @@ function toggleBarsForLabel() {
     modelHistChart.update();
 }
 
+$('#autoSelectBtn').on('click', () => {
+    $('#spinner').removeClass("d-none");
+    $.ajax({
+        url: "autoselect",
+        method: "POST",
+        data: JSON.stringify({
+            include_labels: $('#trainLabelsDropdown').val(),
+        }),
+        contentType: "application/json",
+        success: function (response) {
+            $('#spinner').addClass("d-none");
+            let autofeatures = response.features;
+            $('#includedFeatures').children("li").each(function () {
+                if (!autofeatures.includes($(this).data("event-name"))) {
+                    // excluding feature
+                    $(this).find("button").click();
+                }
+            });
+            $('#excludedFeatures').children("li").each(function () {
+                if (autofeatures.includes($(this).data("event-name"))) {
+                    // include feature
+                    $(this).find("button").click();
+                }
+            });
+        },
+        error: function (xhr, status, error) {
+            console.error("Auto select features failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
+})
 /**
  * Loads the list of available features
  * Supports grouping features under parent checkboxes and allows search/filter functionality.
