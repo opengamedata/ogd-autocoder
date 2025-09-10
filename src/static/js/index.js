@@ -20,7 +20,7 @@ for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
         scrollCollapse: true,
         colReorder: true,
         columnDefs: [
-            { targets: [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], visible: false },
+            { targets: [1, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], visible: false },
         ],
         dom: '<"top d-flex justify-content-between align-items-center"fB>rt<"bottom"ip>',
         buttons: ['colvis'],
@@ -249,6 +249,7 @@ async function loadEvents(table_id, seg_dropdown_id) {
             data.forEach(row => {
                 const values = [
                     row.index,
+                    row.event_name,
                     row.event_description,
                     row.job_name,
                     row.timestamp,
