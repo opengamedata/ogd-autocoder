@@ -9,9 +9,10 @@ from datetime import datetime
 import numpy as np
 import copy
 
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, RobustScaler, StandardScaler, MinMaxScaler, MaxAbsScaler
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_selection import SelectFromModel
 from sklearn.metrics import (
     precision_score,
     recall_score,
@@ -19,6 +20,8 @@ from sklearn.metrics import (
     roc_auc_score,
     classification_report,
 )
+from sklearn.pipeline import Pipeline
+from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils.class_weight import compute_class_weight
 
@@ -37,6 +40,13 @@ if torch.cuda.is_available():
 else:
     device = "cpu"
 
+AVAILABLE_SCALERS = {
+    "StandardScaler": StandardScaler,
+    "MinMaxScaler": MinMaxScaler,
+    "MaxAbsScaler": MaxAbsScaler,
+    "RobustScaler": RobustScaler,
+}
+
 
 def available_features(filepath):
     # preprocess without using ogd pipeline to save some calculations
@@ -48,14 +58,42 @@ def available_features(filepath):
     return {"included_features": [{"name": c} for c in columns], "excluded_features": ogd_columns}
 
 
-def correlation(filepath):
-    df = preprocess_df(filepath).drop(["segment_labels", "segment_id"])
-
+def correlation(filepath, include_labels):
+    df = preprocess_df(filepath).drop(["segment_id"])
+    # FIXME - calculated on whole dataframe, no splitting in train/test
+    df = df.filter(pl.col("segment_labels").is_in(include_labels))
+    df = df.drop(["segment_labels"])
     corr_matrix = df.corr().to_pandas().abs()
     corr_matrix.index = corr_matrix.columns
     np.fill_diagonal(corr_matrix.values, 0) # fill 0s in self correlation
-    
+
     return corr_matrix.fillna("null").to_dict(orient="dict")
+
+def pca_details(filepath, hyperparameters, include_labels, include_features):
+    df = preprocess_df(filepath).to_pandas()
+    df = df[df["segment_labels"].isin(include_labels)]
+    cols = [c for c in include_features if c in df.columns]
+    x_train, _ = train_test_split(
+        df[cols],
+        train_size=float(hyperparameters["train_test_ratio"]),
+        random_state=RANDOM_STATE,
+        stratify=df["segment_labels"],
+    )
+
+    # FIXME notify the user that scaling is required or do this by default
+    scaler_choice = hyperparameters.get("scaling", False)
+    if scaler_choice in AVAILABLE_SCALERS:
+        scaler = AVAILABLE_SCALERS[scaler_choice]()
+        x_train = scaler.fit_transform(x_train)
+
+    # n_components == min(n_samples, n_features)
+    pca = PCA()
+    pca.fit(x_train)
+    
+    explained_variance = pca.explained_variance_ratio_.tolist()
+    cumulative_variance = np.cumsum(explained_variance).tolist()
+
+    return {"explained_variance": explained_variance, "cumulative": cumulative_variance}
 
 def train_model(
     filepath, model_type, hyperparameters, include_labels, include_features, models_dir
@@ -106,6 +144,27 @@ def train_model(
     # to avoid saving label encoder object, may have different order from include_labels
     model_info["include_labels"] = le.classes_.tolist()
     model_info["include_features"] = include_features
+
+    preprocess_pipe = []
+
+    scaler_choice = hyperparameters.get("scaling", False)
+    if scaler_choice in AVAILABLE_SCALERS:
+        preprocess_pipe.append(('scaler', AVAILABLE_SCALERS[scaler_choice]()))
+
+    pca_comps = hyperparameters.get("pca_comps", 0)
+    if pca_comps > 0:
+        preprocess_pipe.append(('pca', PCA(n_components=pca_comps)))
+
+    if len(preprocess_pipe):
+        pipe = Pipeline(preprocess_pipe)
+        # important - only fit on train data to avoid leaks
+        x_train_full = pipe.fit_transform(x_train_full)
+        x_test = pipe.transform(x_test)
+        model_info["preprocessor_path"] = os.path.join(
+            models_dir, "preprocessor_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl"
+        )
+        joblib.dump(pipe, model_info["preprocessor_path"])
+
     if model_type == "logistic":
         model_info["model_name"] = "Logistic Regression"
         output += train_logistic(
@@ -299,6 +358,11 @@ def inference(filepath, model_path):
     model_info = find_model_info(filepath, model_path)
 
     X = df_processed.select(model_info["include_features"]).to_numpy()
+
+    if model_info["preprocessor_path"]:
+        pipe = joblib.load(model_info["preprocessor_path"])
+        X = pipe.transform(X)
+    
     if model_info["model_type"] == "neural-net":
         model = CustomNeuralNet(
             X.shape[1], model_info["hyperparameters"]["units_per_layer"], len(model_info["include_labels"])
@@ -342,6 +406,20 @@ def inference(filepath, model_path):
     df = df.with_columns(pl.col("old_segment_id").alias("segment_id"))
     df.drop("old_segment_id").write_csv(filepath, separator="\t")
 
+def autoselect_features(filepath, include_labels):
+    df = preprocess_df(filepath)
+    # fixme maybe we should also use the target col?
+    df = df.filter(pl.col("segment_labels").is_in(include_labels))
+    df = df.to_pandas()
+    X, y = df.drop(columns=["segment_labels", "segment_id"]), df["segment_labels"]
+    # fixme, maybe differ for each model_type
+    selector = SelectFromModel(LogisticRegression(random_state=RANDOM_STATE))
+    selector.fit(X, y)
+    
+    selected_features = X.columns[selector.get_support()].tolist()
+
+    return selected_features
+    
 
 def get_predicted_label(filepath, user_id, segment_id):
     """

@@ -16,7 +16,7 @@ function segmentRows() {
         method: "POST",
         // select the index and the session column (will be the row identifier)
         data: JSON.stringify({
-            selected_rows: selectedRows.map(row => [row[0], row[7]]),
+            selected_rows: selectedRows.map(row => [row[0], row[8]]),
             segment_id: $("#segmentIdInput").val(),
         }),
         contentType: "application/json",
