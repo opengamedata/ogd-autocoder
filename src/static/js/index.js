@@ -136,7 +136,7 @@ function onFileChange(filename, load_models) {
     $('#datasetsScroll').find('button').removeClass('btn-dark');
     $(`#datasetsScroll button[data-filename="${filename}"]`).addClass('btn-dark');
 
-    let promises = [fillDatasetInfo(), fillUsersList(), fillEventTypes(), fillLabelsCount()];
+    let promises = [fillDatasetInfo()];
     resetTrainView();
     if (load_models) {
         promises.push(fillModelsList());

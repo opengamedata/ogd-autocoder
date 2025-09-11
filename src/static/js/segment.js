@@ -63,25 +63,3 @@ function autoSegment() {
         }
     });
 }
-
-/**
- * Populates #segmentEventTypeDropdown with the list of event types.
- */
-async function fillEventTypes() {
-    $('#segmentEventTypeDropdown').empty();
-    await $.ajax({
-        url: 'event_types_list',
-        method: "POST",
-        success: function (response) {
-            response.users.forEach(event_type => {
-                $('#segmentEventTypeDropdown').append(`<option value="${event_type}">${event_type}</option>`);
-            });
-
-            $('#segmentEventTypeDropdown').show();
-        },
-        error: function (xhr, status, error) {
-            console.error("Event type list loading failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
-    });
-}

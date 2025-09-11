@@ -87,6 +87,8 @@ def get_dataset_info(filepath):
     return {
         "models_count": len(get_models_list(filepath)),
         "date_range": date_range,
+        "events_types": get_event_types(df_filtered),
+        "users": get_users_list(df_filtered),
         "original": {
             "rows": df.height,
             "users": unique_count(df, "user_id"),
@@ -101,7 +103,7 @@ def get_dataset_info(filepath):
         },
         "included_events": [{"name": ev} for ev in included_events],
         "excluded_events": [{"name": ev} for ev in excluded_events],
-        "labels_distribution": segment_labels_count(filepath),
+        "labels_distribution": segment_labels_count(df_filtered),
     }
 
 
@@ -127,11 +129,10 @@ def get_models_list(filepath):
         return []
 
 
-def get_users_list(filepath):
+def get_users_list(df):
     """
     List ordered user ids with segments count
     """
-    df = read_dataset(filepath)
 
     df = (
         df.drop_nulls("user_id")
@@ -143,11 +144,10 @@ def get_users_list(filepath):
     return df.to_dicts()
 
 
-def get_event_types(filepath):
+def get_event_types(df):
     """
     List unique values of the `event_name` column
     """
-    df = read_dataset(filepath)
 
     return (
         df.select(pl.col("event_name").drop_nulls().unique().sort())
@@ -156,11 +156,10 @@ def get_event_types(filepath):
     )
 
 
-def segment_labels_count(filepath):
+def segment_labels_count(df):
     """
     For each label - number of segments with that label
     """
-    df = read_dataset(filepath)
 
     df = (
         df.unique(subset=["user_id", "segment_id"])

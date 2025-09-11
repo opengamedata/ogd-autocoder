@@ -79,8 +79,8 @@ def users_list():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-
-    return jsonify({"users": get_users_list(filepath)})
+    df = read_dataset(filepath)
+    return jsonify({"users": get_users_list(df)})
 
 
 @app.route("/update_event_descriptions", methods=["POST"])
@@ -91,16 +91,6 @@ def update_event_descriptions():
     describe_events(filepath, request.json["descriptions_map"])
 
     return jsonify({"success": True})
-
-
-@app.route("/event_types_list", methods=["POST"])
-def event_types_list():
-    filepath = os.path.join(
-        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
-    )
-
-    return jsonify({"users": get_event_types(filepath)})
-
 
 @app.route("/dataset_info", methods=["POST"])
 def dataset_info():
@@ -135,7 +125,8 @@ def labels_value_count():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    return jsonify({"data": segment_labels_count(filepath)})
+    df = read_dataset(filepath)
+    return jsonify({"data": segment_labels_count(df)})
 
 
 @app.route("/list_labels", methods=["POST"])
