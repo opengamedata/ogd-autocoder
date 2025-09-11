@@ -157,6 +157,7 @@
         <thead>
           <tr>
             <th>Index</th>
+            <th>Event Name</th>
             <th>Event Description</th>
             <th>Job Name</th>
             <th>Time</th>
@@ -226,6 +227,7 @@
         <thead>
           <tr>
             <th>Index</th>
+            <th>Event Name</th>
             <th>Event Description</th>
             <th>Job Name</th>
             <th>Time</th>
@@ -286,18 +288,42 @@
           </div>
           <div class="preprocessing-params mb-4">
             <label class="form-label fw-bold mb-3">Preprocessing</label>
-            <div class="form-check form-switch">
-              <input class="form-check-input me-2" checked="false" type="checkbox" id="scalingCheckbox">
-              <label class="form-check-label fs-6" for="scalingCheckbox">
-                Use Scaling to Range 0-1 (can improve optimization)
-              </label>
+            <div class="mb-2 row">
+              <label for="scalerSelect" class="col-sm-4 col-form-label">Scaler (ignore in R. Forest)</label>
+              <div class="col-sm-8">
+                <select id="scalerSelect" style="width: 100%" class="form-select">
+                  <option value="" selected>None</option>
+                  <option value="RobustScaler">Robust Scaler (robust to outliers)</option>
+                  <option value="StandardScaler">Standard Scaler (mean=0, variance=1)</option>
+                  <option value="MinMaxScaler">Min-Max Scaler (range 0-1)</option>
+                  <option value="MaxAbsScaler">Max-Abs Scaler (makes abs max = 1.0)</option>
+                </select>
+              </div>
             </div>
-            <div class="form-check form-switch">
-              <input class="form-check-input me-2" checked="false" type="checkbox" id="pcaCheckbox">
-              <label class="form-check-label fs-6" for="pcaCheckbox">
-                Use Dimensionality Reduction (PCA, can improve performance)
-              </label>
+              <div class="mb-2 row align-items-center">
+                <label for="pcaComps" class="col-sm-4 col-form-label d-flex align-items-center">
+                  PCA (0 to disable)
+                  <button class="btn btn-outline-primary btn-sm ms-2" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#collapsePca" aria-expanded="true" aria-controls="collapsePca">
+                    <i class="bi bi-bar-chart"></i>
+                  </button>
+                </label>
+              <div class="col-sm-8">
+                <input type="number" min="0" value="0" id="pcaComps" class="form-control">
+              </div>
             </div>
+              <div class="collapse mt-2" id="collapsePca">
+                <div class="card card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <button class="btn btn-outline-primary btn-sm" type="button" onclick="fillPCAPlot()">
+                      <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <p class="mb-0"><strong>Tip:</strong> Use a scaler if variable ranges are different</p>
+                  </div>
+                  <canvas id="pcaChart"></canvas>
+                </div>
+              </div>
+
           </div>
           <div class="tab-content" id="modelTabsContent">
             <div class="tab-pane fade show active" id="logistic" role="tabpanel" aria-labelledby="logistic-tab">
@@ -380,6 +406,9 @@
           </div>
           <div class="mb-3">
             <label class="form-label fw-bold">Features (Selected: <span id="numSelFeatures">0</span>)</label>
+            <button class="btn btn-sm btn-success ms-2" id="autoSelectBtn">
+              <i class="bi bi-magic me-1"></i> Autoselect
+            </button>
             <input type="text" id="featureSearch" class="form-control mb-2" placeholder="Search features...">
             <!-- <div id="featureSelector" class="border rounded p-2" style="height: 400px; overflow-y: auto;"></div> -->
             <div class="col border rounded p-2 d-flex flex-column">
@@ -413,6 +442,7 @@
               <div style="width: 20px; height: 20px; background-color: white; border: 1px solid #ccc;"></div>
               <span>Null correlation</span>
             </div>
+              * low/medium/high correlation refers to <strong>included</strong> features only
           </div>
         </div>
       
@@ -546,6 +576,7 @@
         <thead>
           <tr>
             <th>Index</th>
+            <th>Event Name</th>
             <th>Event Description</th>
             <th>Job Name</th>
             <th>Time</th>

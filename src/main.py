@@ -2,7 +2,7 @@ import os
 import time
 import traceback
 from utils import *
-from train import train_model, available_features, inference, get_predicted_label, correlation
+from train import *
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort
 from datetime import datetime
@@ -160,7 +160,7 @@ def correlation_matrix():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    return jsonify({"data": correlation(filepath)})
+    return jsonify({"data": correlation(filepath, request.json["include_labels"])})
 
 @app.route("/events/<user_id>", methods=["POST"])
 def events(user_id):
@@ -209,6 +209,14 @@ def autosegment():
 
     return jsonify({"success": True})
 
+@app.route("/autoselect", methods=["POST"])
+def autoselect():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+
+    return jsonify({"features": autoselect_features(filepath, request.json["include_labels"])})
+
 
 @app.route("/infere", methods=["POST"])
 def infere():
@@ -231,6 +239,18 @@ def predicted_label():
 
     return jsonify({"label": label, "confidence": confidence})
 
+@app.route("/pca_details", methods=["POST"])
+def get_pca_details():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+
+    return jsonify(pca_details(
+        filepath,
+        request.json["hyperparameters"],
+        request.json["include_labels"],
+        request.json["include_features"],
+    ))
 
 @app.route("/train_model", methods=["POST"])
 def train():
