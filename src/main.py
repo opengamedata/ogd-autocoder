@@ -58,7 +58,6 @@ def upload_file():
     filename = timestamp_str + "_" + filename
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     file.save(filepath)
-    add_new_columns(filepath)
     formatted = (
         filename.split("_", 1)[1] + " " + filename.split("_", 1)[0].replace("T", " ")
     )

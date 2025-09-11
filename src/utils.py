@@ -46,30 +46,40 @@ def get_models_filename(filepath):
 #         return None
 
 
-def add_new_columns(filepath):
+def read_handling_miss_cols(filepath):
+    """
+    Read datasets, but if auxiliary/app specific columns doesn't exist, create and fill them
+    """
     df = read_dataset(filepath, False)
+    old_cols = set(df.columns)
+
     for col in ["segment_id", "segment_labels", "label_justification"]:
         if col not in df.columns:
             df = df.with_columns(pl.lit(None).alias(col))
 
-    df = df.with_columns(df["event_name"].alias("event_description"))
+    if "event_description" not in df.columns:
+        df = df.with_columns(df["event_name"].alias("event_description"))
 
     if "filtered_in" not in df.columns:
         df = df.with_columns(pl.lit(True).alias("filtered_in"))
 
-    # df["job_name"] = df["game_state"].apply(extract_job_name)
-    df = df.with_columns(
-        pl.col("game_state").str.json_path_match("$.job_name").alias("job_name")
-    )
+    if "job_name" not in df.columns:
+        df = df.with_columns(
+            pl.col("game_state").str.json_path_match("$.job_name").alias("job_name")
+        )
 
-    df.write_csv(filepath, separator="\t")
+    new_cols = set(df.columns)
+    if new_cols.issubset(old_cols):
+        # write if new columns were added
+        df.write_csv(filepath, separator="\t")
 
+    return df
 
 def get_dataset_info(filepath):
     """
     Returns useful dataset info such as row count, segments count, user session count
     """
-    df = read_dataset(filepath, False)
+    df = read_handling_miss_cols(filepath)
     df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))
     timestamp_min = df.select(pl.col("timestamp").drop_nulls().min()).item()
     timestamp_max = df.select(pl.col("timestamp").drop_nulls().max()).item()
