@@ -27,6 +27,28 @@ async function fillDatasetInfo() {
             $('td[data-field="users-original"]').text(data.original.users.toLocaleString());
             $('td[data-field="sessions-original"]').text(data.original.sessions.toLocaleString());
 
+            // fillUsersList
+            $('#userDropdown').empty().append('<option></option>');
+            data.users.forEach(user => {
+                $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
+            });
+            $('#userDropdown').trigger('change');
+
+            // fillEventTypes
+            $('#segmentEventTypeDropdown').empty();
+            data.events_types.forEach(event_type => {
+                $('#segmentEventTypeDropdown').append(`<option value="${event_type}">${event_type}</option>`);
+            });
+            $('#segmentEventTypeDropdown').show();
+
+            // fillLabelsCount
+            let text = "";
+            data.labels_distribution.forEach(label => {
+                text += `${label.segment_labels} (${label.count}), `;
+            });
+            text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : "&nbsp;";
+            $("#labelsValueCount").html(text);
+
             fillLabelDistPie(data.labels_distribution);
             let labelSegCount = data.labels_distribution.reduce((sum, item) => sum + parseInt(item.count), 0);
             let notLabeled = data.filtered.segments - labelSegCount;
