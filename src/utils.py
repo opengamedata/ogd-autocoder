@@ -69,7 +69,7 @@ def read_handling_miss_cols(filepath):
         )
 
     new_cols = set(df.columns)
-    if new_cols.issubset(old_cols):
+    if not new_cols.issubset(old_cols):
         # write if new columns were added
         df.write_csv(filepath, separator="\t")
 
