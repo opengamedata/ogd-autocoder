@@ -359,7 +359,7 @@ def inference(filepath, model_path):
 
     X = df_processed.select(model_info["include_features"]).to_numpy()
 
-    if model_info["preprocessor_path"]:
+    if "preprocessor_path" in model_info.keys():
         pipe = joblib.load(model_info["preprocessor_path"])
         X = pipe.transform(X)
     
