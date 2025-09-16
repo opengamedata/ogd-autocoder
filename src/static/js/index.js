@@ -140,6 +140,7 @@ function onFileChange(filename, load_models) {
 
     let promises = [fillDatasetInfo()];
     resetTrainView();
+    resetApplyView();
     if (load_models) {
         promises.push(fillModelsList());
     }
@@ -204,11 +205,11 @@ function userChanged() {
         loadEvents("#segmentTable", null).finally(() => { $('#spinner').addClass("d-none"); });
     } else if (tabId == "nav-label-tab") {
         $('#spinner').removeClass("d-none");
-        fillSegmentDropdown('#labelTable', '#segmentDropdown').finally(() => { $('#spinner').addClass("d-none"); });
+        fillSegmentDropdown('#segmentDropdown').finally(() => { $('#spinner').addClass("d-none"); });
     } else if (tabId == "nav-apply-tab") {
         $('#spinner').removeClass("d-none");
         let promises = []
-        promises.push(fillSegmentDropdown('#applyTable', '#segmentDropdown_apply'));
+        promises.push(fillSegmentDropdown('#segmentDropdown_apply'));
         promises.push(getPredictedLabels());
         Promise.all(promises).finally(() => { $('#spinner').addClass("d-none"); });
     }

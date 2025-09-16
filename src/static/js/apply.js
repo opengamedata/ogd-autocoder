@@ -70,7 +70,7 @@ function applyModel(model_path) {
 }
 
 function acceptLabel() {
-    labelRows('#applyTable', '#segmentDropdown_apply', '#labelsDropdown_apply', null);
+    labelRows('#segmentDropdown_apply', '#labelsDropdown_apply', null);
 
     numAccepts++;
     $('#accept-count').text(`Accepts: ${numAccepts}`);
@@ -80,5 +80,12 @@ function rejectLabel() {
     nextOption('#segmentDropdown_apply');
 
     numRejects++;
+    $('#reject-count').text(`Rejects: ${numRejects}`);
+}
+
+function resetApplyView() {
+    numAccepts = 0;
+    numRejects = 0;
+    $('#accept-count').text(`Accepts: ${numAccepts}`);
     $('#reject-count').text(`Rejects: ${numRejects}`);
 }
