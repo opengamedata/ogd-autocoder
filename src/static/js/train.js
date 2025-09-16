@@ -677,20 +677,15 @@ $('#autoSelectBtn').on('click', () => {
  * Loads the list of available features
  * Supports grouping features under parent checkboxes and allows search/filter functionality.
  */
-function fillFeatureList() {
-    $('#spinner').removeClass("d-none");
-    $.ajax({
+async function fillFeatureList() {
+    return $.ajax({
         url: 'list_available_features',
         method: "POST",
-        success: async function (response) {
+        success: function (response) {
             let data = response.data;
             // fillInclExcLists has a handling for updating num selected features (moveEvent function)
             fillInclExcLists(data.included_features, data.excluded_features, "#includedFeatures", "#excludedFeatures");
-            await updateCorrelationMatrix();
             updateNumSelectedFeatures();
-            recalculateMaxCorrelation();
-            $('#spinner').addClass("d-none");
-
             $('#featureSearch').on('input', function () {
                 const query = $(this).val().toLowerCase();
 
@@ -724,11 +719,14 @@ function fillFeatureList() {
 }
 
 $('#trainLabelsDropdown').on('change', function () {
-    $('#spinner').removeClass("d-none");
-    updateCorrelationMatrix().finally(() => {
-        recalculateMaxCorrelation();
-        $('#spinner').addClass("d-none");
-    });
+    const tabId = $('#nav-tab .nav-link.active').attr('id');
+    if (tabId == "nav-train-tab") {
+        $('#spinner').removeClass("d-none");
+        updateCorrelationMatrix().finally(() => {
+            recalculateMaxCorrelation();
+            $('#spinner').addClass("d-none");
+        });
+    }
 });
 
 async function updateCorrelationMatrix() {

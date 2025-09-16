@@ -57,15 +57,17 @@ $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
     } else if (tabId == "nav-train-tab") {
         $("#user_panel:not([class*='d-none'])").addClass("d-none");
         if (filename) {
-            fillFeatureList();
-            createUnitPerLayerInputs();
+            $('#spinner').removeClass("d-none");
+            fillFeatureList().finally(() => {
+                $('#spinner').addClass("d-none");
+                createUnitPerLayerInputs();
+                // select all labels by default
+                let allValues = $('#trainLabelsDropdown option').map(function () {
+                    return $(this).val();
+                }).get();
 
-            // select all labels by default
-            let allValues = $('#trainLabelsDropdown option').map(function () {
-                return $(this).val();
-            }).get();
-
-            $('#trainLabelsDropdown').val(allValues).trigger('change');
+                $('#trainLabelsDropdown').val(allValues).trigger('change');
+            });
         }
     } else {
         // apply tab
