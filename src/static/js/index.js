@@ -14,7 +14,7 @@ $('#userDropdown').select2({
 for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
     $(table_id).DataTable({
         select: { style: 'multi' },
-        order: [[3, 'asc']],
+        order: [[4, 'asc']],
         paging: false,
         scrollY: '400px',
         scrollCollapse: true,
