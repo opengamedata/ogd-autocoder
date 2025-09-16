@@ -25,3 +25,14 @@
 .select2-container {
   min-width: 0;     /* allow shrink instead of overflow */
 }
+@media (max-width: 767.98px) {
+    .shrink-h-20 {
+        max-height: 20%;
+        overflow: auto;
+    }
+    .shrink-h-80 {
+        max-height: 80%;
+        overflow: auto; /* ensure content scrolls if it’s taller */
+    }
+}
+  
