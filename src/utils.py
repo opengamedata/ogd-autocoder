@@ -1,5 +1,4 @@
 import os
-import re
 import json
 import polars as pl
 
@@ -17,10 +16,28 @@ import polars as pl
 def read_dataset(filepath, filtered_only=True):
     """
     Returns the whole or filtered dataset
+    Adds auxiliary columns
 
     IMPORTANT: Set filtered_only = False if you want to write_csv afterwards
     """
-    df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+    # fixme - instead of .collect(engine="streaming") - if there is enough memory - we should remove the engine attr
+    df = pl.scan_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+
+    columns = df.collect_schema().names()
+    for col in ["segment_id", "segment_labels", "label_justification"]:
+        if col not in columns:
+            df = df.with_columns(pl.lit(None).alias(col))
+
+    if "event_description" not in columns:
+        df = df.with_columns(pl.col("event_name").alias("event_description"))
+
+    if "filtered_in" not in columns:
+        df = df.with_columns(pl.lit(True).alias("filtered_in"))
+
+    if "job_name" not in columns:
+        df = df.with_columns(
+            pl.col("game_state").str.json_path_match("$.job_name").alias("job_name")
+        )
 
     if filtered_only:
         df = df.filter(pl.col("filtered_in") == True)
@@ -29,7 +46,7 @@ def read_dataset(filepath, filtered_only=True):
 
 
 def unique_count(df, cols):
-    return df.select(pl.struct(cols).drop_nulls().n_unique()).item()
+    return df.select(pl.struct(cols).drop_nulls().n_unique()).collect(engine="streaming").item()
 
 def get_models_filename(filepath):
     name, ext = os.path.splitext(filepath)
@@ -44,77 +61,52 @@ def get_models_filename(filepath):
 #     except (json.JSONDecodeError, AttributeError):
 #         return None
 
-
-def read_handling_miss_cols(filepath):
-    """
-    Read datasets, but if auxiliary/app specific columns doesn't exist, create and fill them
-    """
-    df = read_dataset(filepath, False)
-    old_cols = set(df.columns)
-
-    for col in ["segment_id", "segment_labels", "label_justification"]:
-        if col not in df.columns:
-            df = df.with_columns(pl.lit(None).alias(col))
-
-    if "event_description" not in df.columns:
-        df = df.with_columns(df["event_name"].alias("event_description"))
-
-    if "filtered_in" not in df.columns:
-        df = df.with_columns(pl.lit(True).alias("filtered_in"))
-
-    if "job_name" not in df.columns:
-        df = df.with_columns(
-            pl.col("game_state").str.json_path_match("$.job_name").alias("job_name")
-        )
-
-    new_cols = set(df.columns)
-    if not new_cols.issubset(old_cols):
-        # write if new columns were added
-        df.write_csv(filepath, separator="\t")
-
-    return df
-
 def get_dataset_info(filepath):
     """
     Returns useful dataset info such as row count, segments count, user session count
     """
-    df = read_handling_miss_cols(filepath)
-    df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))
-    timestamp_min = df.select(pl.col("timestamp").drop_nulls().min()).item()
-    timestamp_max = df.select(pl.col("timestamp").drop_nulls().max()).item()
-    date_range = f"{timestamp_min:%m/%d/%Y} - {timestamp_max:%m/%d/%Y}"
+    df = read_dataset(filepath, False)
+    #df = df.with_columns(pl.col("timestamp").cast(pl.String).str.strptime(pl.Datetime, strict=False))
+    timestamp_min = df.select(pl.col("timestamp").drop_nulls().min()).collect(engine="streaming").item()
+    timestamp_max = df.select(pl.col("timestamp").drop_nulls().max()).collect(engine="streaming").item()
+    date_range = f"{timestamp_min[:10].replace("-", "/")} - {timestamp_max[:10].replace("-", "/")}"
 
     # Filtered / excluded subsets
     df_filtered = df.filter(pl.col("filtered_in") == True)
     included_events = (
-        df_filtered.select(pl.col("event_name").unique()).to_series().to_list()
+        df_filtered.select(pl.col("event_name").unique()).collect(engine="streaming").to_series().to_list()
     )
     all_events = set(
-        df.select(pl.col("event_name").unique()).to_series().to_list()
+        df.select(pl.col("event_name").unique()).collect(engine="streaming").to_series().to_list()
     )
     excluded_events = list(all_events.difference(set(included_events)))
-    return {
-        "models_count": len(get_models_list(filepath)),
+    models_count = len(get_models_list(filepath))
+    events_types = get_event_types(df_filtered)
+    users = get_users_list(df_filtered)
+    labels_distribution = segment_labels_count(df_filtered)
+    obj = {
+        "models_count": models_count,
         "date_range": date_range,
-        "events_types": get_event_types(df_filtered),
-        "users": get_users_list(df_filtered),
+        "events_types": events_types,
+        "users": users,
         "original": {
-            "rows": df.height,
+            "rows": df.select(pl.len()).collect(engine="streaming").item(),
             "users": unique_count(df, ["user_id"]),
             "segments": unique_count(df, ["user_id", "segment_id"]),
             "sessions": unique_count(df, ["session_id"]),
         },
         "filtered": {
-            "rows": df_filtered.height,
+            "rows": df_filtered.select(pl.len()).collect(engine="streaming").item(),
             "users": unique_count(df_filtered, ["user_id"]),
             "segments": unique_count(df_filtered, ["user_id", "segment_id"]),
             "sessions": unique_count(df_filtered, ["session_id"]),
         },
         "included_events": [{"name": ev} for ev in included_events],
         "excluded_events": [{"name": ev} for ev in excluded_events],
-        "labels_distribution": segment_labels_count(df_filtered),
+        "labels_distribution": labels_distribution,
     }
 
+    return obj
 
 def event_filtering(filepath, included_events):
     """
@@ -126,7 +118,7 @@ def event_filtering(filepath, included_events):
         (pl.col("event_name").is_in(included_events)).alias("filtered_in")
     )
 
-    df.write_csv(filepath, separator="\t")
+    df.collect(engine="streaming").write_csv(filepath, separator="\t")
 
 
 def get_models_list(filepath):
@@ -150,7 +142,7 @@ def get_users_list(df):
         .sort("user_id")
     )
 
-    return df.to_dicts()
+    return df.collect(engine="streaming").to_dicts()
 
 
 def get_event_types(df):
@@ -160,6 +152,7 @@ def get_event_types(df):
 
     return (
         df.select(pl.col("event_name").drop_nulls().unique().sort())
+        .collect(engine="streaming")
         .to_series()
         .to_list()
     )
@@ -178,7 +171,7 @@ def segment_labels_count(df):
         .sort("count", descending=True)
     )
 
-    return df.to_dicts()
+    return df.collect(engine="streaming").to_dicts()
 
 
 def segment_ids_for_user(filepath, user_id):
@@ -190,16 +183,13 @@ def segment_ids_for_user(filepath, user_id):
     # cast to int to sort correctly - fixme sort by timestamp
     df_user = df.filter(pl.col("user_id") == user_id).with_columns(pl.col("segment_id").cast(pl.Int64))
     
-    cols = ["segment_id", "segment_labels"]
-    if "job_name" in df_user.columns:
-        cols.append("job_name")
-
+    cols = ["segment_id", "segment_labels", "job_name"]
     df_user = df_user.drop_nulls(subset=["segment_id"])
 
     # order by timestamp so we get the first job
     df_segments = df_user.sort("timestamp").unique(subset=["segment_id", "segment_labels"])
 
-    return df_segments.select(cols).sort("segment_id").to_dicts()
+    return df_segments.select(cols).sort("segment_id").collect(engine="streaming").to_dicts()
 
 
 def list_seg_labels(filepath):
@@ -209,7 +199,7 @@ def list_seg_labels(filepath):
     df = read_dataset(filepath)
 
     unique_labels = (
-        df.select(pl.col("segment_labels")).drop_nulls().unique().to_series().to_list()
+        df.select(pl.col("segment_labels")).drop_nulls().unique().collect(engine="streaming").to_series().to_list()
     )
 
     # for multilabel
@@ -242,11 +232,11 @@ def get_events_for_user(filepath, user_id, segment_id):
     else:
         df = df.filter(pl.col("user_id") == user_id)
 
-    user_events = user_events = df.sort("timestamp", descending=False).with_columns(
+    user_events = df.sort("timestamp", descending=False).with_columns(
         pl.col("timestamp").dt.strftime("%Y-%m-%d %H:%M:%S")
     )
 
-    return user_events.fill_null("-").to_dicts()
+    return user_events.fill_null("-").collect(engine="streaming").to_dicts()
 
 
 def label_rows(filepath, user_id, segment_id, segment_labels, label_justification):
@@ -280,7 +270,7 @@ def label_rows(filepath, user_id, segment_id, segment_labels, label_justificatio
             .alias("label_justification")
         )
 
-    df.write_csv(filepath, separator="\t")
+    df.collect(engine="streaming").write_csv(filepath, separator="\t")
 
 
 def segment_rows(filepath, user_id, segment_id, selected_rows):
@@ -310,13 +300,14 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
     )
 
     # clear labels for segment if changed
-    new_segments = df.select(pl.col("segment_id"))
+    new_segments = df.select(pl.col("segment_id")).collect(engine="streaming")
     # affected segments
     changed_ids = set(
         old_segments.filter(pl.col("segment_id") != new_segments["segment_id"])
         .select("segment_id")
         .unique()
         .drop_nulls()
+        .collect(engine="streaming")
         .to_series()
         .to_list()
     )
@@ -342,7 +333,7 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
     )
 
     df = df.drop("row_id")
-    df.write_csv(filepath, separator="\t")
+    df.collect(engine="streaming").write_csv(filepath, separator="\t")
 
 
 def autosegment_by_event_type(filepath, sep_event_types):
@@ -383,7 +374,7 @@ def autosegment_by_event_type(filepath, sep_event_types):
     )
 
     df = df.with_columns(pl.lit(None).alias("segment_labels"))
-    df.write_csv(filepath, separator="\t")
+    df.collect(engine="streaming").write_csv(filepath, separator="\t")
 
 def safe_format_description(template, ev_data, g_state):
     try:
@@ -407,4 +398,4 @@ def describe_events(filepath, descriptions_map):
             .alias("event_description")
         )
 
-    df.write_csv(filepath, separator="\t")
+    df.collect(engine="streaming").write_csv(filepath, separator="\t")
