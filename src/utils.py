@@ -28,9 +28,8 @@ def read_dataset(filepath, filtered_only=True):
     return df
 
 
-def unique_count(df, col_name):
-    return df.select(pl.col(col_name).drop_nulls().n_unique()).item()
-
+def unique_count(df, cols):
+    return df.select(pl.struct(cols).drop_nulls().n_unique()).item()
 
 def get_models_filename(filepath):
     name, ext = os.path.splitext(filepath)
@@ -101,15 +100,15 @@ def get_dataset_info(filepath):
         "users": get_users_list(df_filtered),
         "original": {
             "rows": df.height,
-            "users": unique_count(df, "user_id"),
-            "segments": unique_count(df, "segment_id"),
-            "sessions": unique_count(df, "session_id"),
+            "users": unique_count(df, ["user_id"]),
+            "segments": unique_count(df, ["user_id", "segment_id"]),
+            "sessions": unique_count(df, ["session_id"]),
         },
         "filtered": {
             "rows": df_filtered.height,
-            "users": unique_count(df_filtered, "user_id"),
-            "segments": unique_count(df_filtered, "segment_id"),
-            "sessions": unique_count(df_filtered, "session_id"),
+            "users": unique_count(df_filtered, ["user_id"]),
+            "segments": unique_count(df_filtered, ["user_id", "segment_id"]),
+            "sessions": unique_count(df_filtered, ["session_id"]),
         },
         "included_events": [{"name": ev} for ev in included_events],
         "excluded_events": [{"name": ev} for ev in excluded_events],

@@ -14,7 +14,7 @@ $('#userDropdown').select2({
 for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
     $(table_id).DataTable({
         select: { style: 'multi' },
-        order: [[3, 'asc']],
+        order: [[4, 'asc']],
         paging: false,
         scrollY: '400px',
         scrollCollapse: true,
@@ -57,15 +57,17 @@ $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
     } else if (tabId == "nav-train-tab") {
         $("#user_panel:not([class*='d-none'])").addClass("d-none");
         if (filename) {
-            fillFeatureList();
-            createUnitPerLayerInputs();
+            $('#spinner').removeClass("d-none");
+            fillFeatureList().finally(() => {
+                $('#spinner').addClass("d-none");
+                createUnitPerLayerInputs();
+                // select all labels by default
+                let allValues = $('#trainLabelsDropdown option').map(function () {
+                    return $(this).val();
+                }).get();
 
-            // select all labels by default
-            let allValues = $('#trainLabelsDropdown option').map(function () {
-                return $(this).val();
-            }).get();
-
-            $('#trainLabelsDropdown').val(allValues).trigger('change');
+                $('#trainLabelsDropdown').val(allValues).trigger('change');
+            });
         }
     } else {
         // apply tab
@@ -138,6 +140,7 @@ function onFileChange(filename, load_models) {
 
     let promises = [fillDatasetInfo()];
     resetTrainView();
+    resetApplyView();
     if (load_models) {
         promises.push(fillModelsList());
     }
@@ -202,11 +205,11 @@ function userChanged() {
         loadEvents("#segmentTable", null).finally(() => { $('#spinner').addClass("d-none"); });
     } else if (tabId == "nav-label-tab") {
         $('#spinner').removeClass("d-none");
-        fillSegmentDropdown('#labelTable', '#segmentDropdown').finally(() => { $('#spinner').addClass("d-none"); });
+        fillSegmentDropdown('#segmentDropdown').finally(() => { $('#spinner').addClass("d-none"); });
     } else if (tabId == "nav-apply-tab") {
         $('#spinner').removeClass("d-none");
         let promises = []
-        promises.push(fillSegmentDropdown('#applyTable', '#segmentDropdown_apply'));
+        promises.push(fillSegmentDropdown('#segmentDropdown_apply'));
         promises.push(getPredictedLabels());
         Promise.all(promises).finally(() => { $('#spinner').addClass("d-none"); });
     }
