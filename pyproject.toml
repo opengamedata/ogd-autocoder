@@ -10,6 +10,7 @@ dependencies = [
     "numpy>=1.26.4",
     "pandas>=2.3.1",
     "polars-lts-cpu>=1.32.3",
+    "pyarrow>=20.0.0",
     "scikit-learn>=1.7.0",
     # ogd-core
     "torch==2.2",
