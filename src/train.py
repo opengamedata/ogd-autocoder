@@ -252,7 +252,7 @@ def preprocess_df_no_ogd(filepath):
     df = read_dataset(filepath)
     # fixme - add support for multiple labels
     # fixme - job_name dummies
-    df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))
+    #df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))
 
     # additional feature: segment duration in seconds
     duration_df = (
@@ -264,13 +264,12 @@ def preprocess_df_no_ogd(filepath):
             ]
         )
         .with_columns(
-            (pl.col("segment_end") - pl.col("segment_start"))
+            (pl.col("segment_end").str.strptime(pl.Datetime, strict=False) - pl.col("segment_start").str.strptime(pl.Datetime, strict=False))
             .dt.total_seconds()
             .alias("segment_duration")
         )
         .select(["user_id", "segment_id", "segment_duration"])
     )
-
     # fixme replace N/A method
     clean_df = (
         df.select(["event_name", "user_id", "segment_id", "segment_labels"])
@@ -281,8 +280,18 @@ def preprocess_df_no_ogd(filepath):
         )
         .drop_nulls()  # Drop rows with any remaining nulls
     )
-    # clean_df = clean_df.categorize(columns=["event_name"])
-    clean_1hot_df = clean_df.to_dummies(columns=["event_name"])
+
+    clean_1hot_df = clean_df.collect(engine="streaming").to_dummies(columns=["event_name"]).lazy()
+
+    # fixme might be a problem if there is an event_name in test but no in train
+    # event_names = clean_df.select("event_name").unique().collect(engine="streaming").to_series()
+    # clean_1hot_df = clean_df.with_columns(
+    #     [pl.when(pl.col("event_name") == val)
+    #     .then(1).otherwise(0) # manual 1_hot to make it lazy
+    #     .alias(f"event_name_{val}")
+    #     for val in event_names
+    #     ]
+    # )
 
     grouped = clean_1hot_df.group_by(["user_id", "segment_id", "segment_labels"])
     count_df = grouped.len().rename({"len": "count_events"})
@@ -330,9 +339,9 @@ def preprocess_df(filepath):
 
     df_features = calculate_ogd_features(game_id, filepath)
     if len(df_features):
-        clean_agg_df_ogd = df_no_ogd.join(df_features, how="left", on=["user_id"])
+        clean_agg_df_ogd = df_no_ogd.collect(engine="streaming").join(df_features, how="left", on=["user_id"])
     else:
-        clean_agg_df_ogd = df_no_ogd
+        clean_agg_df_ogd = df_no_ogd.collect(engine="streaming")
 
     # fixme - the ID is the segment_id + user_id
     clean_agg_df_ogd = clean_agg_df_ogd.with_columns(
@@ -398,13 +407,13 @@ def inference(filepath, model_path):
     df = df.join(
         df_processed.select(
             ["segment_id", "predicted_labels", "prediction_confidence"]
-        ),
+        ).lazy(),
         how="left",
         on="segment_id",
     )
 
     df = df.with_columns(pl.col("old_segment_id").alias("segment_id"))
-    df.drop("old_segment_id").write_csv(filepath, separator="\t")
+    df.drop("old_segment_id").collect(engine="streaming").write_csv(filepath, separator="\t")
 
 def autoselect_features(filepath, include_labels):
     df = preprocess_df(filepath)
@@ -433,7 +442,7 @@ def get_predicted_label(filepath, user_id, segment_id):
         (pl.col("user_id") == user_id) & (pl.col("segment_id") == str(segment_id))
     )
 
-    row = filtered.select(["predicted_labels", "prediction_confidence"]).row(0)
+    row = filtered.select(["predicted_labels", "prediction_confidence"]).collect(engine="streaming").row(0)
 
     return row[0], row[1]
 
