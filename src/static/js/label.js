@@ -2,7 +2,7 @@
 
 $('#segmentDropdown').select2({
     placeholder: "...",
-    width: '60%',
+    width: '100%',
 });
 
 $('#labelsDropdown').select2({
@@ -66,12 +66,11 @@ async function fillLabelDropdowns() {
  * Uses selected segment, labels, and optional justification to update server data,
  * then refreshes label dropdowns, label counts, and the segment dropdown for the given table.
  *
- * @param {string} table_id - Target DataTable selector.
  * @param {string} seg_dropdown_id - Selector for the segment dropdown.
  * @param {string} lbl_dropdown_id - Selector for the labels dropdown.
  * @param {string|null} jus_dropdown_id - Selector for justification dropdown (optional).
  */
-function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id = null) {
+function labelRows(seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id = null) {
     const user_id = $('#userDropdown').val();
     if (!user_id) {
         return;
@@ -97,7 +96,7 @@ function labelRows(table_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id =
             promises.push(fillLabelDropdowns());
             promises.push(fillLabelsCount());
             // maybe instead use https://stackoverflow.com/questions/37330407/jquery-select2-change-option-text
-            promises.push(fillSegmentDropdown(table_id, seg_dropdown_id, false));
+            promises.push(fillSegmentDropdown(seg_dropdown_id, false));
 
             Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
         },
@@ -154,11 +153,10 @@ function prevOption(dropdown_id) {
  * if reset_value = false - preserves the previously selected segment if available.
  * Once loaded, triggers load events for the segment
  *
- * @param {string} table_id - Selector for the DataTable to update after loading.
  * @param {string} dropdown_id - Selector for the segment dropdown to fill.
  * @param {boolean} reset_value - whether to preserves previous value
  */
-async function fillSegmentDropdown(table_id, dropdown_id, reset_value = true) {
+async function fillSegmentDropdown(dropdown_id, reset_value = true) {
     const previousValue = $(dropdown_id).val();
     $(dropdown_id).empty();
     const user_id = $('#userDropdown').val();
@@ -182,7 +180,6 @@ async function fillSegmentDropdown(table_id, dropdown_id, reset_value = true) {
                 }
 
                 $(dropdown_id).trigger('change');
-                await loadEvents(table_id, dropdown_id)
             },
             error: function (xhr, status, error) {
                 console.error("Segment options loading failed:", status, error);
