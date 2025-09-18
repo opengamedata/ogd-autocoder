@@ -1,16 +1,7 @@
 import os
 import json
 import polars as pl
-
-# COL_DTYPES = {
-#     'app_branch': 'object',
-#     'user_id': 'object',
-#     'log_version': 'object',
-#     'session_id': 'object',
-#     'app_version': 'object',
-#     'index': 'object',
-#     'segment_labels': 'object'
-# }
+pl.Config.set_streaming_chunk_size(50000) # set chunk_size to use less memory
 
 
 def read_dataset(filepath, filtered_only=True):
@@ -46,7 +37,7 @@ def read_dataset(filepath, filtered_only=True):
 
 
 def unique_count(df, cols):
-    return df.select(pl.struct(cols).drop_nulls().n_unique()).collect(engine="streaming").item()
+    return df.select(pl.struct(cols).drop_nulls().n_unique())
 
 def get_models_filename(filepath):
     name, ext = os.path.splitext(filepath)
@@ -67,43 +58,68 @@ def get_dataset_info(filepath):
     """
     df = read_dataset(filepath, False)
     #df = df.with_columns(pl.col("timestamp").cast(pl.String).str.strptime(pl.Datetime, strict=False))
-    timestamp_min = df.select(pl.col("timestamp").drop_nulls().min()).collect(engine="streaming").item()
-    timestamp_max = df.select(pl.col("timestamp").drop_nulls().max()).collect(engine="streaming").item()
-    date_range = f"{timestamp_min[:10].replace("-", "/")} - {timestamp_max[:10].replace("-", "/")}"
 
     # Filtered / excluded subsets
     df_filtered = df.filter(pl.col("filtered_in") == True)
-    included_events = (
-        df_filtered.select(pl.col("event_name").unique()).collect(engine="streaming").to_series().to_list()
-    )
-    all_events = set(
-        df.select(pl.col("event_name").unique()).collect(engine="streaming").to_series().to_list()
-    )
-    excluded_events = list(all_events.difference(set(included_events)))
+    included_events = df_filtered.select(pl.col("event_name").unique())
+    all_events = df.select(pl.col("event_name").unique())
     models_count = len(get_models_list(filepath))
     events_types = get_event_types(df_filtered)
     users = get_users_list(df_filtered)
     labels_distribution = segment_labels_count(df_filtered)
+
+    (included_events, all_events,
+    events_types, users, labels_distribution,
+    rows_num, filt_rows_num,
+    ) = pl.collect_all([
+        included_events,
+        all_events,
+        events_types,
+        users,
+        labels_distribution,
+        df.select(pl.len()), # rows_num
+        df_filtered.select(pl.len()), # filt_rows_num
+    ], engine="streaming")
+
+
+    # had to do separately, otherwise don't work
+    (filt_user_cnt, filt_segment_cnt, filt_session_cnt,
+    all_user_cnt, all_segment_cnt, all_session_cnt,
+    timestamp_min, timestamp_max) = pl.collect_all([
+        unique_count(df_filtered, ["user_id"]),
+        unique_count(df_filtered, ["user_id", "segment_id"]),
+        unique_count(df_filtered, ["session_id"]),
+        unique_count(df, ["user_id"]),
+        unique_count(df, ["user_id", "segment_id"]),
+        unique_count(df, ["session_id"]),
+        df.select(pl.col("timestamp").drop_nulls().min()), # timestamp_min
+        df.select(pl.col("timestamp").drop_nulls().max()), # timestamp_max
+    ], engine="streaming")
+    date_range = f"{timestamp_min.item()[:10].replace("-", "/")} - {timestamp_max.item()[:10].replace("-", "/")}"
+
+    included_events = included_events.to_series().to_list()
+    all_events = all_events.to_series().to_list()
+    excluded_events = list(set(all_events).difference(set(included_events)))
     obj = {
         "models_count": models_count,
         "date_range": date_range,
-        "events_types": events_types,
-        "users": users,
+        "events_types": events_types.to_series().to_list(),
+        "users": users.to_dicts(),
         "original": {
-            "rows": df.select(pl.len()).collect(engine="streaming").item(),
-            "users": unique_count(df, ["user_id"]),
-            "segments": unique_count(df, ["user_id", "segment_id"]),
-            "sessions": unique_count(df, ["session_id"]),
+            "rows": rows_num.item(),
+            "users": all_user_cnt.item(),
+            "segments": all_segment_cnt.item(),
+            "sessions": all_session_cnt.item(),
         },
         "filtered": {
-            "rows": df_filtered.select(pl.len()).collect(engine="streaming").item(),
-            "users": unique_count(df_filtered, ["user_id"]),
-            "segments": unique_count(df_filtered, ["user_id", "segment_id"]),
-            "sessions": unique_count(df_filtered, ["session_id"]),
+            "rows": filt_rows_num.item(),
+            "users": filt_user_cnt.item(),
+            "segments": filt_segment_cnt.item(),
+            "sessions": filt_session_cnt.item(),
         },
         "included_events": [{"name": ev} for ev in included_events],
         "excluded_events": [{"name": ev} for ev in excluded_events],
-        "labels_distribution": labels_distribution,
+        "labels_distribution": labels_distribution.to_dicts(),
     }
 
     return obj
@@ -142,7 +158,7 @@ def get_users_list(df):
         .sort("user_id")
     )
 
-    return df.collect(engine="streaming").to_dicts()
+    return df
 
 
 def get_event_types(df):
@@ -152,9 +168,6 @@ def get_event_types(df):
 
     return (
         df.select(pl.col("event_name").drop_nulls().unique().sort())
-        .collect(engine="streaming")
-        .to_series()
-        .to_list()
     )
 
 
@@ -171,7 +184,7 @@ def segment_labels_count(df):
         .sort("count", descending=True)
     )
 
-    return df.collect(engine="streaming").to_dicts()
+    return df
 
 
 def segment_ids_for_user(filepath, user_id):
