@@ -17,10 +17,27 @@ import polars as pl
 def read_dataset(filepath, filtered_only=True):
     """
     Returns the whole or filtered dataset
+    Adds auxiliary columns
 
     IMPORTANT: Set filtered_only = False if you want to write_csv afterwards
     """
     df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
+
+    columns = df.columns
+    for col in ["segment_id", "segment_labels", "label_justification"]:
+        if col not in columns:
+            df = df.with_columns(pl.lit(None).alias(col))
+
+    if "event_description" not in columns:
+        df = df.with_columns(pl.col("event_name").alias("event_description"))
+
+    if "filtered_in" not in columns:
+        df = df.with_columns(pl.lit(True).alias("filtered_in"))
+
+    if "job_name" not in columns:
+        df = df.with_columns(
+            pl.col("game_state").str.json_path_match("$.job_name").alias("job_name")
+        )
 
     if filtered_only:
         df = df.filter(pl.col("filtered_in") == True)
@@ -45,40 +62,11 @@ def get_models_filename(filepath):
 #         return None
 
 
-def read_handling_miss_cols(filepath):
-    """
-    Read datasets, but if auxiliary/app specific columns doesn't exist, create and fill them
-    """
-    df = read_dataset(filepath, False)
-    old_cols = set(df.columns)
-
-    for col in ["segment_id", "segment_labels", "label_justification"]:
-        if col not in df.columns:
-            df = df.with_columns(pl.lit(None).alias(col))
-
-    if "event_description" not in df.columns:
-        df = df.with_columns(df["event_name"].alias("event_description"))
-
-    if "filtered_in" not in df.columns:
-        df = df.with_columns(pl.lit(True).alias("filtered_in"))
-
-    if "job_name" not in df.columns:
-        df = df.with_columns(
-            pl.col("game_state").str.json_path_match("$.job_name").alias("job_name")
-        )
-
-    new_cols = set(df.columns)
-    if not new_cols.issubset(old_cols):
-        # write if new columns were added
-        df.write_csv(filepath, separator="\t")
-
-    return df
-
 def get_dataset_info(filepath):
     """
     Returns useful dataset info such as row count, segments count, user session count
     """
-    df = read_handling_miss_cols(filepath)
+    df = read_dataset(filepath, False)
     df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))
     timestamp_min = df.select(pl.col("timestamp").drop_nulls().min()).item()
     timestamp_max = df.select(pl.col("timestamp").drop_nulls().max()).item()
