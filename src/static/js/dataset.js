@@ -135,6 +135,10 @@ function moveEvent(button, includedId, excludedId) {
     updateNumSelected(includedId, excludedId, isFeature);
     if (isFeature)
         recalculateMaxCorrelation();
+    else {
+        $('#saveFilterBtn').attr('disabled', false);
+        $('#saveFilterBtn').addClass('btn-outline-primary').removeClass('btn-outline-secondary');
+    }
 }
 
 function updateNumSelected(includedId, excludedId, is_feature) {
