@@ -79,7 +79,7 @@ def users_list():
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
     df = read_dataset(filepath)
-    return jsonify({"users": get_users_list(df)})
+    return jsonify({"users": get_users_list(df).collect(engine="streaming").to_dicts()})
 
 
 @app.route("/update_event_descriptions", methods=["POST"])
@@ -125,7 +125,7 @@ def labels_value_count():
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
     df = read_dataset(filepath)
-    return jsonify({"data": segment_labels_count(df)})
+    return jsonify({"data": segment_labels_count(df).collect(engine="streaming").to_dicts()})
 
 
 @app.route("/list_labels", methods=["POST"])
