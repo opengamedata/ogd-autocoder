@@ -9,7 +9,13 @@ from datetime import datetime
 import numpy as np
 import copy
 
-from sklearn.preprocessing import LabelEncoder, RobustScaler, StandardScaler, MinMaxScaler, MaxAbsScaler
+from sklearn.preprocessing import (
+    LabelEncoder,
+    RobustScaler,
+    StandardScaler,
+    MinMaxScaler,
+    MaxAbsScaler,
+)
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import SelectFromModel
@@ -31,7 +37,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from ogd_features import list_ogd_features, calculate_ogd_features
 
-from utils import get_models_filename, read_dataset
+from dataset import read_dataset
 
 RANDOM_STATE = 13
 
@@ -48,14 +54,36 @@ AVAILABLE_SCALERS = {
 }
 
 
+def get_models_filename(filepath):
+    name, ext = os.path.splitext(filepath)
+    model_filename = f"{name}_models.json"
+    return model_filename
+
+
+def get_models_list(filepath):
+    models_filepath = get_models_filename(filepath)
+    if os.path.exists(models_filepath):
+        with open(models_filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
+    else:
+        return []
+
+
 def available_features(filepath):
     # preprocess without using ogd pipeline to save some calculations
-    columns = preprocess_df_no_ogd(filepath).drop(["segment_labels", "segment_id", "user_id"]).columns
+    columns = (
+        preprocess_df_no_ogd(filepath)
+        .drop(["segment_labels", "segment_id", "user_id"])
+        .columns
+    )
 
     # load also OGD features
     game_id = get_game_id(filepath)
     ogd_columns = list_ogd_features(game_id)
-    return {"included_features": [{"name": c} for c in columns], "excluded_features": ogd_columns}
+    return {
+        "included_features": [{"name": c} for c in columns],
+        "excluded_features": ogd_columns,
+    }
 
 
 def correlation(filepath, include_labels):
@@ -65,9 +93,10 @@ def correlation(filepath, include_labels):
     df = df.drop(["segment_labels"])
     corr_matrix = df.corr().to_pandas().abs()
     corr_matrix.index = corr_matrix.columns
-    np.fill_diagonal(corr_matrix.values, 0) # fill 0s in self correlation
+    np.fill_diagonal(corr_matrix.values, 0)  # fill 0s in self correlation
 
     return corr_matrix.fillna("null").to_dict(orient="dict")
+
 
 def pca_details(filepath, hyperparameters, include_labels, include_features):
     df = preprocess_df(filepath).to_pandas()
@@ -89,11 +118,12 @@ def pca_details(filepath, hyperparameters, include_labels, include_features):
     # n_components == min(n_samples, n_features)
     pca = PCA()
     pca.fit(x_train)
-    
+
     explained_variance = pca.explained_variance_ratio_.tolist()
     cumulative_variance = np.cumsum(explained_variance).tolist()
 
     return {"explained_variance": explained_variance, "cumulative": cumulative_variance}
+
 
 def train_model(
     filepath, model_type, hyperparameters, include_labels, include_features, models_dir
@@ -149,11 +179,11 @@ def train_model(
 
     scaler_choice = hyperparameters.get("scaling", False)
     if scaler_choice in AVAILABLE_SCALERS:
-        preprocess_pipe.append(('scaler', AVAILABLE_SCALERS[scaler_choice]()))
+        preprocess_pipe.append(("scaler", AVAILABLE_SCALERS[scaler_choice]()))
 
     pca_comps = hyperparameters.get("pca_comps", 0)
     if pca_comps > 0:
-        preprocess_pipe.append(('pca', PCA(n_components=pca_comps)))
+        preprocess_pipe.append(("pca", PCA(n_components=pca_comps)))
 
     if len(preprocess_pipe):
         pipe = Pipeline(preprocess_pipe)
@@ -161,7 +191,8 @@ def train_model(
         x_train_full = pipe.fit_transform(x_train_full)
         x_test = pipe.transform(x_test)
         model_info["preprocessor_path"] = os.path.join(
-            models_dir, "preprocessor_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl"
+            models_dir,
+            "preprocessor_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl",
         )
         joblib.dump(pipe, model_info["preprocessor_path"])
 
@@ -247,11 +278,9 @@ def preprocess_df_no_ogd(filepath):
     """
     Preprocess using one hot encoding (no ogd features)
     """
-    # fixme - add support for multiple labels
     # segment_id is the new task_id, segment_labels is the target
     df = read_dataset(filepath)
     # fixme - add support for multiple labels
-    # fixme - job_name dummies
     df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))
 
     # additional feature: segment duration in seconds
@@ -362,10 +391,12 @@ def inference(filepath, model_path):
     if "preprocessor_path" in model_info.keys():
         pipe = joblib.load(model_info["preprocessor_path"])
         X = pipe.transform(X)
-    
+
     if model_info["model_type"] == "neural-net":
         model = CustomNeuralNet(
-            X.shape[1], model_info["hyperparameters"]["units_per_layer"], len(model_info["include_labels"])
+            X.shape[1],
+            model_info["hyperparameters"]["units_per_layer"],
+            len(model_info["include_labels"]),
         )
         model.load_state_dict(torch.load(model_info["model_path"]))
         model.eval()
@@ -406,6 +437,7 @@ def inference(filepath, model_path):
     df = df.with_columns(pl.col("old_segment_id").alias("segment_id"))
     df.drop("old_segment_id").write_csv(filepath, separator="\t")
 
+
 def autoselect_features(filepath, include_labels):
     df = preprocess_df(filepath)
     # fixme maybe we should also use the target col?
@@ -415,11 +447,11 @@ def autoselect_features(filepath, include_labels):
     # fixme, maybe differ for each model_type
     selector = SelectFromModel(LogisticRegression(random_state=RANDOM_STATE))
     selector.fit(X, y)
-    
+
     selected_features = X.columns[selector.get_support()].tolist()
 
     return selected_features
-    
+
 
 def get_predicted_label(filepath, user_id, segment_id):
     """

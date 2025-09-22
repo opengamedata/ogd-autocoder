@@ -15,8 +15,6 @@ async function fillDatasetInfo() {
             let percentage = Math.trunc(100 * data.filtered.rows / data.original.rows, 2)
 
             $('span[data-field="date-range"]').text(data.date_range);
-            $('span[data-field="models"]').text(data.models_count);
-
             $('td[data-field="rows-filtered"]').text(data.filtered.rows.toLocaleString() + " (" + percentage + " %)");
             $('td[data-field="segments-filtered"]').text(data.filtered.segments.toLocaleString());
             $('td[data-field="users-filtered"]').text(data.filtered.users.toLocaleString());
@@ -36,7 +34,7 @@ async function fillDatasetInfo() {
 
             // fillEventTypes
             $('#segmentEventTypeDropdown').empty();
-            data.events_types.forEach(event_type => {
+            data.included_events.forEach(event_type => {
                 $('#segmentEventTypeDropdown').append(`<option value="${event_type}">${event_type}</option>`);
             });
             $('#segmentEventTypeDropdown').show();
@@ -80,6 +78,11 @@ function fillInclExcLists(includedElems, excludedElems, includedId, excludedId) 
     });
     $('[data-toggle="tooltip"]').tooltip();
     updateNumSelected('#includedEvents', '#excludedEvents', false);
+}
+
+function increaseModelsCount(incVal) {
+    let value = parseInt($('span[data-field="models"]').text());
+    $('span[data-field="models"]').text(value + incVal)
 }
 
 function fillLabelDistPie(labelData) {

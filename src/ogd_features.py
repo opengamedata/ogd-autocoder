@@ -114,9 +114,11 @@ def calculate_ogd_features(app_id, filepath):
             processed_out[user_id] = {"user_id": user_id}
 
         processed_out[user_id].update(dict(zip(metrics, values)))
-    
+
     df = pl.DataFrame(list(processed_out.values()))
 
-    columns_filter = [c["name"] for c in list_ogd_features(app_id)] # only select available columns
+    columns_filter = [
+        c["name"] for c in list_ogd_features(app_id)
+    ]  # only select available columns
     columns_filter.append("user_id")
     return df.select(columns_filter)
