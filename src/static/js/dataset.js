@@ -222,7 +222,7 @@ segmentChart = new Chart(ctxSG, {
         maintainAspectRatio: false,
         plugins: {
             legend: { position: "top" },
-            title: { display: true, text: "Labeled Segments" },
+            title: { display: true, text: "Labeling Progress" },
             datalabels: {
                 color: "#fff",
                 font: { weight: "bold", size: 16 },
