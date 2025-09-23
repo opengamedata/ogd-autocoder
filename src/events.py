@@ -1,3 +1,7 @@
+"""
+Code related to modifications using the "event_name" column
+"""
+
 import json
 import polars as pl
 from dataset import read_dataset

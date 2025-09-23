@@ -1,3 +1,7 @@
+"""
+Code related to segmenting (manually or auto) the dataframe
+"""
+
 import polars as pl
 from dataset import read_dataset
 

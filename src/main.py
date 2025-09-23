@@ -1,10 +1,13 @@
 import os
 import traceback
 from dataset import *
-from segment import *
-from label import *
-from events import *
-from train import *
+from dim_reduction import pca_details, autoselect_features, correlation
+from inference import get_models_list, get_predicted_label, inference
+from preprocess import available_features
+from segment import autosegment_by_event_type, segment_ids_for_user, segment_rows
+from label import label_rows, list_seg_labels
+from events import event_filtering, describe_events
+from train import train_model
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort
 from datetime import datetime
