@@ -34,8 +34,8 @@ async function fillDatasetInfo() {
 
             // fillEventTypes
             $('#segmentEventTypeDropdown').empty();
-            data.included_events.forEach(event_type => {
-                $('#segmentEventTypeDropdown').append(`<option value="${event_type}">${event_type}</option>`);
+            data.included_events.forEach(event => {
+                $('#segmentEventTypeDropdown').append(`<option value="${event.name}">${event.name}</option>`);
             });
             $('#segmentEventTypeDropdown').show();
 

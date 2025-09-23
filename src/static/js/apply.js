@@ -52,7 +52,7 @@ function applyModel(model_path) {
         alert('Hit train or select existing model before applying');
         return;
     }
-    $('#nav-apply-tab').click();
+
     $('#spinner').removeClass("d-none");
     $.ajax({
         url: 'infere',
@@ -61,6 +61,7 @@ function applyModel(model_path) {
         contentType: "application/json",
         success: function (response) {
             $('#spinner').addClass("d-none");
+            $('#nav-apply-tab').click();
         },
         error: function (xhr, status, error) {
             console.error("Auto Segmentation failed:", status, error);

@@ -1,3 +1,7 @@
+"""
+Code related to reading dataframe, dataset info
+"""
+
 import polars as pl
 
 
@@ -9,8 +13,6 @@ def read_dataset(filepath, filtered_only=True):
     IMPORTANT: Set filtered_only = False if you want to write_csv afterwards
     """
     df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
-    if filtered_only:
-        df = df.filter(pl.col("filtered_in") == True)
 
     columns = df.columns
     for col in ["segment_id", "segment_labels", "label_justification"]:
@@ -27,6 +29,9 @@ def read_dataset(filepath, filtered_only=True):
         df = df.with_columns(
             pl.col("game_state").str.json_path_match("$.job_name").alias("job_name")
         )
+
+    if filtered_only:
+        df = df.filter(pl.col("filtered_in") == True)
 
     return df
 
