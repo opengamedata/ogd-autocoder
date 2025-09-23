@@ -33,7 +33,7 @@
       <button class="nav-link disabled" id="downloadBtn"><i class="bi bi-download me-1"></i> DOWNLOAD</button>
     </div>
   </nav>
-  <div id="user_panel" class="d-none d-flex align-items-center gap-3 mb-4 py-2">
+  <div id="user_panel" class="d-none d-flex align-items-center gap-3 mb-2 py-2">
     <select class="form-select" id="userDropdown" onchange="userChanged()" style="min-width: 200px; display:none;">
     </select>
   </div>
@@ -194,19 +194,19 @@
     </div>
     <!--LABEL-->
     <div class="tab-pane fade" id="nav-label" role="tabpanel" aria-labelledby="nav-label-tab">
+      <div class="max-width-500">
+        <label for="segmentDropdown" class="form-label">Segment ID</label>
+        <div class="d-flex align-items-center">
+          <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
+          <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" onclick="prevOption('#segmentDropdown')">&lt;</button>
+          <select class="form-control flex-grow-1" id="segmentDropdown"></select>
+          <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" onclick="nextOption('#segmentDropdown')">&gt;</button>
+          <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
+        </div>
+      </div>
+      <hr/>
       <div class="mb-3 row g-3 align-items-end">
         <div class="col-md-4">
-          <label for="segmentDropdown" class="form-label">Segment ID</label>
-          <div class="d-flex align-items-center">
-            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
-            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" onclick="prevOption('#segmentDropdown')">&lt;</button>
-            <select class="form-control flex-grow-1" id="segmentDropdown"></select>
-            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" onclick="nextOption('#segmentDropdown')">&gt;</button>
-            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
-          </div>
-        </div>
-    
-        <div class="col-md-3">
           <div class="d-flex justify-content-between align-items-center mb-1">
             <label for="labelsDropdown" class="form-label mb-0">Labels</label>
             <div class="d-flex gap-1">
@@ -228,7 +228,7 @@
           <input type="text" class="form-control" id="labelJustificationInput" placeholder="Explain the label(s) choice..." aria-label="Label Justification">
         </div>
     
-        <div class="col-md-1">
+        <div class="col-md-2">
           <label class="form-label d-block">&nbsp;</label>
           <button class="btn btn-primary w-100" type="button" onclick="labelRows('#segmentDropdown', '#labelsDropdown', '#labelJustificationInput')">Apply</button>
         </div>
@@ -549,24 +549,23 @@
     </div>
     <!--APPLY-->
     <div class="tab-pane fade" id="nav-apply" role="tabpanel" aria-labelledby="nav-apply-tab">
+      <div class="max-width-500">
+        <label for="segmentDropdown_apply" class="form-label">Segment ID</label>
+        <div class="d-flex align-items-center">
+          <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
+          <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" onclick="prevOption('#segmentDropdown_apply')">&lt;</button>
+          <select class="form-control flex-grow-1 me-1" id="segmentDropdown_apply"></select>
+          <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" onclick="nextOption('#segmentDropdown_apply')">&gt;</button>
+          <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
+        </div>          
+      </div>
+      <hr/>
       <div class="mb-3 row g-3 align-items-end">
-    
-        <div class="col-md-5">
-          <label for="segmentDropdown_apply" class="form-label">Segment ID</label>
-          <div class="d-flex align-items-center">
-            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
-            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" onclick="prevOption('#segmentDropdown_apply')">&lt;</button>
-            <select class="form-control flex-grow-1 me-1" id="segmentDropdown_apply"></select>
-            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" onclick="nextOption('#segmentDropdown_apply')">&gt;</button>
-            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
-          </div>          
-        </div>
-    
-        <div class="col-md-3">
-          <div class="d-flex justify-content-between align-items-center mb-1">
+        <div class="col-md-4">
+          <!-- <div class="d-flex justify-content-between align-items-center mb-1">
             <label for="labelsDropdown_apply" class="form-label mb-0">Predicted Label</label>
-          </div>
-
+          </div> -->
+          <label for="labelsDropdown_apply" class="form-label">Predicted Label</label>
           <select id="labelsDropdown_apply" style="width: 100%;" class="form-control" multiple="multiple"></select>
         </div>
     
@@ -574,12 +573,12 @@
           <label for="confidence" class="form-label">Confidence</label>
           <input type="text" class="form-control" id="confidence" disabled placeholder="..." aria-label="">
         </div>
-        <div class="col-md-1">
-          <div id="accept-count" class="text-muted mb-1">Accepts: 0</div>
+        <div class="col-md-2">
+          <label id="accept-count" class="form-label text-muted">Accepts: 0</label>
           <button class="btn btn-success w-100" type="button" onclick="acceptLabel()">Apply</button>
         </div>
-        <div class="col-md-1">
-          <div id="reject-count" class="text-muted mb-1">Rejects: 0</div>
+        <div class="col-md-2">
+          <label id="reject-count" class="form-label text-muted">Rejects: 0</label>
           <button class="btn btn-danger w-100" onclick="rejectLabel()" type="button">Reject</button>
         </div>
       </div>

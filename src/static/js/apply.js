@@ -38,7 +38,8 @@ async function getPredictedLabels() {
         contentType: "application/json",
         success: function (response) {
             $("#labelsDropdown_apply").val(response["label"]).trigger('change');
-            $('#confidence').val(parseFloat(response["confidence"]).toFixed(2))
+            let confidence = parseFloat(response["confidence"]).toFixed(2);
+            $('#confidence').val(confidence == "NaN" ? "-" : confidence)
         },
         error: function (xhr, status, error) {
             console.error("Auto Segmentation failed:", status, error);
