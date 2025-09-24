@@ -79,6 +79,7 @@ function fillInclExcLists(includedElems, excludedElems, includedId, excludedId) 
         excludedList.append(createListItem(el, false, includedId, excludedId));
     });
     $('[data-toggle="tooltip"]').tooltip();
+    updateNumSelected('#includedEvents', '#excludedEvents', false);
 }
 
 function fillLabelDistPie(labelData) {
@@ -92,7 +93,7 @@ function fillLabelDistPie(labelData) {
 
 function createListItem(element, included, includedId, excludedId) {
     const li = $(`
-        <li data-event-name="${element.name}" class="list-group-item d-flex justify-content-between align-items-center" data-toggle="tooltip" title="${element.description ?? element.name}">
+        <li data-elem-name="${element.name}" class="list-group-item d-flex justify-content-between align-items-center" data-toggle="tooltip" title="${element.description ?? element.name}">
             <span>${element.name}</span>
             <button data-include="${included}" class="btn btn-sm ${included ? 'btn-outline-danger' : 'btn-outline-success'}" 
                     onclick="moveEvent(this, '${includedId}', '${excludedId}')">
@@ -130,15 +131,27 @@ function moveEvent(button, includedId, excludedId) {
     $li.appendTo($targetList);
     bootstrap.Tooltip.getOrCreateInstance($li[0]);
 
-    if (includedId.toLowerCase().includes("features"))
-        updateNumSelectedFeatures();
+    let isFeature = includedId.toLowerCase().includes("features"); // either an event or a feature
+    updateNumSelected(includedId, excludedId, isFeature);
+    if (isFeature)
         recalculateMaxCorrelation();
+    else {
+        $('#saveFilterBtn').attr('disabled', false);
+        $('#saveFilterBtn').addClass('btn-outline-primary').removeClass('btn-outline-secondary');
+    }
+}
+
+function updateNumSelected(includedId, excludedId, is_feature) {
+    let suffix = is_feature ? "Feats" : "Evts";
+    $("#numSel" + suffix).text($(includedId).children().length);
+    $("#countFilteredIncluded" + suffix).text($(includedId).children(":visible").length);
+    $("#countFilteredExcluded" + suffix).text($(excludedId).children(":visible").length);
 }
 
 function filterDataset() {
     $('#spinner').removeClass("d-none");
     const included_events = $("#includedEvents li").map(function() {
-        return $(this).data("event-name");
+        return $(this).data("elem-name");
     }).get();
 
     $.ajax({
@@ -219,4 +232,29 @@ segmentChart = new Chart(ctxSG, {
             }
         }
     }
+});
+
+$('#evTypesSearch').on('input', function () {
+    const query = $(this).val().toLowerCase();
+
+    $('#includedEvents').children('li').each(function () {
+        const name = $(this).data("elem-name").toLowerCase();
+
+        if (name.includes(query)) {
+            $(this).removeClass('d-none');
+        } else if (!$(this).hasClass('d-none')) {
+            $(this).addClass('d-none');
+        }
+    });
+
+    $('#excludedEvents').children('li').each(function () {
+        const name = $(this).data("elem-name").toLowerCase();
+
+        if (name.includes(query)) {
+            $(this).removeClass('d-none');
+        } else if (!$(this).hasClass('d-none')) {
+            $(this).addClass('d-none');
+        }
+    });
+    updateNumSelected('#includedEvents', '#excludedEvents', false);
 });
