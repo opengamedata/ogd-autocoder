@@ -48,3 +48,13 @@
 .max-width-500 {
     max-width: 500px;
 }
+
+.resizer {
+    width: 5px;
+    cursor: col-resize;
+    background-color: #f8f9fa;
+    padding: 0;
+}
+.resizer:hover {
+    background-color: #dee2e6;
+}

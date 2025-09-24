@@ -4,6 +4,39 @@ let metricsByLabel = {};
 let applyModelPath = null;
 let bestModel = { test_accuracy: 0, path: null }; // best selected by test accuracy
 let correlationMatrix = null; // used for correlations
+let avoidOnChange = false; // if true dont run trainLabelsDropdown onchange
+
+let isResizing = false;
+// resizing sidebars
+$(".resizer").on("mousedown", function (e) {
+    e.preventDefault();
+    isResizing = true;
+
+    let leftCol = $("#" + $(this).data("left-col"));
+    let rightCol = $("#" + $(this).data("right-col"));
+
+    let startX = e.pageX;
+    let startWidth = leftCol.width();
+    let nextStartWidth = rightCol.width();
+
+    $(document).on("mousemove.resize", function (e) {
+        if (!isResizing) return;
+
+        const dx = e.pageX - startX;
+        const newWidth = startWidth + dx;
+        const newNextWidth = nextStartWidth - dx;
+
+        if (newWidth > 150 && newNextWidth > 150) { // minimum widths
+            leftCol.css({ flex: "none", width: newWidth + "px" });
+            rightCol.css({ flex: "none", width: newNextWidth + "px" });
+        }
+    });
+
+    $(document).on("mouseup.resize", function () {
+        isResizing = false;
+        $(document).off(".resize");
+    });
+});
 
 // dropdowns initialization
 
@@ -362,6 +395,7 @@ addMoveAllElemsHandler("#allToIncludedEvt", "#excludedEvents");
  * @param {object} model_info - The selected model's information.
  */
 function fillModelParamsFromExisting(model_info) {
+    avoidOnChange = true;
     applyModelPath = model_info["model_path"]; // for the apply button
 
     $('#modelTabs .nav-link').prop('disabled', 'disabled');
@@ -416,11 +450,8 @@ function fillModelParamsFromExisting(model_info) {
     $('#trainModelBtn').hide()
     $('#enableTrainBtn').show();
 
-    $('html, body').animate({ scrollTop: 0 }, 250);
-    $('#modelSummary').text('');
-    setTimeout(() => {
-        $('#modelSummary').text(model_info["output"]);
-    }, 300);
+    $('#modelSummary').text(model_info["output"]);
+    avoidOnChange = false;
 }
 
 function highlightBar(index) {
@@ -719,7 +750,7 @@ async function fillFeatureList() {
 
 $('#trainLabelsDropdown').on('change', function () {
     const tabId = $('#nav-tab .nav-link.active').attr('id');
-    if (tabId == "nav-train-tab") {
+    if (tabId == "nav-train-tab" && !avoidOnChange) {
         $('#spinner').removeClass("d-none");
         updateCorrelationMatrix().finally(() => {
             recalculateMaxCorrelation();
@@ -785,6 +816,7 @@ function recalculateMaxCorrelation() {
 }
 
 function enableTrain() {
+    avoidOnChange = true;
     // train another model button
     $('#modelTabs .nav-link').prop('disabled', false);
     $('#trainLabelsDropdown').prop('disabled', false);
@@ -814,6 +846,7 @@ function enableTrain() {
     $('#modelScroll').find('button').removeClass('btn-dark');
 
     $('#enableTrainBtn').hide();
+    avoidOnChange = false;
 }
 
 $('#applyTrain').on('click', () => {
