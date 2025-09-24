@@ -567,18 +567,18 @@
             <label for="labelsDropdown_apply" class="form-label mb-0">Predicted Label</label>
           </div> -->
           <label for="labelsDropdown_apply" class="form-label">Predicted Label</label>
-          <select id="labelsDropdown_apply" style="width: 100%;" class="form-control" multiple="multiple"></select>
+          <select id="labelsDropdown_apply" disabled="disabled" style="width: 100%;" class="form-control" multiple="multiple"></select>
         </div>
     
         <div class="col-md-2">
           <label for="confidence" class="form-label">Confidence</label>
           <input type="text" class="form-control" id="confidence" disabled placeholder="..." aria-label="">
         </div>
-        <div class="col-md-2">
+        <div class="ms-auto col-auto">
           <label id="accept-count" class="form-label text-muted">Accepts: 0</label>
           <button class="btn btn-success w-100" type="button" onclick="acceptLabel()">Apply</button>
         </div>
-        <div class="col-md-2">
+        <div class="col-auto">
           <label id="reject-count" class="form-label text-muted">Rejects: 0</label>
           <button class="btn btn-danger w-100" onclick="rejectLabel()" type="button">Reject</button>
         </div>
