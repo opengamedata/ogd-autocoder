@@ -1,8 +1,13 @@
 import os
-import time
 import traceback
-from utils import *
-from train import *
+from dataset import *
+from dim_reduction import pca_details, autoselect_features, correlation
+from inference import get_models_list, get_predicted_label, inference
+from preprocess import available_features
+from segment import autosegment_by_event_type, segment_ids_for_user, segment_rows
+from label import label_rows, list_seg_labels
+from events import event_filtering, describe_events
+from train import train_model
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort
 from datetime import datetime
@@ -91,6 +96,7 @@ def update_event_descriptions():
 
     return jsonify({"success": True})
 
+
 @app.route("/dataset_info", methods=["POST"])
 def dataset_info():
     filepath = os.path.join(
@@ -152,12 +158,15 @@ def correlation_matrix():
     )
     return jsonify({"data": correlation(filepath, request.json["include_labels"])})
 
+
 @app.route("/events/<user_id>", methods=["POST"])
 def events(user_id):
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    user_events = get_events_for_user(filepath, user_id, request.json.get("segment_id"))
+    user_events = find_by_user_and_segment(
+        filepath, user_id, request.json.get("segment_id")
+    )
 
     return jsonify(
         {"data": user_events}
@@ -173,7 +182,6 @@ def segment(user_id):
     segment_id = request.json.get("segment_id")
 
     segment_rows(filepath, user_id, segment_id, selected_rows)
-    # fixme - make this faster by returning updated rows...
     return jsonify({"success": True})
 
 
@@ -199,13 +207,16 @@ def autosegment():
 
     return jsonify({"success": True})
 
+
 @app.route("/autoselect", methods=["POST"])
 def autoselect():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
 
-    return jsonify({"features": autoselect_features(filepath, request.json["include_labels"])})
+    return jsonify(
+        {"features": autoselect_features(filepath, request.json["include_labels"])}
+    )
 
 
 @app.route("/infere", methods=["POST"])
@@ -229,18 +240,22 @@ def predicted_label():
 
     return jsonify({"label": label, "confidence": confidence})
 
+
 @app.route("/pca_details", methods=["POST"])
 def get_pca_details():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
 
-    return jsonify(pca_details(
-        filepath,
-        request.json["hyperparameters"],
-        request.json["include_labels"],
-        request.json["include_features"],
-    ))
+    return jsonify(
+        pca_details(
+            filepath,
+            request.json["hyperparameters"],
+            request.json["include_labels"],
+            request.json["include_features"],
+        )
+    )
+
 
 @app.route("/train_model", methods=["POST"])
 def train():

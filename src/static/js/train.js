@@ -98,6 +98,7 @@ function trainModel() {
                 applyModelPath = response["model_info"]["model_path"]
                 $('#modelSummary').removeClass("text-danger");
                 addModel(response["model_info"]);
+                increaseModelsCount(1);
             } else {
                 $("#modelSummary:not([class*='text-danger'])").addClass("text-danger");
             }
@@ -218,6 +219,7 @@ async function fillModelsList() {
             for (let row of response.data) {
                 addModel(row)
             }
+            increaseModelsCount(response.data.length);
         }
     });
 }

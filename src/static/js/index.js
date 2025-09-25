@@ -143,6 +143,7 @@ function onFileChange(filename, load_models) {
     let promises = [fillDatasetInfo()];
     resetTrainView();
     resetApplyView();
+    $('span[data-field="models"]').text(0);
     if (load_models) {
         promises.push(fillModelsList());
     }
