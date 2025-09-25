@@ -23,7 +23,7 @@
     </div>
   </div>
 
-  <nav>
+  <nav id="stages-navigator">
     <div class="nav nav-tabs" id="nav-tab" role="tablist">
       <button class="nav-link active" id="nav-data-tab" data-bs-toggle="tab" data-bs-target="#nav-data" type="button" role="tab" aria-controls="nav-data" aria-selected="true">DATA</button>
       <button class="nav-link disabled" id="nav-segment-tab" data-bs-toggle="tab" data-bs-target="#nav-segment" type="button" role="tab" aria-controls="nav-segment" aria-selected="true">SEGMENT</button>
@@ -53,7 +53,10 @@
             </div>            
             <div id="datasetsScroll" class="overflow-auto flex-grow-1 min-vh-0">
               {% for file in uploaded_files %}
-                <button class="btn btn-light w-100 text-start mb-2" data-filename="{{ file.fullname }}" onclick="loadExisting('{{ file.fullname }}')">{{ file.formatted }}</button>
+              <div class="d-flex align-items-center w-100 mb-2">
+                <button class="btn btn-light flex-grow-1 text-start" data-filename="{{ file.fullname }}" onclick="loadExisting('{{ file.fullname }}')">{{ file.formatted }}</button>
+                <button class="btn btn-sm btn-danger ms-2" onclick="showDeleteFileModal('{{ file.fullname }}')"><i class="bi bi-trash text-white"></i></button>
+              </div>
               {% endfor %}
             </div>
           </div>
@@ -648,6 +651,28 @@
       <div class="modal-footer">
         <button type="button" id="saveLabels" class="btn btn-primary">Save Changes</button>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE FILE MODAL -->
+<div class="modal fade" id="deleteFileModal" tabindex="-1" aria-labelledby="deleteFileModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteFileModalLabel">Confirm Dataset Deletion</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        This will delete the DATASET
+        <code><span id="deleteFileName"></span></code><br>
+        and all the TRAINED MODELS associated with it.<br>
+        Are you sure you want to continue?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="deleteFileAccept" type="button" class="btn btn-primary">Yes, Continue</button>
       </div>
     </div>
   </div>

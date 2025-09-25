@@ -49,6 +49,30 @@ def index():
 
     return render_template("index.html", uploaded_files=files)
 
+@app.route("/delete_file", methods=["POST"])
+def delete_file():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.json["filename_to_delete"]
+    )
+
+    # removing models and preprocessors
+    for model in get_models_list(filepath):
+        remove_if_found(model["model_path"])
+        print(f"Model removed: {model["model_path"]}")
+        if "preprocessor_path" in model and model["preprocessor_path"]:
+            remove_if_found(model["preprocessor_path"])
+            print(f"Preprocesor removed: {model["preprocessor_path"]}")
+
+    # removing the models info and dataset
+    remove_if_found(get_models_filename(filepath))
+    os.remove(filepath)
+    print(f"Dataset removed: {filepath}")
+
+    return jsonify({"success": True})
+
+def remove_if_found(filepath):
+    if os.path.exists(filepath):
+        os.remove(filepath)
 
 @app.route("/upload", methods=["POST"])
 def upload_file():

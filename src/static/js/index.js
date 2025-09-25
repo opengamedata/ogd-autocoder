@@ -143,14 +143,12 @@ function uploadFile() {
         success: function (response) {
             filename = response.filename;
             document.cookie = `filename=${filename}`;
-            let $btn = $('<button></button>')
-                .addClass('btn btn-light w-100 text-start mb-2')
-                .attr('data-filename', filename)
-                .text(response.formatted);
-            $btn.on('click', () => {
-                loadExisting(response.filename);
-            });
-            $('#datasetsScroll').prepend($btn)
+            let newDataset = $(`<div class="d-flex align-items-center w-100 mb-2">
+                <button class="btn btn-light flex-grow-1 text-start" data-filename="${response.filename}" onclick="loadExisting('${response.filename}')">${response.formatted}</button>
+                <button class="btn btn-sm btn-danger ms-2" onclick="showDeleteFileModal('${response.filename}')"><i class="bi bi-trash text-white"></i></button>
+            </div>`)
+
+            $('#datasetsScroll').prepend(newDataset)
 
             onFileChange(filename, false);
         },
@@ -182,8 +180,8 @@ function loadExisting(existing_filename) {
  */
 function onFileChange(filename, load_models) {
     $('span[data-field="filename"]').text(filename);
-    $('#datasetsScroll').find('button').removeClass('btn-dark');
-    $(`#datasetsScroll button[data-filename="${filename}"]`).addClass('btn-dark');
+    $('#datasetsScroll').find('.btn-light').removeClass('btn-dark');
+    $(`#datasetsScroll .btn-light[data-filename="${filename}"]`).addClass('btn-dark');
     $('#saveFilterBtn').attr('disabled', true);
     $('#saveFilterBtn').removeClass('btn-outline-primary').addClass('btn-outline-secondary');
 

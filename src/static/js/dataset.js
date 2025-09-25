@@ -148,6 +148,46 @@ function updateNumSelected(includedId, excludedId, is_feature) {
     $("#countFilteredExcluded" + suffix).text($(excludedId).children(":visible").length);
 }
 
+function showDeleteFileModal(selected_filename) {
+    $('#deleteFileModal').modal('show');
+    $('#deleteFileName').text(selected_filename);
+
+    $('#deleteFileAccept').off('click').on('click', function() {
+        deleteFile(selected_filename);
+    });
+}
+
+function deleteFile(selected_filename) {
+    $('#deleteFileModal').modal('hide');
+    $('#spinner').removeClass("d-none");
+    let deletingSelected = $(`#datasetsScroll .btn-dark[data-filename="${selected_filename}"]`)
+    if (deletingSelected.length) {
+        // if the deleting file is the one selected
+        filename = null;
+        document.cookie = "";
+        $('#datasetInfo').addClass("d-none");
+        $('.nav-link').addClass('disabled');
+        $('#labelsValueCount').html("&nbsp;");
+    }
+
+    $.ajax({
+        url: 'delete_file',
+        method: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({
+            filename_to_delete: selected_filename
+        }),
+        success: function (response) {
+            $(`#datasetsScroll button[data-filename="${selected_filename}"]`).parent().remove();
+            $('#spinner').addClass("d-none");
+        },
+        error: function (xhr, status, error) {
+            console.error("File deletion failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
+}
+
 function filterDataset() {
     $('#spinner').removeClass("d-none");
     const included_events = $("#includedEvents li").map(function() {
