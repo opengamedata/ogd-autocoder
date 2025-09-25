@@ -12,7 +12,7 @@ $('#userDropdown').select2({
 
 // 2. tables initialization (3 similar tables)
 for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
-    let select = table_id === "#segmentTable" ? { style: 'multi' } : null;
+    let select = table_id === "#segmentTable" ? { style: 'multi+shift' } : null;
     $(table_id).DataTable({
         select: select,
         order: [[4, 'asc']],
@@ -248,6 +248,26 @@ async function fillUsersList(reset_value = true) {
 }
 
 function userChanged() {
+    let select = $('#userDropdown');
+    const options = select.find('option');
+    const current = select.prop('selectedIndex');
+
+    if (current == options.length - 1 || select.val() == null) {
+        $('#lblNxtUsr').prop('disabled', true);
+        $('#aplNxtUsr').prop('disabled', true);
+    } else {
+        $('#lblNxtUsr').prop('disabled', false);
+        $('#aplNxtUsr').prop('disabled', false);
+    }
+
+    if (current <= 1 || select.val() == null) {
+        $('#lblPreUsr').prop('disabled', true);
+        $('#aplPreUsr').prop('disabled', true);
+    } else {
+        $('#lblPreUsr').prop('disabled', false);
+        $('#aplPreUsr').prop('disabled', false);
+    }
+
     const tabId = $('#nav-tab .nav-link.active').attr('id');
     if (tabId == "nav-segment-tab") {
         $('#spinner').removeClass("d-none");
