@@ -6,60 +6,51 @@ let labelChart, segmentChart;
 async function fillDatasetInfo() {
     $('#datasetInfo').removeClass('d-none');
 
-    await $.ajax({
-        url: 'dataset_info',
-        method: "POST",
-        contentType: "application/json",
-        success: function (response) {
-            let data = response.data;
-            let percentage = Math.trunc(100 * data.filtered.rows / data.original.rows, 2)
+    await send_request('dataset_info', {}).then((response) => {
+        let data = response.data;
+        let percentage = Math.trunc(100 * data.filtered.rows / data.original.rows, 2)
 
-            $('span[data-field="date-range"]').text(data.date_range);
-            $('td[data-field="rows-filtered"]').text(data.filtered.rows.toLocaleString() + " (" + percentage + " %)");
-            $('td[data-field="segments-filtered"]').text(data.filtered.segments.toLocaleString());
-            $('td[data-field="users-filtered"]').text(data.filtered.users.toLocaleString());
-            $('td[data-field="sessions-filtered"]').text(data.filtered.sessions.toLocaleString());
+        $('span[data-field="date-range"]').text(data.date_range);
+        $('td[data-field="rows-filtered"]').text(data.filtered.rows.toLocaleString() + " (" + percentage + " %)");
+        $('td[data-field="segments-filtered"]').text(data.filtered.segments.toLocaleString());
+        $('td[data-field="users-filtered"]').text(data.filtered.users.toLocaleString());
+        $('td[data-field="sessions-filtered"]').text(data.filtered.sessions.toLocaleString());
 
-            $('td[data-field="rows-original"]').text(data.original.rows.toLocaleString());
-            $('td[data-field="segments-original"]').text(data.original.segments.toLocaleString());
-            $('td[data-field="users-original"]').text(data.original.users.toLocaleString());
-            $('td[data-field="sessions-original"]').text(data.original.sessions.toLocaleString());
+        $('td[data-field="rows-original"]').text(data.original.rows.toLocaleString());
+        $('td[data-field="segments-original"]').text(data.original.segments.toLocaleString());
+        $('td[data-field="users-original"]').text(data.original.users.toLocaleString());
+        $('td[data-field="sessions-original"]').text(data.original.sessions.toLocaleString());
 
-            // fillUsersList
-            $('#userDropdown').empty().append('<option></option>');
-            data.users.forEach(user => {
-                $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
-            });
-            $('#userDropdown').trigger('change');
+        // fillUsersList
+        $('#userDropdown').empty().append('<option></option>');
+        data.users.forEach(user => {
+            $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
+        });
+        $('#userDropdown').trigger('change');
 
-            // fillEventTypes
-            $('#segmentEventTypeDropdown').empty();
-            data.included_events.forEach(event => {
-                $('#segmentEventTypeDropdown').append(`<option value="${event.name}">${event.name}</option>`);
-            });
-            $('#segmentEventTypeDropdown').show();
+        // fillEventTypes
+        $('#segmentEventTypeDropdown').empty();
+        data.included_events.forEach(event => {
+            $('#segmentEventTypeDropdown').append(`<option value="${event.name}">${event.name}</option>`);
+        });
+        $('#segmentEventTypeDropdown').show();
 
-            // fillLabelsCount
-            let text = "";
-            data.labels_distribution.forEach(label => {
-                text += `${label.segment_labels} (${label.count}), `;
-            });
-            text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : "&nbsp;";
-            $("#labelsValueCount").html(text);
+        // fillLabelsCount
+        let text = "";
+        data.labels_distribution.forEach(label => {
+            text += `${label.segment_labels} (${label.count}), `;
+        });
+        text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : "&nbsp;";
+        $("#labelsValueCount").html(text);
 
-            fillLabelDistPie(data.labels_distribution);
-            let labelSegCount = data.labels_distribution.reduce((sum, item) => sum + parseInt(item.count), 0);
-            let notLabeled = data.filtered.segments - labelSegCount;
-            let notSelected = data.original.segments - notLabeled - labelSegCount;
-            // labels are ["Labeled", "Not Labeled", "Not Selected"]
-            segmentChart.data.datasets[0].data = [labelSegCount, notLabeled, notSelected];
-            segmentChart.update();
-            fillInclExcLists(data.included_events, data.excluded_events, "#includedEvents", "#excludedEvents")
-        },
-        error: function (xhr, status, error) {
-            console.error("User list loading failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+        fillLabelDistPie(data.labels_distribution);
+        let labelSegCount = data.labels_distribution.reduce((sum, item) => sum + parseInt(item.count), 0);
+        let notLabeled = data.filtered.segments - labelSegCount;
+        let notSelected = data.original.segments - notLabeled - labelSegCount;
+        // labels are ["Labeled", "Not Labeled", "Not Selected"]
+        segmentChart.data.datasets[0].data = [labelSegCount, notLabeled, notSelected];
+        segmentChart.update();
+        fillInclExcLists(data.included_events, data.excluded_events, "#includedEvents", "#excludedEvents")
     });
 }
 
@@ -157,20 +148,8 @@ function filterDataset() {
         return $(this).data("elem-name");
     }).get();
 
-    $.ajax({
-        url: 'dataset_filter',
-        method: "POST",
-        contentType: "application/json",
-        data: JSON.stringify({ 
-            included_events: included_events
-        }),
-        success: function (response) {
-            onFileChange(filename, true);
-        },
-        error: function (xhr, status, error) {
-            console.error("Filtering failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+    send_request('dataset_filter', {included_events}).then((response) => {
+        onFileChange(filename, true);
     });
 }
 

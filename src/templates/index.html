@@ -4,6 +4,7 @@
 {{ super() }}
 <link href="static/css/index.css" rel="stylesheet" />
 
+<script src="static/js/ajax_handling.js" defer></script>
 <script src="static/js/dataset.js" defer></script>
 <script src="static/js/segment.js" defer></script>
 <script src="static/js/index.js" defer></script>
@@ -645,6 +646,24 @@
       <div class="modal-footer">
         <button type="button" id="saveLabels" class="btn btn-primary">Save Changes</button>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade" id="errorsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title d-flex align-items-center" id="errorsModalLabel">An Error Occured!</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <p class="modal-body mb-0 text-danger" id="errorsModalBody"></p>
+      <div class="p-2 d-flex">
+        <button type="button" class="btn btn-secondary ms-auto" data-bs-dismiss="modal">
+          Close
+        </button>
       </div>
     </div>
   </div>

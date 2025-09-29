@@ -28,53 +28,35 @@ $('#segmentDropdown_apply').on('change', function () {
 });
 
 async function getPredictedLabels() {
-    await $.ajax({
-        url: 'predicted_label',
-        method: "POST",
-        data: JSON.stringify({ 
-            user_id: $('#userDropdown').val(),
-            segment_id: $('#segmentDropdown_apply').val()
-        }),
-        contentType: "application/json",
-        success: function (response) {
-            $("#labelsDropdown_apply").val(response["label"]).trigger('change');
-            $('#confidence').val(parseFloat(response["confidence"]).toFixed(2))
-        },
-        error: function (xhr, status, error) {
-            console.error("Auto Segmentation failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
-    });
+    let data = { 
+        user_id: $('#userDropdown').val(),
+        segment_id: $('#segmentDropdown_apply').val()
+    }
+    await send_request('predicted_label', data).then((response) => {
+        $("#labelsDropdown_apply").val(response["label"]).trigger('change');
+        $('#confidence').val(parseFloat(response["confidence"]).toFixed(2))
+    })
 }
 
 function applyModel(model_path) {
     if (!model_path) {
-        alert('Hit train or select existing model before applying');
+        $('#errorsModalBody').text('Hit train or select existing model before applying')
+        $('#errorsModal').modal('show');
         return;
     }
 
     $('#spinner').removeClass("d-none");
-    $.ajax({
-        url: 'infere',
-        method: "POST",
-        data: JSON.stringify({ model_path: model_path}),
-        contentType: "application/json",
-        success: function (response) {
-            $('#spinner').addClass("d-none");
-            $('#nav-apply-tab').click();
-        },
-        error: function (xhr, status, error) {
-            console.error("Auto Segmentation failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
-    });
+    send_request('infere', {model_path: model_path}).then((response) => {
+        $('#spinner').addClass("d-none");
+        $('#nav-apply-tab').click();
+    })
 }
 
 function acceptLabel() {
-    labelRows('#segmentDropdown_apply', '#labelsDropdown_apply', null);
-
-    numAccepts++;
-    $('#accept-count').text(`Accepts: ${numAccepts}`);
+    labelRows('#segmentDropdown_apply', '#labelsDropdown_apply', null).then((response) => {
+        numAccepts++;
+        $('#accept-count').text(`Accepts: ${numAccepts}`);
+    })
 }
 
 function rejectLabel() {

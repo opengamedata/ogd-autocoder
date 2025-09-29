@@ -47,26 +47,18 @@ function fillPCAPlot() {
     $('#includedFeatures').children('li').each(function () {
         features.push($(this).data("elem-name"));
     });
-    $.ajax({
-        url: 'pca_details',
-        method: "POST",
-        data: JSON.stringify({
-            include_labels: $('#trainLabelsDropdown').val(),
-            include_features: features,
-            hyperparameters: getHyperparameters(model_type)
-        }),
-        contentType: "application/json",
-        success: function (response) {
-            $('#spinner').addClass("d-none");
-            pcaChart.data.datasets[0].data = response["explained_variance"];
-            pcaChart.data.datasets[1].data = response["cumulative"];
-            pcaChart.data.labels = response["explained_variance"].map((val, ind) => ind + 1);
-            pcaChart.update();
-        },
-        error: function (xhr, status, error) {
-            console.error("PCA Plot refresh failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+    let data = {
+        include_labels: $('#trainLabelsDropdown').val(),
+        include_features: features,
+        hyperparameters: getHyperparameters(model_type)
+    };
+    send_request('pca_details', data).then((response) => {
+        $('#spinner').addClass("d-none");
+
+        pcaChart.data.datasets[0].data = response.details["explained_variance"];
+        pcaChart.data.datasets[1].data = response.details["cumulative"];
+        pcaChart.data.labels = response.details["explained_variance"].map((val, ind) => ind + 1);
+        pcaChart.update();
     });
 }
 
@@ -81,32 +73,20 @@ function trainModel() {
     $('#includedFeatures').children('li').each(function () {
         features.push($(this).data("elem-name"));
     });
-    $.ajax({
-        url: 'train_model',
-        method: "POST",
-        data: JSON.stringify({
-            model_type: model_type,
-            include_labels: $('#trainLabelsDropdown').val(),
-            include_features: features,
-            hyperparameters: getHyperparameters(model_type)
-        }),
-        contentType: "application/json",
-        success: function (response) {
-            $('#spinner').addClass("d-none");
-            $('#modelSummary').text(response["output"]);
-            if (response["success"]) {
-                applyModelPath = response["model_info"]["model_path"]
-                $('#modelSummary').removeClass("text-danger");
-                addModel(response["model_info"]);
-                increaseModelsCount(1);
-            } else {
-                $("#modelSummary:not([class*='text-danger'])").addClass("text-danger");
-            }
-        },
-        error: function (xhr, status, error) {
-            console.error("Model Training failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+
+    let data = {
+        model_type: model_type,
+        include_labels: $('#trainLabelsDropdown').val(),
+        include_features: features,
+        hyperparameters: getHyperparameters(model_type)
+    };
+    send_request('train_model', data).then((response) => {
+        $('#spinner').addClass("d-none");
+            
+        $('#modelSummary').text(response["output"]);
+        applyModelPath = response["model_info"]["model_path"]
+        addModel(response["model_info"]);
+        increaseModelsCount(1);
     });
 }
 
@@ -212,15 +192,11 @@ function updateLabelFromValue() {
  * Fetches the list of previously trained models from the server and plots them.
  */
 async function fillModelsList() {
-    await $.ajax({
-        url: 'models_list',
-        method: "POST",
-        success: function (response) {
-            for (let row of response.data) {
-                addModel(row)
-            }
-            increaseModelsCount(response.data.length);
+    await send_request('models_list', {}).then((response) => {
+        for (let row of response.data) {
+            addModel(row)
         }
+        increaseModelsCount(response.data.length);
     });
 }
 
@@ -645,33 +621,22 @@ function toggleBarsForLabel() {
 
 $('#autoSelectBtn').on('click', () => {
     $('#spinner').removeClass("d-none");
-    $.ajax({
-        url: "autoselect",
-        method: "POST",
-        data: JSON.stringify({
-            include_labels: $('#trainLabelsDropdown').val(),
-        }),
-        contentType: "application/json",
-        success: function (response) {
-            $('#spinner').addClass("d-none");
-            let autofeatures = response.features;
-            $('#includedFeatures').children("li").each(function () {
-                if (!autofeatures.includes($(this).data("elem-name"))) {
-                    // excluding feature
-                    $(this).find("button").click();
-                }
-            });
-            $('#excludedFeatures').children("li").each(function () {
-                if (autofeatures.includes($(this).data("elem-name"))) {
-                    // include feature
-                    $(this).find("button").click();
-                }
-            });
-        },
-        error: function (xhr, status, error) {
-            console.error("Auto select features failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+    send_request('autoselect', {include_labels: $('#trainLabelsDropdown').val()}).then((response) => {
+        $('#spinner').addClass("d-none");
+
+        let autofeatures = response.features;
+        $('#includedFeatures').children("li").each(function () {
+            if (!autofeatures.includes($(this).data("elem-name"))) {
+                // excluding feature
+                $(this).find("button").click();
+            }
+        });
+        $('#excludedFeatures').children("li").each(function () {
+            if (autofeatures.includes($(this).data("elem-name"))) {
+                // include feature
+                $(this).find("button").click();
+            }
+        });
     });
 })
 /**
@@ -679,43 +644,35 @@ $('#autoSelectBtn').on('click', () => {
  * Supports grouping features under parent checkboxes and allows search/filter functionality.
  */
 async function fillFeatureList() {
-    return $.ajax({
-        url: 'list_available_features',
-        method: "POST",
-        success: function (response) {
-            let data = response.data;
-            // fillInclExcLists has a handling for updating num selected features (moveEvent function)
-            fillInclExcLists(data.included_features, data.excluded_features, "#includedFeatures", "#excludedFeatures");
-            updateNumSelected('#includedFeatures', '#excludedFeatures', true);
-            $('#featureSearch').on('input', function () {
-                const query = $(this).val().toLowerCase();
+    return send_request('list_available_features', {}).then((response) => {
+        let data = response.data;
+        // fillInclExcLists has a handling for updating num selected features (moveEvent function)
+        fillInclExcLists(data.included_features, data.excluded_features, "#includedFeatures", "#excludedFeatures");
+        updateNumSelected('#includedFeatures', '#excludedFeatures', true);
+        $('#featureSearch').on('input', function () {
+            const query = $(this).val().toLowerCase();
 
-                $('#includedFeatures').children('li').each(function () {
-                    const featureName = $(this).data("elem-name").toLowerCase();
+            $('#includedFeatures').children('li').each(function () {
+                const featureName = $(this).data("elem-name").toLowerCase();
 
-                    if (featureName.includes(query)) {
-                        $(this).removeClass('d-none');
-                    } else if (!$(this).hasClass('d-none')) {
-                        $(this).addClass('d-none');
-                    }
-                });
-
-                $('#excludedFeatures').children('li').each(function () {
-                    const featureName = $(this).data("elem-name").toLowerCase();
-
-                    if (featureName.includes(query)) {
-                        $(this).removeClass('d-none');
-                    } else if (!$(this).hasClass('d-none')) {
-                        $(this).addClass('d-none');
-                    }
-                });
-                updateNumSelected('#includedFeatures', '#excludedFeatures', true);
+                if (featureName.includes(query)) {
+                    $(this).removeClass('d-none');
+                } else if (!$(this).hasClass('d-none')) {
+                    $(this).addClass('d-none');
+                }
             });
-        },
-        error: function (xhr, status, error) {
-            console.error("Feature list loading failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+
+            $('#excludedFeatures').children('li').each(function () {
+                const featureName = $(this).data("elem-name").toLowerCase();
+
+                if (featureName.includes(query)) {
+                    $(this).removeClass('d-none');
+                } else if (!$(this).hasClass('d-none')) {
+                    $(this).addClass('d-none');
+                }
+            });
+            updateNumSelected('#includedFeatures', '#excludedFeatures', true);
+        });
     });
 }
 
@@ -731,20 +688,8 @@ $('#trainLabelsDropdown').on('change', function () {
 });
 
 async function updateCorrelationMatrix() {
-    return $.ajax({
-        url: 'correlation_matrix',
-        method: "POST",
-        data: JSON.stringify({
-            include_labels: $('#trainLabelsDropdown').val(),
-        }),
-        contentType: "application/json",
-        success: function (response) {
-            correlationMatrix = response.data;
-        },
-        error: function (xhr, status, error) {
-            console.error("Correlation matrix loading failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+    return send_request('correlation_matrix', {include_labels: $('#trainLabelsDropdown').val()}).then((response) => {
+        correlationMatrix = response.data;
     });
 }
 
