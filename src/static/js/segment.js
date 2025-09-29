@@ -7,33 +7,24 @@ function segmentRows() {
     const user_id = $('#userDropdown').val();
     const selectedRows = $(table_id).DataTable().rows({ selected: true }).data().toArray();
     if (selectedRows.length == 0) {
-        alert("Please, select at least one row!")
+        $('#errorsModalBody').text('Please, select at least one row!');
+        $('#errorsModal').modal('show');
         return;
     }
+    let data = {
+        selected_rows: selectedRows.map(row => [row[0], row[8]]), // index + session_id as row_id
+        segment_id: $("#segmentIdInput").val(),
+    }
     $('#spinner').removeClass("d-none");
-    $.ajax({
-        url: `segment/${user_id}`,
-        method: "POST",
-        // select the index and the session column (will be the row identifier)
-        data: JSON.stringify({
-            selected_rows: selectedRows.map(row => [row[0], row[8]]),
-            segment_id: $("#segmentIdInput").val(),
-        }),
-        contentType: "application/json",
-        success: function (response) {
-            // autoincrement
-            let next_segment_id = parseInt($("#segmentIdInput").val()) + 1
-            $("#segmentIdInput").val(next_segment_id);
-            let promises = [];
-            promises.push(fillUsersList(false));
-            promises.push(fillLabelsCount());
+    send_request(`segment/${user_id}`, data).then((response) => {
+        // autoincrement
+        let next_segment_id = parseInt($("#segmentIdInput").val()) + 1
+        $("#segmentIdInput").val(next_segment_id);
+        let promises = [];
+        promises.push(fillUsersList(false));
+        promises.push(fillLabelsCount());
 
-            Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
-        },
-        error: function (xhr, status, error) {
-            console.error("Segmentation failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+        Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
     });
 }
 
@@ -45,21 +36,11 @@ function autoSegment() {
     bootstrap.Modal.getInstance($('#confirmSegmentModal')[0]).hide();
 
     $('#spinner').removeClass("d-none");
-    $.ajax({
-        url: 'autosegment',
-        method: "POST",
-        data: JSON.stringify({ sep_event_types: $('#segmentEventTypeDropdown').val()}),
-        contentType: "application/json",
-        success: function (response) {
-            let promises = [];
-            promises.push(fillUsersList(false));
-            promises.push(fillLabelsCount());
+    send_request('autosegment', {sep_event_types: $('#segmentEventTypeDropdown').val()}).then((response) => {
+        let promises = [];
+        promises.push(fillUsersList(false));
+        promises.push(fillLabelsCount());
 
-            Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
-        },
-        error: function (xhr, status, error) {
-            console.error("Auto Segmentation failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+        Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
     });
 }

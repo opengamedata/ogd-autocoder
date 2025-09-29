@@ -912,6 +912,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "polars-lts-cpu" },
+    { name = "pyarrow" },
     { name = "scikit-learn" },
     { name = "torch" },
 ]
@@ -925,7 +926,6 @@ dev = [
     { name = "nbformat" },
     { name = "openpyxl" },
     { name = "plotly" },
-    { name = "pyarrow" },
     { name = "statsmodels" },
 ]
 
@@ -936,6 +936,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26.4" },
     { name = "pandas", specifier = ">=2.3.1" },
     { name = "polars-lts-cpu", specifier = ">=1.32.3" },
+    { name = "pyarrow", specifier = ">=20.0.0" },
     { name = "scikit-learn", specifier = ">=1.7.0" },
     { name = "torch", specifier = "==2.2" },
 ]
@@ -949,7 +950,6 @@ dev = [
     { name = "nbformat", specifier = ">=5.10.4" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "plotly", specifier = ">=6.2.0" },
-    { name = "pyarrow", specifier = ">=20.0.0" },
     { name = "statsmodels", specifier = ">=0.14.5" },
 ]
 

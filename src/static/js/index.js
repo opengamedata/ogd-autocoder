@@ -179,25 +179,16 @@ function onFileChange(filename, load_models) {
 async function fillUsersList(reset_value = true) {
     const previousValue = $('#userDropdown').val();
     $('#userDropdown').empty().append('<option></option>');
-    await $.ajax({
-        url: 'users_list',
-        method: "POST",
-        contentType: "application/json",
-        success: function (response) {
-            response.users.forEach(user => {
-                $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
-            });
+    await send_request('users_list', {}).then((response) => {
+        response.users.forEach(user => {
+            $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
+        });
 
-            if (!reset_value && previousValue && $(`#userDropdown option[value="${previousValue}"]`).length > 0) {
-                $('#userDropdown').val(previousValue);
-            }
-
-            $('#userDropdown').trigger('change')
-        },
-        error: function (xhr, status, error) {
-            console.error("User list loading failed:", status, error);
-            console.log("Server response:", xhr.responseText);
+        if (!reset_value && previousValue && $(`#userDropdown option[value="${previousValue}"]`).length > 0) {
+            $('#userDropdown').val(previousValue);
         }
+
+        $('#userDropdown').trigger('change')
     });
 }
 
@@ -243,46 +234,33 @@ async function loadEvents(table_id, seg_dropdown_id) {
         table.draw();
         return;
     }
+    await send_request(`events/${user_id}`, {segment_id}).then((response) => {
+        response.data.forEach(row => {
+            const values = [
+                row.index,
+                row.event_name,
+                row.event_description,
+                row.job_name,
+                row.timestamp,
+                row.segment_id,
+                row.segment_labels,
+                row.label_justification,
+                row.session_id,
+                row.app_id,
+                row.event_data,
+                row.event_source,
+                row.app_version,
+                row.app_branch,
+                row.log_version,
+                row.offset,
+                row.user_id,
+                row.user_data,
+                row.game_state
+            ].map(v => v ?? '-'); // in case there are null values
+            table.row.add(values);
+        });
 
-    await $.ajax({
-        url: `events/${user_id}`,
-        method: "POST",
-        data: JSON.stringify({ segment_id: segment_id }),
-        contentType: "application/json",
-        success: function (response) {
-            let data = response.data;
-
-            data.forEach(row => {
-                const values = [
-                    row.index,
-                    row.event_name,
-                    row.event_description,
-                    row.job_name,
-                    row.timestamp,
-                    row.segment_id,
-                    row.segment_labels,
-                    row.label_justification,
-                    row.session_id,
-                    row.app_id,
-                    row.event_data,
-                    row.event_source,
-                    row.app_version,
-                    row.app_branch,
-                    row.log_version,
-                    row.offset,
-                    row.user_id,
-                    row.user_data,
-                    row.game_state
-                ].map(v => v ?? '-'); // in case there are null values
-                table.row.add(values);
-            });
-
-            table.draw();
-        },
-        error: function (xhr, status, error) {
-            console.error("Event data load failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+        table.draw();
     });
 }
 
@@ -306,21 +284,12 @@ $('#eventDescriptionsFile').on('change', function (event) {
     reader.onload = function (e) {
         try {
             const mapping = JSON.parse(e.target.result);
-            $.ajax({
-                url: 'update_event_descriptions',
-                method: "POST",
-                data: JSON.stringify({"descriptions_map": mapping}),
-                contentType: "application/json",
-                success: function (response) {
-
-                },
-                error: function (xhr, status, error) {
-                    console.error("Event description update failed:", status, error);
-                    console.log("Server response:", xhr.responseText);
-                }
-            });
+            send_request('update_event_descriptions', {"descriptions_map": mapping});
         } catch (err) {
-            alert('Invalid JSON file, please check the format, e.g. {"switch_job": "Switched from job A to job B", "complete_task": "Completed task 1 within job A"}.');
+            $('#errorsModalBody').text(
+                'Invalid JSON file, please check the format, e.g. {"switch_job": "Switched from job A to job B", "complete_task": "Completed task 1 within job A"}.'
+            )
+            $('#errorsModal').modal('show');
         }
     };
 

@@ -55,11 +55,10 @@ def unique_count(df, cols):
     return df.select(pl.struct(cols).drop_nulls().n_unique()).item()
 
 
-def get_dataset_info(filepath):
+def get_dataset_info(df):
     """
     Returns useful dataset info such as row count, segments count, user session count
     """
-    df = read_dataset(filepath, False)
     df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))
     timestamp_min = df.select(pl.col("timestamp").drop_nulls().min()).item()
     timestamp_max = df.select(pl.col("timestamp").drop_nulls().max()).item()
@@ -111,12 +110,11 @@ def segment_labels_count(df):
     return df.to_dicts()
 
 
-def find_by_user_and_segment(filepath, user_id, segment_id):
+def find_by_user_and_segment(df, user_id, segment_id):
     """
     List events for `user id`
     If `segment_id` is specified, also filter by `segment_id`
     """
-    df = read_dataset(filepath)
 
     df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))
 
