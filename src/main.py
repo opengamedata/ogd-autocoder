@@ -118,8 +118,8 @@ def dataset_info():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-
-    return jsonify({"data": get_dataset_info(filepath)})
+    df = read_dataset(filepath, False)
+    return jsonify({"data": get_dataset_info(df)})
 
 
 @app.route("/dataset_filter", methods=["POST"])
@@ -187,8 +187,9 @@ def events(user_id):
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
+    df = read_dataset(filepath)
     user_events = find_by_user_and_segment(
-        filepath, user_id, request.json.get("segment_id")
+        df, user_id, request.json.get("segment_id")
     )
 
     return jsonify(
