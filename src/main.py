@@ -1,11 +1,17 @@
 import os
-import time
 import traceback
-from utils import *
-from train import *
+from dataset import *
+from dim_reduction import pca_details, autoselect_features, correlation
+from inference import get_models_list, get_predicted_label, inference
+from preprocess import available_features
+from segment import autosegment_by_event_type, segment_ids_for_user, segment_rows
+from label import label_rows, list_seg_labels
+from events import event_filtering, describe_events
+from train import train_model
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort
 from datetime import datetime
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = "secret"  # Needed for session
@@ -23,6 +29,16 @@ app.config["MODELS_DIR"] = os.path.join(app.config["UPLOAD_FOLDER"], "models")
 if not os.path.exists(app.config["MODELS_DIR"]):
     os.makedirs(app.config["MODELS_DIR"])
 
+def safe(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            print(traceback.format_exc())
+            return jsonify({"error": str(e)})
+
+    return wrapper
 
 @app.route("/")
 def index():
@@ -75,6 +91,7 @@ def remove_if_found(filepath):
         os.remove(filepath)
 
 @app.route("/upload", methods=["POST"])
+@safe
 def upload_file():
     file = request.files["file"]
     filename = secure_filename(file.filename)
@@ -89,6 +106,7 @@ def upload_file():
 
 
 @app.route("/models_list", methods=["POST"])
+@safe
 def models_list():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -98,6 +116,7 @@ def models_list():
 
 
 @app.route("/users_list", methods=["POST"])
+@safe
 def users_list():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -107,6 +126,7 @@ def users_list():
 
 
 @app.route("/update_event_descriptions", methods=["POST"])
+@safe
 def update_event_descriptions():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -115,16 +135,19 @@ def update_event_descriptions():
 
     return jsonify({"success": True})
 
+
 @app.route("/dataset_info", methods=["POST"])
+@safe
 def dataset_info():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-
-    return jsonify({"data": get_dataset_info(filepath)})
+    df = read_dataset(filepath, False)
+    return jsonify({"data": get_dataset_info(df)})
 
 
 @app.route("/dataset_filter", methods=["POST"])
+@safe
 def dataset_filter():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -135,6 +158,7 @@ def dataset_filter():
 
 
 @app.route("/list_segment_ids/<user_id>", methods=["POST"])
+@safe
 def list_segment_ids(user_id):
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -144,6 +168,7 @@ def list_segment_ids(user_id):
 
 
 @app.route("/labels_value_count", methods=["POST"])
+@safe
 def labels_value_count():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -153,6 +178,7 @@ def labels_value_count():
 
 
 @app.route("/list_labels", methods=["POST"])
+@safe
 def list_labels():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -162,6 +188,7 @@ def list_labels():
 
 
 @app.route("/list_available_features", methods=["POST"])
+@safe
 def list_available_features():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -170,18 +197,24 @@ def list_available_features():
 
 
 @app.route("/correlation_matrix", methods=["POST"])
+@safe
 def correlation_matrix():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
     return jsonify({"data": correlation(filepath, request.json["include_labels"])})
 
+
 @app.route("/events/<user_id>", methods=["POST"])
+@safe
 def events(user_id):
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    user_events = get_events_for_user(filepath, user_id, request.json.get("segment_id"))
+    df = read_dataset(filepath)
+    user_events = find_by_user_and_segment(
+        df, user_id, request.json.get("segment_id")
+    )
 
     return jsonify(
         {"data": user_events}
@@ -189,6 +222,7 @@ def events(user_id):
 
 
 @app.route("/segment/<user_id>", methods=["POST"])
+@safe
 def segment(user_id):
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -197,11 +231,11 @@ def segment(user_id):
     segment_id = request.json.get("segment_id")
 
     segment_rows(filepath, user_id, segment_id, selected_rows)
-    # fixme - make this faster by returning updated rows...
     return jsonify({"success": True})
 
 
 @app.route("/label/<user_id>", methods=["POST"])
+@safe
 def label(user_id):
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -215,6 +249,7 @@ def label(user_id):
 
 
 @app.route("/autosegment", methods=["POST"])
+@safe
 def autosegment():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -223,16 +258,21 @@ def autosegment():
 
     return jsonify({"success": True})
 
+
 @app.route("/autoselect", methods=["POST"])
+@safe
 def autoselect():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
 
-    return jsonify({"features": autoselect_features(filepath, request.json["include_labels"])})
+    return jsonify(
+        {"features": autoselect_features(filepath, request.json["include_labels"])}
+    )
 
 
 @app.route("/infere", methods=["POST"])
+@safe
 def infere():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -243,6 +283,7 @@ def infere():
 
 
 @app.route("/predicted_label", methods=["POST"])
+@safe
 def predicted_label():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
@@ -253,41 +294,41 @@ def predicted_label():
 
     return jsonify({"label": label, "confidence": confidence})
 
+
 @app.route("/pca_details", methods=["POST"])
+@safe
 def get_pca_details():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
 
-    return jsonify(pca_details(
-        filepath,
-        request.json["hyperparameters"],
-        request.json["include_labels"],
-        request.json["include_features"],
-    ))
+    return jsonify(
+        pca_details(
+            filepath,
+            request.json["hyperparameters"],
+            request.json["include_labels"],
+            request.json["include_features"],
+        )
+    )
+
 
 @app.route("/train_model", methods=["POST"])
+@safe
 def train():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    success = True
-    try:
-        output, model_info = train_model(
-            filepath,
-            request.json["model_type"],
-            request.json["hyperparameters"],
-            request.json["include_labels"],
-            request.json["include_features"],
-            app.config["MODELS_DIR"],
-        )
-    except Exception as e:
-        print(traceback.format_exc())
-        output = str(e)
-        model_info = []
-        success = False
+    
+    output, model_info = train_model(
+        filepath,
+        request.json["model_type"],
+        request.json["hyperparameters"],
+        request.json["include_labels"],
+        request.json["include_features"],
+        app.config["MODELS_DIR"],
+    )
 
-    return jsonify({"output": output, "model_info": model_info, "success": success})
+    return jsonify({"output": output, "model_info": model_info})
 
 
 @app.route("/download", methods=["GET"])

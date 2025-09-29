@@ -1,3 +1,7 @@
+"""
+Code for listing and collecting OGD features
+"""
+
 from ogd.core.configs.GameStoreConfig import GameStoreConfig
 from ogd.common.configs.DataTableConfig import DataTableConfig
 from ogd.common.filters.collections.DatasetFilterCollection import (
@@ -104,6 +108,7 @@ def calculate_ogd_features(app_id, filepath):
     r.Interfaces["default"]._data.dropna(inplace=True)
     ExportManager(CoreConfig.Default()).ExecuteRequest(r)
     dict_out = r.Outerfaces["default"]._out
+
     processed_out = {}
     for entry in dict_out["players"]["vals"]:
         metrics = entry[7]
@@ -114,9 +119,11 @@ def calculate_ogd_features(app_id, filepath):
             processed_out[user_id] = {"user_id": user_id}
 
         processed_out[user_id].update(dict(zip(metrics, values)))
-    
+
     df = pl.DataFrame(list(processed_out.values()))
 
-    columns_filter = [c["name"] for c in list_ogd_features(app_id)] # only select available columns
+    columns_filter = [
+        c["name"] for c in list_ogd_features(app_id)
+    ]  # only select available columns
     columns_filter.append("user_id")
     return df.select(columns_filter)
