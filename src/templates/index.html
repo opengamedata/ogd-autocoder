@@ -15,7 +15,14 @@
 {% endblock %}
 {% block content %}
 <div class="container py-2">
-  <h2 class="text-center">SE6MEN7AT0R</h2>
+  <div class="d-flex align-items-center justify-content-between position-relative">
+    <div class="d-flex align-items-center">
+      <i class="bi bi-person-circle fs-3 me-2"></i>
+      <span id="username_display" class="fw-semibold"></span>
+    </div>
+    <h2 class="position-absolute start-50 translate-middle-x m-0">SE6MEN7AT0R</h2>
+  </div>
+  
   <h5 class="text-center" id="labelsValueCount">&nbsp;</h2>
   
   <div id="spinner" class="d-none position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-50" style="z-index: 10;">
@@ -23,7 +30,17 @@
       <span class="visually-hidden">Loading...</span>
     </div>
   </div>
-
+  <div id="login" class="d-none position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center bg-white bg-opacity-50" style="z-index: 10;">
+    <div class="card p-4 shadow rounded" style="min-width: 300px; max-height: 200px;">
+      <h5 class="text-center mb-3">Welcome!</h5>
+      <form id="login_form">
+        <div class="mb-3">
+          <input type="text" id="login_username" class="form-control" placeholder="Username" required>
+        </div>
+        <button id="login_submit" type="submit" class="btn btn-primary w-100">Start</button>
+      </form>
+    </div>
+  </div>
   <nav>
     <div class="nav nav-tabs" id="nav-tab" role="tablist">
       <button class="nav-link active" id="nav-data-tab" data-bs-toggle="tab" data-bs-target="#nav-data" type="button" role="tab" aria-controls="nav-data" aria-selected="true">DATA</button>

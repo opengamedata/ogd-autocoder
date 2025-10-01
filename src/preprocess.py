@@ -13,10 +13,10 @@ def get_game_id(filepath):
     return df[0, "app_id"]
 
 
-def available_features(filepath):
+def available_features(filepath, username):
     # preprocess without using ogd pipeline to save some calculations
     columns = (
-        preprocess_df_no_ogd(filepath)
+        preprocess_df_no_ogd(filepath, username)
         .drop(["segment_labels", "segment_id", "user_id"])
         .columns
     )
@@ -30,11 +30,11 @@ def available_features(filepath):
     }
 
 
-def preprocess_df(filepath):
+def preprocess_df(filepath, username):
     """
     Gets the ready-for-training df (ogd features included)
     """
-    df_no_ogd = preprocess_df_no_ogd(filepath)
+    df_no_ogd = preprocess_df_no_ogd(filepath, username)
     game_id = get_game_id(filepath)
 
     df_features = calculate_ogd_features(game_id, filepath)
@@ -52,12 +52,12 @@ def preprocess_df(filepath):
     return clean_agg_df_ogd
 
 
-def preprocess_df_no_ogd(filepath):
+def preprocess_df_no_ogd(filepath, username):
     """
     Preprocess using one hot encoding (no ogd features)
     """
     # segment_id is the new task_id, segment_labels is the target
-    df = read_dataset(filepath)
+    df = read_dataset(filepath, username)
     # fixme - add support for multiple labels
     df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))
 

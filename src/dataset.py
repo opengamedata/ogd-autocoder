@@ -1,23 +1,22 @@
 """
 Code related to reading dataframe, dataset info
 """
-
+import os
 import polars as pl
 
 
-def read_dataset(filepath, filtered_only=True):
+def read_dataset(filepath, username, filtered_only=True):
     """
     Returns the whole or filtered (by default) dataset
     Adds auxiliary columns - which are NOT written back to the file (unless you do it outside)
 
-    IMPORTANT: Set filtered_only = False if you want to write_csv afterwards
+    IMPORTANT: Set username = None and filtered_only = False if you want to write_csv afterwards
     """
     df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
 
     columns = df.columns
-    for col in ["segment_id", "segment_labels", "label_justification"]:
-        if col not in columns:
-            df = df.with_columns(pl.lit(None).alias(col))
+    if "segment_id" not in columns:
+        df = df.with_columns(pl.lit(None).alias("segment_id"))
 
     if "event_description" not in columns:
         df = df.with_columns(pl.col("event_name").alias("event_description"))
@@ -30,11 +29,38 @@ def read_dataset(filepath, filtered_only=True):
             pl.col("game_state").str.json_path_match("$.job_name").alias("job_name")
         )
 
+    if username is not None:
+        # if username is set, add the labels and justification columns
+        labels_filename = get_labels_filename(filepath)
+        df_labels = read_labels_for_username(labels_filename, username).drop(["username"])
+        df = df.drop(["segment_labels", "label_justification"], strict=False)
+        df = df.join(df_labels, on=["user_id", "segment_id"], how="left")
+
     if filtered_only:
         df = df.filter(pl.col("filtered_in") == True)
 
     return df
 
+def get_labels_filename(filepath):
+    name, ext = os.path.splitext(filepath)
+    labels_filename = f"{name}_labels.tsv"
+    return labels_filename
+
+def read_labels_for_username(labels_filename, username):
+    """
+    Reads the file with the labels for a certain username (if username is not None).
+
+    IMPORTANT: Set username = None if you want to write_csv afterwards
+    """
+    if os.path.exists(labels_filename):
+        df = pl.read_csv(labels_filename, separator="\t", dtypes={"segment_id": pl.String})
+    else:
+        df = pl.DataFrame(schema={"username": pl.String, "segment_id": pl.String, "user_id": pl.String, "segment_labels": pl.String, "label_justification": pl.String})
+
+    if username is not None:
+        df = df.filter(pl.col("username") == username)
+
+    return df
 
 def get_users_list(df):
     """

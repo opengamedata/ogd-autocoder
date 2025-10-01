@@ -22,8 +22,8 @@ AVAILABLE_SCALERS = {
 RANDOM_STATE = 13
 
 
-def pca_details(filepath, hyperparameters, include_labels, include_features):
-    df = preprocess_df(filepath).to_pandas()
+def pca_details(filepath, username, hyperparameters, include_labels, include_features):
+    df = preprocess_df(filepath, username).to_pandas()
     df = df[df["segment_labels"].isin(include_labels)]
     cols = [c for c in include_features if c in df.columns]
     x_train, _ = train_test_split(
@@ -49,8 +49,8 @@ def pca_details(filepath, hyperparameters, include_labels, include_features):
     return {"explained_variance": explained_variance, "cumulative": cumulative_variance}
 
 
-def correlation(filepath, include_labels):
-    df = preprocess_df(filepath).drop(["segment_id"])
+def correlation(filepath, username, include_labels):
+    df = preprocess_df(filepath, username).drop(["segment_id"])
     # FIXME - calculated on whole dataframe, no splitting in train/test
     df = df.filter(pl.col("segment_labels").is_in(include_labels))
     df = df.drop(["segment_labels"])
@@ -61,8 +61,8 @@ def correlation(filepath, include_labels):
     return corr_matrix.fillna("null").to_dict(orient="dict")
 
 
-def autoselect_features(filepath, include_labels):
-    df = preprocess_df(filepath)
+def autoselect_features(filepath, username, include_labels):
+    df = preprocess_df(filepath, username)
     # fixme maybe we should also use the target col?
     df = df.filter(pl.col("segment_labels").is_in(include_labels))
     df = df.to_pandas()
