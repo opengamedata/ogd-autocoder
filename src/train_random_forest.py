@@ -28,7 +28,17 @@ def train_random_forest(
         )
         class_weights = dict(zip(class_labels, class_weights))
     else:
-        class_weights = None
+        class_weights = []
+        class_labels = np.array([0,1])
+        for i in range(y_train.shape[1]):
+            weights = compute_class_weight(
+                class_weight=(
+                    "balanced" if hyperparameters.get("balance_classes", False) else None
+                ),
+                classes=class_labels,
+                y=y_train[:, i],
+            )
+            class_weights.append(dict(zip(class_labels, weights)))
 
     model = RandomForestClassifier(
         # random_state=RANDOM_STATE,
@@ -36,9 +46,6 @@ def train_random_forest(
         n_estimators=hyperparameters["n_estimators"],
         max_depth=hyperparameters["max_depth"],
     )
-
-    if problem_type == ClType.MULTI_LABEL:
-        model = MultiOutputClassifier(model)
 
     model.fit(x_train, y_train)
 
@@ -54,12 +61,16 @@ def train_random_forest(
     test_pred_class = model.predict(x_test)
     output += classification_report(y_test, test_pred_class, target_names=classes)
 
-    if class_weights:
-        output += f"\nClass Weights (greater means error is more critical):\n"
+    output += f"\nClass Weights (greater means error is more critical):\n"
+    if problem_type == ClType.MULTI_CLASS:
         for i, w in class_weights.items():
             output += f"  {classes[i]}\t{round(w, 2)}\n"
-        output += "\n"
+    else:
+        for i in range(len(class_weights)):
+            # display only positive class weight
+            output += f"  {classes[i]}\t{round(class_weights[i][1], 2)}\n"
 
+    output += "\n"
     metrics["model_path"] = os.path.join(
         models_dir,
         "random_forest_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".pkl",

@@ -30,16 +30,28 @@ def train_neural_net(
     test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-    #if problem_type == ClType.MULTI_CLASS:
-    y_train_int = np.argmax(y_train.numpy(), axis=1)  # transform to int from 1-hot
-    class_labels = np.unique(y_train_int)
-    class_weights = compute_class_weight(
-        class_weight=(
-            "balanced" if hyperparameters.get("balance_classes", False) else None
-        ),
-        classes=class_labels,
-        y=y_train_int,
-    )
+    if problem_type == ClType.MULTI_CLASS:
+        y_train_int = np.argmax(y_train.numpy(), axis=1)  # transform to int from 1-hot
+        class_labels = np.unique(y_train_int)
+        class_weights = compute_class_weight(
+            class_weight=(
+                "balanced" if hyperparameters.get("balance_classes", False) else None
+            ),
+            classes=class_labels,
+            y=y_train_int,
+        )
+    else:
+        class_weights = []
+        for i in range(y_train.shape[1]):
+            class_labels = np.unique(y_train[:, i])
+            weights = compute_class_weight(
+                class_weight=(
+                    "balanced" if hyperparameters.get("balance_classes", False) else None
+                ),
+                classes=class_labels,
+                y=y_train[:, i].numpy(),
+            )
+            class_weights.append(weights[1])
 
     hyperparameters["epochs"] = hyperparameters.get("epochs", 10)
     hyperparameters["learning_rate"] = hyperparameters.get("learning_rate", 0.01)
@@ -109,8 +121,8 @@ def train_neural_net(
     fill_metrics(y_prob_train, y_prob_test, y_train_int, y_test, classes, metrics, problem_type)
 
     output += f"\nClass Weights (greater means error is more critical):\n"
-    for i, w in zip(class_labels, class_weights):
-        output += f"  {classes[i]}\t{round(w, 2)}\n"
+    for c, w in zip(classes, class_weights):
+        output += f"  {c}\t{round(w, 2)}\n"
     output += "\n"
     metrics["model_path"] = os.path.join(
         models_dir, "neural_net_" + datetime.now().strftime("%Y-%m-%dT%H-%M-%S") + ".h5"
