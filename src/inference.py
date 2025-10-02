@@ -72,7 +72,11 @@ def inference(filepath, model_path):
 
         with torch.no_grad():
             X = torch.tensor(X, dtype=torch.float32)
-            probs = torch.nn.functional.softmax(model(X), dim=1)
+            if model_info["is_multilabel"]:
+                probs = torch.nn.functional.sigmoid(model(X)).T
+                probs = torch.stack([1 - probs, probs], dim=2)
+            else:
+                probs = torch.nn.functional.softmax(model(X), dim=1)
     else:
         model = joblib.load(model_info["model_path"])
         probs = model.predict_proba(X)

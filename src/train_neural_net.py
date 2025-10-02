@@ -30,6 +30,7 @@ def train_neural_net(
     test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
+    #if problem_type == ClType.MULTI_CLASS:
     y_train_int = np.argmax(y_train.numpy(), axis=1)  # transform to int from 1-hot
     class_labels = np.unique(y_train_int)
     class_weights = compute_class_weight(
@@ -39,7 +40,6 @@ def train_neural_net(
         classes=class_labels,
         y=y_train_int,
     )
-    # class_weights = dict(zip(class_labels, class_weights))
 
     hyperparameters["epochs"] = hyperparameters.get("epochs", 10)
     hyperparameters["learning_rate"] = hyperparameters.get("learning_rate", 0.01)
@@ -49,7 +49,11 @@ def train_neural_net(
     model = CustomNeuralNet(
         x_train_tensor.shape[1], hyperparameters["units_per_layer"], len(classes)
     )
-    criterion = nn.CrossEntropyLoss(weight=torch.tensor(class_weights))
+    if problem_type == ClType.MULTI_LABEL:
+        criterion = nn.MultiLabelSoftMarginLoss(weight=torch.tensor(class_weights))
+    else:
+        criterion = nn.CrossEntropyLoss(weight=torch.tensor(class_weights))
+
     optimizer = optim.Adam(model.parameters(), lr=hyperparameters["learning_rate"])
 
     test_loss_hist, test_acc_hist = [], []
@@ -58,7 +62,7 @@ def train_neural_net(
 
     for epoch in range(hyperparameters["epochs"]):
         neural_train(model, train_loader, criterion, optimizer)
-        val_loss, val_acc = neural_evaluate(model, test_loader, criterion)
+        val_loss, val_acc = neural_evaluate(model, test_loader, criterion, problem_type)
 
         test_loss_hist.append(val_loss)
         test_acc_hist.append(val_acc)
@@ -72,24 +76,37 @@ def train_neural_net(
 
     # Restore best model
     model.load_state_dict(best_weights)
-    loss, accuracy = neural_evaluate(model, test_loader, criterion)
+    loss, accuracy = neural_evaluate(model, test_loader, criterion, problem_type)
 
     metrics["test_accuracy"] = accuracy
     output += f"Test Accuracy:\t{accuracy}\n"
 
-    loss, accuracy = neural_evaluate(model, train_loader, criterion)
+    loss, accuracy = neural_evaluate(model, train_loader, criterion, problem_type)
     metrics["train_accuracy"] = accuracy
     output += f"Train Accuracy:\t{accuracy}\n\n"
 
     model.eval()
-    with torch.no_grad():
-        y_prob_test = nn.functional.softmax(model(x_test_tensor), dim=1)
-        y_prob_train = nn.functional.softmax(model(x_train_tensor), dim=1)
-    y_test = np.argmax(y_test, axis=1)
-    fill_metrics(y_prob_train, y_prob_test, y_train_int, y_test, classes, metrics, problem_type)
+    if problem_type == ClType.MULTI_LABEL:
+        with torch.no_grad():
+            y_prob_test = nn.functional.sigmoid(model(x_test_tensor)).T
+            y_prob_train = nn.functional.sigmoid(model(x_train_tensor)).T
 
-    test_pred_class = np.argmax(y_prob_test, axis=1)
-    output += classification_report(y_test, test_pred_class, target_names=classes)
+        output += classification_report(y_test, y_prob_test.T.round(), target_names=classes)
+
+        # used just because fill_metrics this shape of data [p_c == 0, p_c == 1]
+        y_prob_test = torch.stack([1 - y_prob_test, y_prob_test], dim=2)
+        y_prob_train = torch.stack([1 - y_prob_train, y_prob_train], dim=2)
+        y_train_int = y_train
+    else:
+        with torch.no_grad():
+            y_prob_test = nn.functional.softmax(model(x_test_tensor), dim=1)
+            y_prob_train = nn.functional.softmax(model(x_train_tensor), dim=1)
+        y_test = np.argmax(y_test, axis=1)
+
+        test_pred_class = np.argmax(y_prob_test, axis=1)
+        output += classification_report(y_test, test_pred_class, target_names=classes)
+
+    fill_metrics(y_prob_train, y_prob_test, y_train_int, y_test, classes, metrics, problem_type)
 
     output += f"\nClass Weights (greater means error is more critical):\n"
     for i, w in zip(class_labels, class_weights):
@@ -102,23 +119,30 @@ def train_neural_net(
     return output
 
 
-def neural_evaluate(model, dataloader, loss_fn):
+def neural_evaluate(model, dataloader, loss_fn, problem_type):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model.eval()
-    test_loss, accuracy = 0, 0
+    loss, accuracy = 0, 0
     with torch.no_grad():
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
             pred = model(X)
-            test_loss += loss_fn(pred, y).item()
-            accuracy += (
-                (torch.argmax(pred, 1) == torch.argmax(y, 1)).float().sum().item()
-            )
-    test_loss /= num_batches
+            loss += loss_fn(pred, y).item()
+            if problem_type == ClType.MULTI_LABEL:
+                pred = nn.functional.sigmoid(pred).round()
+                # count object if all classes were assigned correctly
+                accuracy += (
+                    torch.all(pred == y, dim=1).float().sum().item()
+                )
+            else:
+                accuracy += (
+                    (torch.argmax(pred, 1) == torch.argmax(y, 1)).float().sum().item()
+                )
+    loss /= num_batches
     accuracy /= size
 
-    return test_loss, accuracy
+    return loss, accuracy
 
 
 def neural_train(model, dataloader, loss_fn, optimizer):

@@ -39,6 +39,8 @@ def train_model(
         problem_type = ClType.MULTI_LABEL
         le = MultiLabelBinarizer()
         target_col = le.fit_transform(labels_as_set)
+        if model_type == "neural-net":
+            target_col = torch.tensor(target_col).long()
     else:
         problem_type = ClType.MULTI_CLASS
         labels_as_set = labels_as_set.map(lambda x: list(x)[0])
