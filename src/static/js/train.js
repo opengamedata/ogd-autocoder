@@ -604,10 +604,15 @@ function toggleBarsForLabel() {
         modelHistChart.data.datasets[9].data = metricsByLabel[label]["train_recall"];
         modelHistChart.update();
     }
-
     modelHistChart.data.datasets.forEach((ds, i) => {
         const meta = modelHistChart.getDatasetMeta(i);
-        meta.hidden = !colToShow.includes(ds.label);
+        if (colToShow.includes(ds.label)) {
+            // show explicitly hidden cols
+            meta.hidden = false;
+        }else if (!columns.includes(ds.label)) {
+            // hide excluded columns
+            meta.hidden = true;
+        }
     });
 
     modelHistChart.update();
