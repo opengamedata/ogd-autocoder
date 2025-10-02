@@ -76,10 +76,15 @@ def inference(filepath, model_path):
     else:
         model = joblib.load(model_info["model_path"])
         probs = model.predict_proba(X)
-
-    y_idx = np.argmax(probs, axis=1)
-    y = [model_info["include_labels"][i] for i in y_idx]
-    confidence = probs[np.arange(len(probs)), y_idx]
+    
+    y_idx = np.argmax(probs, axis=-1).T
+    if model_info["is_multilabel"]:
+        y = [", ".join([model_info["include_labels"][j] for j, col in enumerate(row) if col == 1]) for row in y_idx]
+        confidence = [np.prod([probs[j][i][col] for j, col in enumerate(row)]) for i, row in enumerate(y_idx)]
+    else:
+        y = [model_info["include_labels"][i] for i in y_idx]
+        confidence = probs[np.arange(len(probs)), y_idx]
+        
     df_processed = df_processed.with_columns(
         [
             pl.Series("predicted_labels", y),

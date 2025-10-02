@@ -94,9 +94,9 @@ async function labelRows(seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id = nul
 async function fillLabelsCount() {
     return send_request('labels_value_count', {}).then((response) => {
         let text = "";
-        response.data.forEach(label => {
-            text += `${label.segment_labels} (${label.count}), `;
-        });
+        for (let [key, value] of Object.entries(response.data)) {
+            text += `${key} (${value}), `;
+        }
         text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : "&nbsp;";
         $("#labelsValueCount").html(text);
     });
@@ -140,11 +140,12 @@ async function fillSegmentDropdown(dropdown_id, reset_value = true) {
     return send_request(`list_segment_ids/${user_id}`, {}).then((response) => {
         response.data.forEach(seg => {
             let lbl = seg.segment_labels;
+            let job_lbl = "";
             if (seg.job_name) {
-                lbl = lbl ? (seg.job_name + ", " + lbl) : seg.job_name;
+                job_lbl = seg.job_name + " ";
             }
             
-            $(dropdown_id).append(`<option value="${seg.segment_id}">${seg.segment_id} (${lbl ?? "---"})</option>`);
+            $(dropdown_id).append(`<option value="${seg.segment_id}">${seg.segment_id} ${job_lbl}(${lbl ?? "---"})</option>`);
         });
 
         if (!reset_value && previousValue && $(`${dropdown_id} option[value="${previousValue}"]`).length > 0) {

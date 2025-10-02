@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import classification_report
 from sklearn.utils.class_weight import compute_class_weight
 from metrics import fill_metrics
+from cl_type_enum import ClType
 
 device = "cpu"
 if torch.cuda.is_available():
@@ -16,7 +17,7 @@ if torch.cuda.is_available():
 
 
 def train_neural_net(
-    x_train, x_test, y_train, y_test, classes, hyperparameters, models_dir, metrics
+    x_train, x_test, y_train, y_test, classes, problem_type, hyperparameters, models_dir, metrics
 ):
     output = ""
     x_train_tensor = torch.tensor(x_train, dtype=torch.float32)
@@ -85,7 +86,7 @@ def train_neural_net(
         y_prob_test = nn.functional.softmax(model(x_test_tensor), dim=1)
         y_prob_train = nn.functional.softmax(model(x_train_tensor), dim=1)
     y_test = np.argmax(y_test, axis=1)
-    fill_metrics(y_prob_train, y_prob_test, y_train_int, y_test, classes, metrics)
+    fill_metrics(y_prob_train, y_prob_test, y_train_int, y_test, classes, metrics, problem_type)
 
     test_pred_class = np.argmax(y_prob_test, axis=1)
     output += classification_report(y_test, test_pred_class, target_names=classes)

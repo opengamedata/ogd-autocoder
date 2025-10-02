@@ -91,6 +91,8 @@ def get_dataset_info(df):
         "included_events": [{"name": ev} for ev in included_events],
         "excluded_events": [{"name": ev} for ev in excluded_events],
         "labels_distribution": segment_labels_count(df_filtered),
+        # segments with null label are dropped
+        "num_labeled_segments": unique_count(df_filtered.drop_nulls(["segment_labels"]), ["user_id", "segment_id"]),
     }
 
 
@@ -107,7 +109,16 @@ def segment_labels_count(df):
         .sort("count", descending=True)
     )
 
-    return df.to_dicts()
+    result = {}
+    # handling multi-label (with ",")
+    for item in df.to_dicts():
+        label, count = item["segment_labels"], item["count"]
+        if ", " in label:
+            for l in label.split(", "):
+               result[l] = result.get(l, 0) + count
+        else:
+            result[label] = result.get(label, 0) + count
+    return result
 
 
 def find_by_user_and_segment(df, user_id, segment_id):

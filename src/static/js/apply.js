@@ -33,7 +33,7 @@ async function getPredictedLabels() {
         segment_id: $('#segmentDropdown_apply').val()
     }
     await send_request('predicted_label', data).then((response) => {
-        $("#labelsDropdown_apply").val(response["label"]).trigger('change');
+        $("#labelsDropdown_apply").val(response["label"].split(", ")).trigger('change');
         $('#confidence').val(parseFloat(response["confidence"]).toFixed(2))
     })
 }

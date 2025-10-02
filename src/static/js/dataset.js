@@ -37,14 +37,14 @@ async function fillDatasetInfo() {
 
         // fillLabelsCount
         let text = "";
-        data.labels_distribution.forEach(label => {
-            text += `${label.segment_labels} (${label.count}), `;
-        });
+        for (let [key, value] of Object.entries(data.labels_distribution)) {
+            text += `${key} (${value}), `;
+        }
         text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : "&nbsp;";
         $("#labelsValueCount").html(text);
 
         fillLabelDistPie(data.labels_distribution);
-        let labelSegCount = data.labels_distribution.reduce((sum, item) => sum + parseInt(item.count), 0);
+        let labelSegCount = parseInt(data.num_labeled_segments);
         let notLabeled = data.filtered.segments - labelSegCount;
         let notSelected = data.original.segments - notLabeled - labelSegCount;
         // labels are ["Labeled", "Not Labeled", "Not Selected"]
@@ -78,10 +78,10 @@ function increaseModelsCount(incVal) {
 
 function fillLabelDistPie(labelData) {
     labelChart.data.datasets = [{
-        data: labelData.map(d => parseInt(d.count)),
-        backgroundColor: generateColors(labelData.length)
+        data: Object.values(labelData).map(v => parseInt(v)),
+        backgroundColor: generateColors(Object.values(labelData).length)
     }];
-    labelChart.data.labels = labelData.map(d => d.segment_labels);
+    labelChart.data.labels = Object.keys(labelData);
     labelChart.update();
 }
 
@@ -164,7 +164,7 @@ const ctxLD = $("#labelDistributionPlot")[0].getContext("2d");
 Chart.register(ChartDataLabels);
 
 labelChart = new Chart(ctxLD, {
-    type: "pie",
+    type: "bar",
     data: {
         labels: [],
         datasets: []
@@ -173,10 +173,13 @@ labelChart = new Chart(ctxLD, {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: { position: "top" },
+            legend: { position: null },
             title: { display: true, text: "Labels Count" },
             datalabels: {
-                color: "#fff",
+                color: "black",
+                anchor: 'end',
+                align: 'end',
+                offset: 0,
                 font: { weight: "bold", size: 16 },
                 formatter: function (value) {
                     return value > 0 ? value : "";

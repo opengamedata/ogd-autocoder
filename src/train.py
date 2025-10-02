@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 
@@ -16,7 +16,7 @@ from train_neural_net import train_neural_net
 from inference import get_models_filename
 from preprocess import preprocess_df
 from dim_reduction import AVAILABLE_SCALERS
-
+from cl_type_enum import ClType
 RANDOM_STATE = 13
 
 
@@ -29,15 +29,28 @@ def train_model(
     # train_df = clean_agg_df.categorize(columns=["job_name"])
     # train_df = dd.get_dummies(train_df, columns=["job_name"], dtype=float)
 
-    # filter by label (for now only single-label support)
-    train_df = train_df[train_df["segment_labels"].isin(include_labels)]
+    # filter by label (includes multi-label support)
+    labels_as_set = train_df["segment_labels"].str.split(pat=", ").apply(lambda x: set(x).intersection(include_labels))
+    # removing rows without any filtered labels
+    train_df = train_df[labels_as_set.map(bool)]
+    labels_as_set = labels_as_set[labels_as_set.map(bool)]
 
-    le = LabelEncoder()
-    target_col = le.fit_transform(train_df["segment_labels"])  # converts to ints
-    if model_type == "neural-net":
-        target_col = torch.nn.functional.one_hot(
-            torch.tensor(target_col).long(), num_classes=len(le.classes_)
-        )
+    if (labels_as_set.map(lambda x: len(x) > 1)).any():
+        problem_type = ClType.MULTI_LABEL
+        le = MultiLabelBinarizer()
+        target_col = le.fit_transform(labels_as_set)
+    else:
+        problem_type = ClType.MULTI_CLASS
+        labels_as_set = labels_as_set.map(lambda x: list(x)[0])
+
+        le = LabelEncoder()
+        # converts to ints
+        target_col = le.fit_transform(labels_as_set)
+
+        if model_type == "neural-net":
+            target_col = torch.nn.functional.one_hot(
+                torch.tensor(target_col).long(), num_classes=len(le.classes_)
+            )
 
     train_cols = [c for c in include_features if c in train_df.columns]
     empty_cols = [c for c in include_features if c not in train_df.columns]
@@ -47,7 +60,7 @@ def train_model(
         target_col,
         train_size=float(hyperparameters["train_test_ratio"]),
         random_state=RANDOM_STATE,
-        stratify=train_df["segment_labels"],  # same proportion in both splits
+        #stratify=train_df["segment_labels"],  # same proportion in both splits
         # fixme - maybe try bootstrap
     )
 
@@ -94,6 +107,7 @@ def train_model(
             y_train_full,
             y_test,
             le.classes_,
+            problem_type,
             hyperparameters,
             models_dir,
             model_info,
@@ -106,6 +120,7 @@ def train_model(
             y_train_full,
             y_test,
             le.classes_,
+            problem_type,
             hyperparameters,
             models_dir,
             model_info,
@@ -119,6 +134,7 @@ def train_model(
             y_train_full,
             y_test,
             le.classes_,
+            problem_type,
             hyperparameters,
             models_dir,
             model_info,
@@ -127,18 +143,30 @@ def train_model(
         output += "Invalid Model Selected"
 
     time_taken = time.time() - start_time
-
     output = f"{model_info['model_name']}: \t{round(time_taken, 2)} secs\n\n" + output
+
+    if (problem_type == ClType.MULTI_LABEL):
+        output = "MULTI-LABEL " + output
+
     output += f"Row Count:\t{len(train_df)}\n"
     output += f"Input Columns:\t{x_train_full.shape[1]}\n"
     output += f"Classes Count:\n"
+    class_counts = {}
     for label, count in train_df["segment_labels"].value_counts().items():
+        if ", " in label:
+            for l in label.split(", "):
+                class_counts[l] = class_counts.get(l, 0) + count
+        else:
+            class_counts[label] = class_counts.get(label, 0) + count
+
+    for label, count in class_counts.items():
         output += f"  {label}\t{count}\n"
 
     # might have been updated inside train_ of specific model
     model_info["hyperparameters"] = hyperparameters
 
     model_info["output"] = output
+    model_info["is_multilabel"] = problem_type == ClType.MULTI_LABEL
     model_info["time_taken"] = time_taken
     model_info["timestamp_end"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
