@@ -9,6 +9,7 @@
 <script src="static/js/segment.js" defer></script>
 <script src="static/js/index.js" defer></script>
 <script src="static/js/label.js" defer></script>
+<script src="static/js/review.js" defer></script>
 <script src="static/js/train.js" defer></script>
 <script src="static/js/apply.js" defer></script>
 <script src="static/js/on_ready.js" defer></script>
@@ -19,6 +20,9 @@
     <div class="d-flex align-items-center">
       <i class="bi bi-person-circle fs-3 me-2"></i>
       <span id="username_display" class="fw-semibold"></span>
+      <button id="logout_btn" class="ms-2 btn btn-outline-danger btn-sm d-none" data-toggle="tooltip" title="Log Out">
+        <i class="bi bi-box-arrow-right"></i>
+      </button>
     </div>
     <h2 class="position-absolute start-50 translate-middle-x m-0">SE6MEN7AT0R</h2>
   </div>
@@ -46,6 +50,7 @@
       <button class="nav-link active" id="nav-data-tab" data-bs-toggle="tab" data-bs-target="#nav-data" type="button" role="tab" aria-controls="nav-data" aria-selected="true">DATA</button>
       <button class="nav-link disabled" id="nav-segment-tab" data-bs-toggle="tab" data-bs-target="#nav-segment" type="button" role="tab" aria-controls="nav-segment" aria-selected="true">SEGMENT</button>
       <button class="nav-link disabled" id="nav-label-tab" data-bs-toggle="tab" data-bs-target="#nav-label" type="button" role="tab" aria-controls="nav-label" aria-selected="false">LABEL</button>
+      <button class="nav-link disabled" id="nav-review-tab" data-bs-toggle="tab" data-bs-target="#nav-review" type="button" role="tab" aria-controls="nav-review" aria-selected="false">REVIEW</button>
       <button class="nav-link disabled" id="nav-train-tab" data-bs-toggle="tab" data-bs-target="#nav-train" type="button" role="tab" aria-controls="nav-train" aria-selected="false">TRAIN</button>
       <button class="nav-link disabled" id="nav-apply-tab" data-bs-toggle="tab" data-bs-target="#nav-apply" type="button" role="tab" aria-controls="nav-apply" aria-selected="false">APPLY</button>
       <button class="nav-link disabled" id="downloadBtn"><i class="bi bi-download me-1"></i> DOWNLOAD</button>
@@ -275,6 +280,13 @@
             <th>Game State</th>
           </tr>
         </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <!--REVIEW-->
+    <div class="tab-pane fade" id="nav-review" role="tabpanel" aria-labelledby="nav-review-tab">
+      <table id="reviewTable" class="table table-bordered table-striped mb-0">
+        <thead></thead>
         <tbody></tbody>
       </table>
     </div>

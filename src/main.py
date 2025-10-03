@@ -7,6 +7,7 @@ from preprocess import available_features
 from segment import autosegment_by_event_type, segment_ids_for_user, segment_rows
 from label import label_rows, list_seg_labels
 from events import event_filtering, describe_events
+from review import compare_labels
 from train import train_model
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort, after_this_request
@@ -244,6 +245,16 @@ def label(user_id):
     labels_filepath = get_labels_filename(filepath)
     label_rows(labels_filepath, request.cookies.get("username"), user_id, segment_id, segment_labels, label_justification)
     return jsonify({"success": True})
+
+@app.route("/compare_labels", methods=["POST"])
+@safe
+def compareLabels():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+
+    return jsonify({"data": compare_labels(filepath)})
+
 
 
 @app.route("/autosegment", methods=["POST"])
