@@ -7,7 +7,7 @@ from preprocess import available_features
 from segment import autosegment_by_event_type, segment_ids_for_user, segment_rows
 from label import label_rows, list_seg_labels
 from events import event_filtering, describe_events
-from review import compare_labels
+from review import compare_labels, copy_labels
 from train import train_model
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort, after_this_request
@@ -254,6 +254,15 @@ def compareLabels():
     )
 
     return jsonify({"data": compare_labels(filepath)})
+
+@app.route("/copy_labels", methods=["POST"])
+@safe
+def copyLabels():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+
+    return jsonify({"data": copy_labels(filepath, request.json["from_username"], request.cookies.get("username"), request.json["ids"])})
 
 
 
