@@ -7,7 +7,7 @@ from preprocess import available_features
 from segment import autosegment_by_event_type, segment_ids_for_user, segment_rows
 from label import label_rows, list_seg_labels
 from events import event_filtering, describe_events
-from review import compare_labels, copy_labels
+from review import compare_labels, copy_labels, inter_rater_reliability
 from train import train_model
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, send_file, request, abort, after_this_request
@@ -253,7 +253,7 @@ def compareLabels():
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
 
-    return jsonify({"data": compare_labels(filepath)})
+    return jsonify({"data": compare_labels(filepath).fill_null("-").to_dicts()})
 
 @app.route("/copy_labels", methods=["POST"])
 @safe
@@ -264,6 +264,14 @@ def copyLabels():
 
     return jsonify({"data": copy_labels(filepath, request.json["from_username"], request.cookies.get("username"), request.json["ids"])})
 
+@app.route("/inter_rater_reliability", methods=["POST"])
+@safe
+def interRaterReliability():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+
+    return jsonify({"data": inter_rater_reliability(filepath)})
 
 
 @app.route("/autosegment", methods=["POST"])

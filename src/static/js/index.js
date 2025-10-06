@@ -57,7 +57,7 @@ $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
     } else if (tabId == "nav-review-tab") {
         $("#user_panel:not([class*='d-none'])").addClass("d-none");
         $('#spinner').removeClass("d-none");
-        loadReviewTable().finally(() => { $('#spinner').addClass("d-none"); });
+        reloadReview().finally(() => { $('#spinner').addClass("d-none"); });
     } else if (tabId == "nav-train-tab") {
         $("#user_panel:not([class*='d-none'])").addClass("d-none");
         if (filename) {

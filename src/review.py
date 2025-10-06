@@ -1,5 +1,7 @@
 import polars as pl
 from dataset import read_labels_for_username, get_labels_filename
+from sklearn.metrics import cohen_kappa_score
+from statsmodels.stats.inter_rater import aggregate_raters, fleiss_kappa
 
 
 def compare_labels(filepath):
@@ -10,7 +12,7 @@ def compare_labels(filepath):
     labels_path = get_labels_filename(filepath)
     all_labels = read_labels_for_username(labels_path, None)
     pivot_df = all_labels.pivot("username", index=["segment_id", "user_id"], values="segment_labels")
-    return pivot_df.fill_null("-").to_dicts()
+    return pivot_df
 
 def copy_labels(filepath, from_username, to_username, ids):
     """
@@ -38,3 +40,29 @@ def copy_labels(filepath, from_username, to_username, ids):
 
     all_labels = pl.concat([all_labels, from_labels])
     all_labels.write_csv(labels_path, separator="\t")
+
+def inter_rater_reliability(filepath):
+    """
+    Using cohen_kappa_score and fleiss score to calculate pairwise and overall inter-rater reliability
+    """
+    compare_df = compare_labels(filepath).to_pandas()
+    usernames = [col for col in compare_df.columns if col not in ["user_id", "segment_id"]]
+    cohen_kappas = []
+    for username1 in usernames:
+        for username2 in usernames:
+            if username1 > username2:
+                no_nulls_df = compare_df[[username1, username2]].dropna()
+                dropped = compare_df.shape[0] - no_nulls_df.shape[0]
+                # avoid symmetric
+                y1 = no_nulls_df[username1]
+                y2 = no_nulls_df[username2]
+                cohen_kappas.append({"users": f"{username1} / {username2}", "value": cohen_kappa_score(y1, y2), "dropped": dropped})
+
+    # overall
+    no_nulls_df = compare_df[usernames].dropna()
+    dropped = compare_df.shape[0] - no_nulls_df.shape[0]
+    arr, cat = aggregate_raters(no_nulls_df)
+    cohen_kappas.append({"users": f"overall", "value": fleiss_kappa(arr, method='fleiss'), "dropped": dropped})
+
+    # sort in descending order
+    return sorted(cohen_kappas, key=lambda x: x["value"], reverse=True)

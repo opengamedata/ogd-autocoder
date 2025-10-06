@@ -18,7 +18,7 @@ async function copyColumn(from_username) {
             send_request('copy_labels', {"from_username": from_username, "ids": ids}).then((response) => {
                 $('#spinner').removeClass("d-none");
                 $('#copyLabelsModal').modal('hide');
-                loadReviewTable().finally(() => {$('#spinner').addClass("d-none");});
+                reloadReview().finally(() => {$('#spinner').addClass("d-none");});
             });
         });
         $('#copyLabelsModal').modal('show');
@@ -28,11 +28,35 @@ async function copyColumn(from_username) {
 
     $('#spinner').removeClass("d-none");
     return send_request('copy_labels', {"from_username": from_username, "ids": ids}).then((response) => {
-        loadReviewTable().finally(() => {$('#spinner').addClass("d-none");});
+        reloadReview().finally(() => {$('#spinner').addClass("d-none");});
     });
 }
 
-async function loadReviewTable() {
+
+async function reloadReview() {
+    promises = [loadReviewTableData(), loadKappa()];
+    return Promise.all(promises);
+}
+
+async function loadKappa() {
+    /**
+     * Loads the pairwise (cohen) and overall (fleiss) kappa coefs for aggreagated inter-rater reliability
+     */
+    return send_request('inter_rater_reliability', {}).then((response) => {
+        $('#kappaList').empty();
+        for (let row of response.data) {
+            if (row.users == "overall") {
+                $('#fleissCoef').text(`${row.value.toFixed(3)} (nulls: ${row.dropped})`)
+            } else {
+                $('#kappaList').append(
+                    $('<li>').html(`<strong>${row.users}</strong>: ${row.value.toFixed(3)} (nulls: ${row.dropped})`)
+                );
+            }
+        }
+    });
+}
+
+async function loadReviewTableData() {
     /**
      * Loads the labels of all the usernames to measure inter-rater reliability
      */
