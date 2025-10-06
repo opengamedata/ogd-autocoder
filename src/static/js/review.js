@@ -51,7 +51,7 @@ async function loadReviewTable() {
                     sortable: false,
                     render: function (data, type, row) {
                         return `
-                            <button class="btn btn-sm btn-outline-primary open-segment-btn" data-user-id="${row.user_id}" data-segment-id="${row.segment_id}">
+                            <button class="btn btn-sm btn-outline-dark open-segment-btn" data-user-id="${row.user_id}" data-segment-id="${row.segment_id}">
                                 <i class="bi bi-journal-text"></i>
                             </button>`;
                     }
@@ -85,12 +85,30 @@ async function loadReviewTable() {
                     dom: '<"top d-flex justify-content-between align-items-center"fB>rt<"bottom"ip>',
                     buttons: ['colvis'],
                     rowCallback: function(row, data, index) {
-                        let currentLabel = data[username];
-                        if (currentLabel != "-") {
-                            $(row).find('td').each(function() {
-                                if ($(this).text() != "-" && $(this).text() != currentLabel && $(this).index() > 3) {
-                                    $(this).css('background-color', '#f44747');
+                        let missing = false;
+                        let disagreement = false;
+                        let currentLabel = null;
+                        for (let key in data) {
+                            if (!["user_id", "segment_id"].includes(key)) {
+                                // key is the username
+                                if (data[key] == "-") {
+                                    missing = true;
+                                } else if (currentLabel != null && data[key] != currentLabel) {
+                                    disagreement = true;
+                                } else if (currentLabel == null) {
+                                    currentLabel = data[key];
                                 }
+                            }
+                        }
+
+                        if (disagreement) {
+                            // first priority
+                            $(row).find('td').each(function() {
+                                $(this).css('background-color', '#f44747');
+                            });
+                        } else if (missing) {
+                            $(row).find('td').each(function() {
+                                $(this).css('background-color', '#f0f0f0');
                             });
                         }
                     }
