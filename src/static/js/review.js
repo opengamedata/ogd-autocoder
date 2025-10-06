@@ -9,11 +9,24 @@ $('#reviewTable').on('click', '.open-segment-btn', function() {
 });
 
 async function copyColumn(from_username) {
-    $('#spinner').removeClass("d-none");
     const selectedRows = $('#reviewTable').DataTable().rows({ selected: true }).data().toArray();
     let ids = selectedRows.map(row => row["user_id"] + "_" + row["segment_id"]);
     ids = ids.length == 0 ? null : ids;
-    console.log(ids)
+    if (ids == null) {
+        $('#copyLabelsUser').text(from_username);
+        $('#confirmCopyBtn').off('click').on('click', () => {
+            send_request('copy_labels', {"from_username": from_username, "ids": ids}).then((response) => {
+                $('#spinner').removeClass("d-none");
+                $('#copyLabelsModal').modal('hide');
+                loadReviewTable().finally(() => {$('#spinner').addClass("d-none");});
+            });
+        });
+        $('#copyLabelsModal').modal('show');
+
+        return;
+    }
+
+    $('#spinner').removeClass("d-none");
     return send_request('copy_labels', {"from_username": from_username, "ids": ids}).then((response) => {
         loadReviewTable().finally(() => {$('#spinner').addClass("d-none");});
     });
@@ -54,7 +67,8 @@ async function loadReviewTable() {
                                 <i class="bi bi-copy" title="Copy"></i>
                             </button>
                         </div>`,
-                        data: key
+                        data: key,
+                        sortable: false
                     });
                 }
             });
