@@ -1,5 +1,5 @@
 import polars as pl
-from ogd_features import calculate_ogd_features, list_ogd_features
+# from ogd_features import calculate_ogd_features, list_ogd_features
 from dataset import read_dataset
 
 
@@ -23,7 +23,8 @@ def available_features(filepath):
 
     # load also OGD features
     game_id = get_game_id(filepath)
-    ogd_columns = list_ogd_features(game_id)
+    # ogd_columns = list_ogd_features(game_id)
+    ogd_columns = []
     return {
         "included_features": [{"name": c} for c in columns],
         "excluded_features": ogd_columns,
@@ -37,7 +38,8 @@ def preprocess_df(filepath):
     df_no_ogd = preprocess_df_no_ogd(filepath)
     game_id = get_game_id(filepath)
 
-    df_features = calculate_ogd_features(game_id, filepath)
+    # df_features = calculate_ogd_features(game_id, filepath)
+    df_features = []
     if len(df_features):
         clean_agg_df_ogd = df_no_ogd.join(df_features, how="left", on=["user_id"])
     else:
