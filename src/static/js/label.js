@@ -105,20 +105,17 @@ async function fillLabelsCount() {
 
 function nextOption(dropdown_id) {
     const select = $(dropdown_id);
-    const options = select.find('option');
     const current = select.prop('selectedIndex');
-    const next = (current + 1) % options.length;
+    const next = current + 1;
 
     select.prop('selectedIndex', next).trigger('change');
 }
 
 function prevOption(dropdown_id) {
     const select = $(dropdown_id);
-    const options = select.find('option');
     const current = select.prop('selectedIndex');
-    const next = (options.length + (current - 1)) % options.length;
-
-    select.prop('selectedIndex', next).trigger('change');
+    const prev = current - 1;
+    select.prop('selectedIndex', prev).trigger('change');
 }
 
 /**
@@ -159,6 +156,21 @@ async function fillSegmentDropdown(dropdown_id) {
 
 $('#segmentDropdown').on('change', function () {
     $('#spinner').removeClass("d-none");
+
+    const options = $(this).find('option');
+    const current = $(this).prop('selectedIndex');
+    if (current == options.length - 1 || $(this).val() == null) {
+        $('#lblNxtSgm').prop('disabled', true);
+    } else {
+        $('#lblNxtSgm').prop('disabled', false);
+    }
+
+    if (current == 0 || $(this).val() == null) {
+        $('#lblPreSgm').prop('disabled', true);
+    } else {
+        $('#lblPreSgm').prop('disabled', false);
+    }
+
     loadEvents('#labelTable', '#segmentDropdown').finally(() => {$('#spinner').addClass("d-none");});
 });
 

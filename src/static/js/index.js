@@ -12,8 +12,9 @@ $('#userDropdown').select2({
 
 // 2. tables initialization (3 similar tables)
 for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
+    let select = table_id === "#segmentTable" ? { style: 'multi+shift' } : null;
     $(table_id).DataTable({
-        select: { style: 'multi' },
+        select: select,
         order: [[4, 'asc']],
         paging: false,
         scrollY: '400px',
@@ -25,6 +26,52 @@ for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
         dom: '<"top d-flex justify-content-between align-items-center"fB>rt<"bottom"ip>',
         buttons: ['colvis'],
     });
+    if (select) {
+        // drag and select
+        let isDragging = false;
+        let table = $(table_id).DataTable();
+        let $container = $(table.table().container()).find(".dt-scroll-body");
+        let scrollTimer = null;
+
+        $container.on("mousedown", "tr", function(e) {
+            isDragging = true;
+        });
+
+        $(document).on("mouseup", function(e) {
+            isDragging = false;
+            if (scrollTimer) {
+                clearInterval(scrollTimer);
+                scrollTimer = null;
+            }
+        });
+
+        $container.on("mouseover", "tr", function(e) {
+            if (isDragging) {
+                table.row(this).select();
+            }
+        });
+
+        $(document).on("mousemove", function(e) {
+            if (!isDragging) return;
+
+            let offset = $container.offset();
+            let top = offset.top + 100;
+            let bottom = offset.top + $container.outerHeight() - 100;
+        
+            // Auto-scroll up/down
+            if (e.pageY < top || e.pageY > bottom) {
+                if (!scrollTimer) {
+                    scrollTimer = setInterval(() => {
+                        let value = e.pageY < top ? -20 : 20;
+                        $container[0].scrollBy({ top: value, behavior: "auto" });
+                    }, 100);
+                }
+            } else if (scrollTimer) {
+                clearInterval(scrollTimer);
+                scrollTimer = null;
+            }
+        });
+    }
 }
 
 function triggerFilePicker() {
@@ -100,14 +147,12 @@ function uploadFile() {
         success: function (response) {
             filename = response.filename;
             document.cookie = `filename=${filename}`;
-            let $btn = $('<button></button>')
-                .addClass('btn btn-light w-100 text-start mb-2')
-                .attr('data-filename', filename)
-                .text(response.formatted);
-            $btn.on('click', () => {
-                loadExisting(response.filename);
-            });
-            $('#datasetsScroll').prepend($btn)
+            let newDataset = $(`<div class="d-flex align-items-center w-100 mb-2">
+                <button class="btn btn-light flex-grow-1 text-start" data-filename="${response.filename}" onclick="loadExisting('${response.filename}')">${response.formatted}</button>
+                <button class="btn btn-sm btn-danger ms-2" onclick="showDeleteFileModal('${response.filename}')"><i class="bi bi-trash text-white"></i></button>
+            </div>`)
+
+            $('#datasetsScroll').prepend(newDataset)
 
             onFileChange(filename, false);
         },
@@ -139,8 +184,8 @@ function loadExisting(existing_filename) {
  */
 function onFileChange(filename, load_models) {
     $('span[data-field="filename"]').text(filename);
-    $('#datasetsScroll').find('button').removeClass('btn-dark');
-    $(`#datasetsScroll button[data-filename="${filename}"]`).addClass('btn-dark');
+    $('#datasetsScroll').find('.btn-light').removeClass('btn-dark');
+    $(`#datasetsScroll .btn-light[data-filename="${filename}"]`).addClass('btn-dark');
     $('#saveFilterBtn').attr('disabled', true);
     $('#saveFilterBtn').removeClass('btn-outline-primary').addClass('btn-outline-secondary');
 
@@ -197,6 +242,26 @@ async function fillUsersList(reset_value = true) {
 }
 
 function userChanged() {
+    let select = $('#userDropdown');
+    const options = select.find('option');
+    const current = select.prop('selectedIndex');
+
+    if (current == options.length - 1 || select.val() == null) {
+        $('#lblNxtUsr').prop('disabled', true);
+        $('#aplNxtUsr').prop('disabled', true);
+    } else {
+        $('#lblNxtUsr').prop('disabled', false);
+        $('#aplNxtUsr').prop('disabled', false);
+    }
+
+    if (current <= 1 || select.val() == null) {
+        $('#lblPreUsr').prop('disabled', true);
+        $('#aplPreUsr').prop('disabled', true);
+    } else {
+        $('#lblPreUsr').prop('disabled', false);
+        $('#aplPreUsr').prop('disabled', false);
+    }
+
     const tabId = $('#nav-tab .nav-link.active').attr('id');
     if (tabId == "nav-segment-tab") {
         $('#spinner').removeClass("d-none");

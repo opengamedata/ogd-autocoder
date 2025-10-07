@@ -29,7 +29,7 @@
   
   <h5 class="text-center" id="labelsValueCount">&nbsp;</h2>
   
-  <div id="spinner" class="d-none position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-50" style="z-index: 10;">
+  <div id="spinner" class="d-none position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-50" style="z-index: 10;">
     <div class="spinner-border text-primary" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
@@ -45,7 +45,7 @@
       </form>
     </div>
   </div>
-  <nav>
+  <nav id="stages-navigator">
     <div class="nav nav-tabs" id="nav-tab" role="tablist">
       <button class="nav-link active" id="nav-data-tab" data-bs-toggle="tab" data-bs-target="#nav-data" type="button" role="tab" aria-controls="nav-data" aria-selected="true">DATA</button>
       <button class="nav-link disabled" id="nav-segment-tab" data-bs-toggle="tab" data-bs-target="#nav-segment" type="button" role="tab" aria-controls="nav-segment" aria-selected="true">SEGMENT</button>
@@ -56,7 +56,7 @@
       <button class="nav-link disabled" id="downloadBtn"><i class="bi bi-download me-1"></i> DOWNLOAD</button>
     </div>
   </nav>
-  <div id="user_panel" class="d-none d-flex align-items-center gap-3 mb-4 py-2">
+  <div id="user_panel" class="d-none d-flex align-items-center gap-3 mb-2 py-2">
     <select class="form-select" id="userDropdown" onchange="userChanged()" style="min-width: 200px; display:none;">
     </select>
   </div>
@@ -76,13 +76,16 @@
             </div>            
             <div id="datasetsScroll" class="overflow-auto flex-grow-1 min-vh-0">
               {% for file in uploaded_files %}
-                <button class="btn btn-light w-100 text-start mb-2" data-filename="{{ file.fullname }}" onclick="loadExisting('{{ file.fullname }}')">{{ file.formatted }}</button>
+              <div class="d-flex align-items-center w-100 mb-2">
+                <button class="btn btn-light flex-grow-1 text-start" data-filename="{{ file.fullname }}" onclick="loadExisting('{{ file.fullname }}')">{{ file.formatted }}</button>
+                <button class="btn btn-sm btn-danger ms-2" onclick="showDeleteFileModal('{{ file.fullname }}')"><i class="bi bi-trash text-white"></i></button>
+              </div>
               {% endfor %}
             </div>
           </div>
           <div id="datasetInfo" class="col-md-8 d-flex flex-column p-3 border-start d-none">
             <h5 class="mb-3">Dataset Information</h5>
-            <button id="describeEventsBtn" class="btn btn-outline-primary btn-sm mb-2" style="max-width: 150px;">Describe events</button>
+            <button id="describeEventsBtn" class="btn btn-outline-primary btn-sm mb-2" style="max-width: 200px;">Load Event Descriptions</button>
             <input type="file" id="eventDescriptionsFile" accept=".json" style="display: none;" />
             <div class="list-group-item"><strong>Filename:</strong> <span data-field="filename">lol.tsv</span></div>
             <div class="list-group-item"><strong>Date range:</strong> <span data-field="date-range"></span></div>
@@ -152,10 +155,10 @@
             </div>
             <div class="row justify-content-center g-3 my-3">
               <div class="col-12 col-md-6 d-flex justify-content-center">
-                <canvas id="labelDistributionPlot" class="w-100" style="max-width:400px;"></canvas>
+                <canvas id="segmentedLabeledDistribution" class="w-100" style="max-width:400px;"></canvas>
               </div>
               <div class="col-12 col-md-6 d-flex justify-content-center">
-                <canvas id="segmentedLabeledDistribution" class="w-100" style="max-width:400px;"></canvas>
+                <canvas id="labelDistributionPlot" class="w-100" style="max-width:400px;"></canvas>
               </div>
             </div>
           </div>
@@ -186,49 +189,50 @@
           </button>
         </div>
       </div>
-      
-      <table id="segmentTable" class="table table-striped table-bordered" style="width:100%">
-        <thead>
-          <tr>
-            <th>Index</th>
-            <th>Event Name</th>
-            <th>Event Description</th>
-            <th>Job Name</th>
-            <th>Time</th>
-            <th>Segment ID</th>
-            <th>Segment labels</th>
-            <th>Label justif.</th>
-            <th>Session ID</th>
-            <th>App ID</th>
-            <th>Event Data</th>
-            <th>Event Source</th>
-            <th>App Version</th>
-            <th>App Branch</th>
-            <th>Log Version</th>
-            <th>Offset</th>
-            <th>User ID</th>
-            <th>User Data</th>
-            <th>Game State</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="card p-3">
+        <table id="segmentTable" class="border rounded p-2 table table-striped table-bordered" style="width:100%">
+          <thead>
+            <tr>
+              <th>Index</th>
+              <th>Event Name</th>
+              <th>Event Description</th>
+              <th>Job Name</th>
+              <th>Time</th>
+              <th>Segment ID</th>
+              <th>Segment labels</th>
+              <th>Label justif.</th>
+              <th>Session ID</th>
+              <th>App ID</th>
+              <th>Event Data</th>
+              <th>Event Source</th>
+              <th>App Version</th>
+              <th>App Branch</th>
+              <th>Log Version</th>
+              <th>Offset</th>
+              <th>User ID</th>
+              <th>User Data</th>
+              <th>Game State</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
     <!--LABEL-->
     <div class="tab-pane fade" id="nav-label" role="tabpanel" aria-labelledby="nav-label-tab">
+      <div class="max-width-500">
+        <label for="segmentDropdown" class="form-label">Segment ID</label>
+        <div class="d-flex align-items-center">
+          <button id="lblPreUsr" class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" disabled="disabled" onclick="prevOption('#userDropdown', '#lblNxtUsr', '#lblPreUsr')">&lt;&lt;</button>
+          <button id="lblPreSgm" class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" disabled="disabled" onclick="prevOption('#segmentDropdown', '#lblNxtSgm', '#lblPreSgm')">&lt;</button>
+          <select class="form-control flex-grow-1" id="segmentDropdown"></select>
+          <button id="lblNxtSgm" class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" disabled="disabled" onclick="nextOption('#segmentDropdown', '#lblNxtSgm', '#lblPreSgm')">&gt;</button>
+          <button id="lblNxtUsr" class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" disabled="disabled" onclick="nextOption('#userDropdown', '#lblNxtUsr', '#lblPreUsr')">&gt;&gt;</button>
+        </div>
+      </div>
+      <hr/>
       <div class="mb-3 row g-3 align-items-end">
         <div class="col-md-4">
-          <label for="segmentDropdown" class="form-label">Segment ID</label>
-          <div class="d-flex align-items-center">
-            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
-            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" onclick="prevOption('#segmentDropdown')">&lt;</button>
-            <select class="form-control flex-grow-1" id="segmentDropdown"></select>
-            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" onclick="nextOption('#segmentDropdown')">&gt;</button>
-            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
-          </div>
-        </div>
-    
-        <div class="col-md-3">
           <div class="d-flex justify-content-between align-items-center mb-1">
             <label for="labelsDropdown" class="form-label mb-0">Labels</label>
             <div class="d-flex gap-1">
@@ -250,38 +254,39 @@
           <input type="text" class="form-control" id="labelJustificationInput" placeholder="Explain the label(s) choice..." aria-label="Label Justification">
         </div>
     
-        <div class="col-md-1">
+        <div class="col-md-2">
           <label class="form-label d-block">&nbsp;</label>
           <button class="btn btn-primary w-100" type="button" onclick="labelRows('#segmentDropdown', '#labelsDropdown', '#labelJustificationInput')">Apply</button>
         </div>
       </div>
-      
-      <table id="labelTable" class="table table-striped table-bordered" style="width:100%">
-        <thead>
-          <tr>
-            <th>Index</th>
-            <th>Event Name</th>
-            <th>Event Description</th>
-            <th>Job Name</th>
-            <th>Time</th>
-            <th>Segment ID</th>
-            <th>Segment labels</th>
-            <th>Label justif.</th>
-            <th>Session ID</th>
-            <th>App ID</th>
-            <th>Event Data</th>
-            <th>Event Source</th>
-            <th>App Version</th>
-            <th>App Branch</th>
-            <th>Log Version</th>
-            <th>Offset</th>
-            <th>User ID</th>
-            <th>User Data</th>
-            <th>Game State</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="card p-3">
+        <table id="labelTable" class="table table-striped table-bordered" style="width:100%">
+          <thead>
+            <tr>
+              <th>Index</th>
+              <th>Event Name</th>
+              <th>Event Description</th>
+              <th>Job Name</th>
+              <th>Time</th>
+              <th>Segment ID</th>
+              <th>Segment labels</th>
+              <th>Label justif.</th>
+              <th>Session ID</th>
+              <th>App ID</th>
+              <th>Event Data</th>
+              <th>Event Source</th>
+              <th>App Version</th>
+              <th>App Branch</th>
+              <th>Log Version</th>
+              <th>Offset</th>
+              <th>User ID</th>
+              <th>User Data</th>
+              <th>Game State</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
     <!--REVIEW-->
     <div class="tab-pane fade" id="nav-review" role="tabpanel" aria-labelledby="nav-review-tab">
@@ -299,23 +304,6 @@
     <div class="tab-pane fade" id="nav-train" role="tabpanel" aria-labelledby="nav-train-tab">
       <div class="row mt-3">
         <div class="col-md-6">
-          <ul class="nav nav-pills mb-3" id="modelTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="logistic-tab" data-bs-toggle="pill" data-bs-target="#logistic" type="button" role="tab" aria-controls="logistic" aria-selected="true">
-                Logistic Regression
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="random-forest-tab" data-bs-toggle="pill" data-bs-target="#random-forest" type="button" role="tab" aria-controls="random-forest" aria-selected="false">
-                Random Forest
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="neural-net-tab" data-bs-toggle="pill" data-bs-target="#neural-net" type="button" role="tab" aria-controls="neural-net" aria-selected="false">
-                Neural Network
-              </button>
-            </li>
-          </ul>
           <div class="general-params mb-4">
             <label class="form-label fw-bold mb-3">General Parameters</label>
             <div class="mb-3 d-flex align-items-center">
@@ -338,10 +326,10 @@
               <div class="col-sm-8">
                 <select id="scalerSelect" style="width: 100%" class="form-select">
                   <option value="" selected>None</option>
-                  <option value="RobustScaler">Robust Scaler (robust to outliers)</option>
                   <option value="StandardScaler">Standard Scaler (mean=0, variance=1)</option>
                   <option value="MinMaxScaler">Min-Max Scaler (range 0-1)</option>
                   <option value="MaxAbsScaler">Max-Abs Scaler (makes abs max = 1.0)</option>
+                  <option value="RobustScaler">Robust Scaler (robust to outliers)</option>
                 </select>
               </div>
             </div>
@@ -370,6 +358,33 @@
               </div>
 
           </div>
+          <div>
+            <label for="trainLabelsDropdown" class="form-label fw-bold">Target Labels</label>
+          </div>
+          <div class="mb-3">
+            <select id="trainLabelsDropdown" style="width: 100%;" class="form-control" multiple="multiple"></select>
+          </div>
+        </div>
+      
+        <div class="col-md-6">
+          <ul class="nav nav-pills mb-3" id="modelTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="logistic-tab" data-bs-toggle="pill" data-bs-target="#logistic" type="button" role="tab" aria-controls="logistic" aria-selected="true">
+                Logistic Regression
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="random-forest-tab" data-bs-toggle="pill" data-bs-target="#random-forest" type="button" role="tab" aria-controls="random-forest" aria-selected="false">
+                Random Forest
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="neural-net-tab" data-bs-toggle="pill" data-bs-target="#neural-net" type="button" role="tab" aria-controls="neural-net" aria-selected="false">
+                Neural Network
+              </button>
+            </li>
+          </ul>
+
           <div class="tab-content" id="modelTabsContent">
             <div class="tab-pane fade show active" id="logistic" role="tabpanel" aria-labelledby="logistic-tab">
               <div class="model-params">
@@ -433,89 +448,74 @@
                 </div>
             
                 <div class="mb-2 row">
-                  <label for="nnLayers" class="col-sm-4 col-form-label">Num. of Hidden Layers (ReLU)</label>
+                  <label for="nnLayers" class="col-sm-4 col-form-label"># Hidden Layers (ReLU)</label>
                   <div class="col-sm-8">
                     <input type="number" min="0" value="2" id="nnLayers" oninput="createUnitPerLayerInputs()" class="form-control">
                   </div>
                 </div>
             
-                <div class="mt-3" id="nnUnitsPerLayerContainer"></div>
+                <div class="mt-3 mb-2" id="nnUnitsPerLayerContainer"></div>
               </div>
             </div> 
           </div>
-          <div>
-            <label for="trainLabelsDropdown" class="form-label fw-bold">Labels to Include</label>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Features (Selected: <span id="numSelFeats">0</span>)</label>
+        <button class="btn btn-sm btn-success ms-2" id="autoSelectBtn">
+          <i class="bi bi-magic me-1"></i> Autoselect
+        </button>
+        <input type="text" id="featureSearch" class="form-control mb-2" placeholder="Search features...">
+        <div id="correlationLegend" class="d-flex align-items-center gap-2 p-2 m-1 border rounded">
+          <div style="width: 20px; height: 20px; background-color: rgb(0, 255, 0, 0.2); border: 1px solid #ccc;"></div>
+          <span>Low* correlation</span>
+
+          <div style="width: 20px; height: 20px; background-color: rgb(255, 255, 0, 0.2); border: 1px solid #ccc;"></div>
+          <span>Medium correlation</span>
+
+          <div style="width: 20px; height: 20px; background-color: rgb(255, 0, 0, 0.2); border: 1px solid #ccc;"></div>
+          <span>High correlation</span>
+
+          <div style="width: 20px; height: 20px; background-color: white; border: 1px solid #ccc;"></div>
+          <span>Null correlation</span>
+
+          <span class="ms-auto">* low/medium/high correlation refers to <strong>included</strong> features only</span>
+        </div>
+        <div class="row m-1">
+          <div class="col border rounded p-2 d-flex flex-column">
+            <h6>
+              Included
+              <button id="allToExcluded" class="btn btn-sm btn-outline-danger ms-2">
+                <i class="bi bi-arrow-right"></i> Exclude All Filtered (<span id="countFilteredIncludedFeats">0</span>)
+              </button>
+            </h6>
+            <ul id="includedFeatures" class="list-group overflow-auto" style="max-height: 500px;"></ul>
           </div>
-          <div class="mb-3">
-            <select id="trainLabelsDropdown" style="width: 100%;" class="form-control" multiple="multiple"></select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-bold">Features (Selected: <span id="numSelFeats">0</span>)</label>
-            <button class="btn btn-sm btn-success ms-2" id="autoSelectBtn">
-              <i class="bi bi-magic me-1"></i> Autoselect
-            </button>
-            <input type="text" id="featureSearch" class="form-control mb-2" placeholder="Search features...">
-            <!-- <div id="featureSelector" class="border rounded p-2" style="height: 400px; overflow-y: auto;"></div> -->
-            <div class="col border rounded p-2 d-flex flex-column">
-              <h6>
-                Included
-                <button id="allToExcluded" class="btn btn-sm btn-outline-danger ms-2">
-                  <i class="bi bi-arrow-right"></i> Exclude All Filtered (<span id="countFilteredIncludedFeats">0</span>)
-                </button>
-              </h6>
-              <ul id="includedFeatures" class="list-group overflow-auto" style="max-height: 200px;"></ul>
-            </div>
-            <div class="col border rounded p-2 mt-2 d-flex flex-column">
-              <h6>
-                Excluded
-                <button id="allToIncluded" class="btn btn-sm btn-outline-success ms-2">
-                  <i class="bi bi-arrow-left"></i> Include All Filtered (<span id="countFilteredExcludedFeats">0</span>)
-                </button>
-              </h6>
-              <ul id="excludedFeatures" class="list-group overflow-auto" style="max-height: 200px;"></ul>
-            </div>
-            <div id="correlationLegend" class="d-flex align-items-center gap-2 p-2 mt-2 border rounded">
-              <div style="width: 20px; height: 20px; background-color: rgb(0, 255, 0, 0.2); border: 1px solid #ccc;"></div>
-              <span>Low correlation</span>
-
-              <div style="width: 20px; height: 20px; background-color: rgb(255, 255, 0, 0.2); border: 1px solid #ccc;"></div>
-              <span>Medium correlation</span>
-
-              <div style="width: 20px; height: 20px; background-color: rgb(255, 0, 0, 0.2); border: 1px solid #ccc;"></div>
-              <span>High correlation</span>
-
-              <div style="width: 20px; height: 20px; background-color: white; border: 1px solid #ccc;"></div>
-              <span>Null correlation</span>
-            </div>
-              * low/medium/high correlation refers to <strong>included</strong> features only
+          <div class="col border rounded p-2 d-flex flex-column">
+            <h6>
+              Excluded
+              <button id="allToIncluded" class="btn btn-sm btn-outline-success ms-2">
+                <i class="bi bi-arrow-left"></i> Include All Filtered (<span id="countFilteredExcludedFeats">0</span>)
+              </button>
+            </h6>
+            <ul id="excludedFeatures" class="list-group overflow-auto" style="max-height: 500px;"></ul>
           </div>
         </div>
-      
-        <div class="col-md-6">
-          <div class="d-flex gap-3 mb-3">
-            <button class="btn btn-success" id="trainModelBtn" onclick="trainModel()" style="display:none;">
-              <i class="bi bi-cpu me-1"></i> Train
-            </button>
-            <button class="btn btn-secondary" id="enableTrainBtn" onclick="enableTrain()" style="display:none;">
-              Train another model
-            </button>
-            <button class="btn btn-primary" id="applyTrain" style="display:none;">
-              Apply
-            </button>
-            <button class="btn btn-primary" id="applyBest" style="display:none;">
-              Apply Best
-            </button>
-            <a href="#viewTabs" class="btn btn-primary ms-auto">
-              Model History
-            </a>
-          </div>
-          <div class="card">
-            <div class="card-header bg-light fw-bold">Model Summary</div>
-            <div class="card-body">
-              <pre id="modelSummary" class="bg-light p-3 rounded small mb-0" style="white-space:pre-wrap;"></pre>
-            </div>
-          </div>
-        </div>
+      </div>
+      <hr/>
+      <div class="d-flex gap-3 mb-3">
+        <button class="btn btn-success" id="trainModelBtn" onclick="trainModel()" style="display:none;">
+          <i class="bi bi-cpu me-1"></i> Train
+        </button>
+        <button class="btn btn-secondary" id="enableTrainBtn" onclick="enableTrain()" style="display:none;">
+          Train another model
+        </button>
+        <button class="ms-auto btn btn-primary" id="applyTrain" style="display:none;">
+          Apply Selected Model
+        </button>
+        <button class="btn btn-primary" id="applyBest" style="display:none;">
+          Apply Best Model
+        </button>
       </div>
       <ul class="nav nav-tabs" id="viewTabs" role="tablist">
         <li class="nav-item" role="presentation">
@@ -534,25 +534,32 @@
         <div class="tab-content mt-3 flex-grow-1 overflow-hidden" id="viewTabsContent">
           <div class="tab-pane fade show active h-100" id="bar-view" role="tabpanel">
             <div class="card p-3 h-100">
-              <div class="row h-100">
-                <div class="col-12 col-md-4 border-end d-flex flex-column pe-3 h-100 shrink-h-20">
+              <div class="d-flex h-100">
+                <div id="model_sel_col" class="border-end d-flex flex-column" style="flex: 0 1 20%; min-width: 150px;">
                   <div class="fw-bold mb-2">Models</div>
-                  <div id="modelScroll" class="overflow-auto flex-grow-1 min-vh-0">
-                  </div>
+                  <div id="modelScroll" class="overflow-auto flex-grow-1 min-vh-0"></div>
                 </div>
-                <div class="col-12 col-md-8 d-flex flex-column shrink-h-80">
+              
+                <div class="resizer col-auto d-none d-md-block" data-left-col="model_sel_col" data-right-col="model_plot_col"></div>
+              
+                <div id="model_plot_col" class="border-end d-flex flex-column flex-grow-1" style="flex: 1 1 55%; min-width: 300px;">
                   <select id="labelForMetrics" onchange="toggleBarsForLabel()" class="filter-dropdown">
                     <option value="all">All Labels</option>
                   </select>
-                  <div>
-                    <div id="chartScrollWrapper" class="overflow-auto">
-                      <div id="chartCanvasWrapper">
-                        <canvas id="modelsBarChart" style="min-height: 500px;max-height: 500px"></canvas>
-                      </div>
+                  <div id="chartScrollWrapper" class="overflow-auto">
+                    <div id="chartCanvasWrapper">
+                      <canvas id="modelsBarChart" style="min-height: 500px; max-height: 500px;"></canvas>
                     </div>
                   </div>
                 </div>
-              </div>
+              
+                <div class="resizer col-auto d-none d-md-block" data-left-col="model_plot_col" data-right-col="model_summary_col"></div>
+              
+                <div id="model_summary_col" class="d-flex flex-column" style="flex: 0 1 20%; min-width: 200px;">
+                  <div class="fw-bold mb-2">Model Summary</div>
+                  <pre id="modelSummary" class="bg-light p-2 rounded small mb-0 flex-grow-1" style="white-space:pre-wrap;"></pre>
+                </div>
+              </div>              
             </div>
           </div>
       
@@ -578,71 +585,70 @@
           </div>
         </div>
       </div>
-
     </div>
     <!--APPLY-->
     <div class="tab-pane fade" id="nav-apply" role="tabpanel" aria-labelledby="nav-apply-tab">
+      <div class="max-width-500">
+        <label for="segmentDropdown_apply" class="form-label">Segment ID</label>
+        <div class="d-flex align-items-center">
+          <button id="aplPreUsr" class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" disabled="disabled" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
+          <button id="aplPreSgm" class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" disabled="disabled" onclick="prevOption('#segmentDropdown_apply')">&lt;</button>
+          <select class="form-control flex-grow-1 me-1" id="segmentDropdown_apply"></select>
+          <button id="aplNxtSgm" class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" disabled="disabled" onclick="nextOption('#segmentDropdown_apply')">&gt;</button>
+          <button id="aplNxtUsr" class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" disabled="disabled" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
+        </div>          
+      </div>
+      <hr/>
       <div class="mb-3 row g-3 align-items-end">
-    
-        <div class="col-md-5">
-          <label for="segmentDropdown_apply" class="form-label">Segment ID</label>
-          <div class="d-flex align-items-center">
-            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
-            <button class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" onclick="prevOption('#segmentDropdown_apply')">&lt;</button>
-            <select class="form-control flex-grow-1 me-1" id="segmentDropdown_apply"></select>
-            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" onclick="nextOption('#segmentDropdown_apply')">&gt;</button>
-            <button class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
-          </div>          
-        </div>
-    
-        <div class="col-md-3">
-          <div class="d-flex justify-content-between align-items-center mb-1">
+        <div class="col-md-4">
+          <!-- <div class="d-flex justify-content-between align-items-center mb-1">
             <label for="labelsDropdown_apply" class="form-label mb-0">Predicted Label</label>
-          </div>
-
-          <select id="labelsDropdown_apply" style="width: 100%;" class="form-control" multiple="multiple"></select>
+          </div> -->
+          <label for="labelsDropdown_apply" class="form-label">Predicted Label</label>
+          <select id="labelsDropdown_apply" disabled="disabled" style="width: 100%;" class="form-control" multiple="multiple"></select>
         </div>
     
         <div class="col-md-2">
           <label for="confidence" class="form-label">Confidence</label>
           <input type="text" class="form-control" id="confidence" disabled placeholder="..." aria-label="">
         </div>
-        <div class="col-md-1">
-          <div id="accept-count" class="text-muted mb-1">Accepts: 0</div>
+        <div class="ms-auto col-auto">
+          <label id="accept-count" class="form-label text-muted">Accepts: 0</label>
           <button class="btn btn-success w-100" type="button" onclick="acceptLabel()">Apply</button>
         </div>
-        <div class="col-md-1">
-          <div id="reject-count" class="text-muted mb-1">Rejects: 0</div>
+        <div class="col-auto">
+          <label id="reject-count" class="form-label text-muted">Rejects: 0</label>
           <button class="btn btn-danger w-100" onclick="rejectLabel()" type="button">Reject</button>
         </div>
       </div>
-      
-      <table id="applyTable" class="table table-striped table-bordered" style="width:100%">
-        <thead>
-          <tr>
-            <th>Index</th>
-            <th>Event Name</th>
-            <th>Event Description</th>
-            <th>Job Name</th>
-            <th>Time</th>
-            <th>Segment ID</th>
-            <th>Segment labels</th>
-            <th>Label justif.</th>
-            <th>Session ID</th>
-            <th>App ID</th>
-            <th>Event Data</th>
-            <th>Event Source</th>
-            <th>App Version</th>
-            <th>App Branch</th>
-            <th>Log Version</th>
-            <th>Offset</th>
-            <th>User ID</th>
-            <th>User Data</th>
-            <th>Game State</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="card p-3">
+        <table id="applyTable" class="table table-striped table-bordered" style="width:100%">
+          <thead>
+            <tr>
+              <th>Index</th>
+              <th>Event Name</th>
+              <th>Event Description</th>
+              <th>Job Name</th>
+              <th>Time</th>
+              <th>Segment ID</th>
+              <th>Segment labels</th>
+              <th>Label justif.</th>
+              <th>Session ID</th>
+              <th>App ID</th>
+              <th>Event Data</th>
+              <th>Event Source</th>
+              <th>App Version</th>
+              <th>App Branch</th>
+              <th>Log Version</th>
+              <th>Offset</th>
+              <th>User ID</th>
+              <th>User Data</th>
+              <th>Game State</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
 
   </div>
@@ -685,7 +691,29 @@
   </div>
 </div>
 
+<!-- DELETE FILE MODAL -->
+<div class="modal fade" id="deleteFileModal" tabindex="-1" aria-labelledby="deleteFileModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteFileModalLabel">Confirm Dataset Deletion</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        This will delete the DATASET
+        <code><span id="deleteFileName"></span></code><br>
+        and all the TRAINED MODELS associated with it.<br>
+        Are you sure you want to continue?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="deleteFileAccept" type="button" class="btn btn-primary">Yes, Continue</button>
+      </div>
+    </div>
+  </div>
+</div>
 
+<!-- ERROR MODAL -->
 <div class="modal fade" id="errorsModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
