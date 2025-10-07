@@ -15,11 +15,11 @@ def get_models_filename(filepath):
     return model_filename
 
 
-def get_models_list(filepath):
+def get_models_list(filepath, username):
     models_filepath = get_models_filename(filepath)
     if os.path.exists(models_filepath):
         with open(models_filepath, "r", encoding="utf-8") as f:
-            return json.load(f)
+            return [model for model in json.load(f) if model.get("username", "") == username]
     else:
         return []
 
@@ -28,7 +28,7 @@ def get_predicted_label(filepath, user_id, segment_id):
     """
     Get predicted label for selected `user_id` and `segment_id`
     """
-    df = read_dataset(filepath)
+    df = read_dataset(filepath, None)
     if ("predicted_labels" not in df.columns) or (segment_id is None):
         return None, None
 
@@ -51,8 +51,8 @@ def find_model_info(filepath, model_path):
     return matched[0] if matched else None
 
 
-def inference(filepath, model_path):
-    df_processed = preprocess_df(filepath)
+def inference(filepath, username, model_path):
+    df_processed = preprocess_df(filepath, username)
     model_info = find_model_info(filepath, model_path)
 
     X = df_processed.select(model_info["include_features"]).to_numpy()
@@ -87,7 +87,7 @@ def inference(filepath, model_path):
         ]
     )
 
-    df = read_dataset(filepath, False)
+    df = read_dataset(filepath, None, False)
     df = df.drop(["predicted_labels", "prediction_confidence"], strict=False)
 
     df = df.with_columns(

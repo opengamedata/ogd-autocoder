@@ -21,11 +21,11 @@ RANDOM_STATE = 13
 
 
 def train_model(
-    filepath, model_type, hyperparameters, include_labels, include_features, models_dir
+    filepath, username, model_type, hyperparameters, include_labels, include_features, models_dir
 ):
     start_time = time.time()
 
-    train_df = preprocess_df(filepath).to_pandas()
+    train_df = preprocess_df(filepath, username).to_pandas()
     # train_df = clean_agg_df.categorize(columns=["job_name"])
     # train_df = dd.get_dummies(train_df, columns=["job_name"], dtype=float)
 
@@ -141,6 +141,7 @@ def train_model(
     model_info["output"] = output
     model_info["time_taken"] = time_taken
     model_info["timestamp_end"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    model_info["username"] = username
 
     # for model comparison
     models_filepath = get_models_filename(filepath)

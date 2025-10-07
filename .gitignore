@@ -3,6 +3,7 @@
 /experiments/*
 /data_may_2024/*
 .vscode/*
+designs/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

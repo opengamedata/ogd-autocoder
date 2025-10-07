@@ -3,15 +3,14 @@ Code related to segmenting (manually or auto) the dataframe
 """
 
 import polars as pl
-from dataset import read_dataset
+from dataset import read_dataset, read_labels_for_username, get_labels_filename
 
 
-def segment_ids_for_user(filepath, user_id):
+def segment_ids_for_user(df, user_id):
     """
     List ordered segment ids with their label for the selected `user_id`
     Also adds the `job_name` if column exists
     """
-    df = read_dataset(filepath)
 
     # cast to int to sort correctly - fixme sort by timestamp
     df_user = df.filter(pl.col("user_id") == user_id).with_columns(
@@ -37,7 +36,11 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
     For a `user_id` apply segment_id on selected_rows (row identifiers => index + session_id columns)
     Clears segment labels for all affected segments
     """
-    df = read_dataset(filepath, False)
+
+    labels_filename = get_labels_filename(filepath)
+    labels_df = read_labels_for_username(labels_filename, None)
+    
+    df = read_dataset(filepath, None, False)
 
     df = df.with_columns(
         (
@@ -58,6 +61,9 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
         .alias("segment_id")
     )
 
+    df = df.drop("row_id")
+    df.write_csv(filepath, separator="\t")
+
     # clear labels for segment if changed
     new_segments = df.select(pl.col("segment_id"))
     # affected segments
@@ -73,11 +79,12 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
         # target segment also
         changed_ids.add(str(update_val))
 
-    change_filter = (pl.col("user_id") == user_id) & pl.col("segment_id").is_in(
-        changed_ids
+    change_filter = (
+        (pl.col("user_id") == user_id)
+        & pl.col("segment_id").is_in(changed_ids)
     )
 
-    df = df.with_columns(
+    labels_df = labels_df.with_columns(
         [
             pl.when(change_filter)
             .then(pl.lit(None))
@@ -89,9 +96,7 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
             .alias("label_justification"),
         ]
     )
-
-    df = df.drop("row_id")
-    df.write_csv(filepath, separator="\t")
+    labels_df.write_csv(labels_filename, separator="\t")
 
 
 def autosegment_by_event_type(filepath, sep_event_types):
@@ -102,7 +107,10 @@ def autosegment_by_event_type(filepath, sep_event_types):
     sep_event_types: list of event types by which we should separate ito segments
     """
 
-    df = read_dataset(filepath, False)
+    labels_filename = get_labels_filename(filepath)
+    labels_df = read_labels_for_username(labels_filename, None)
+
+    df = read_dataset(filepath, None, False)
     df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))
 
     df = df.sort("timestamp")
@@ -131,5 +139,8 @@ def autosegment_by_event_type(filepath, sep_event_types):
         .alias("segment_id")
     )
 
-    df = df.with_columns(pl.lit(None).alias("segment_labels"))
     df.write_csv(filepath, separator="\t")
+
+    # clearing segment_labels column
+    labels_df = labels_df.with_columns(pl.lit(None).alias("segment_labels"))
+    labels_df.write_csv(labels_filename, separator="\t")

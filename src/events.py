@@ -11,7 +11,7 @@ def event_filtering(filepath, included_events):
     """
     Updates filtered_in column setting to `True` if event_name in the included_events list
     """
-    df = read_dataset(filepath, False)
+    df = read_dataset(filepath, None, False)
 
     df = df.with_columns(
         (pl.col("event_name").is_in(included_events)).alias("filtered_in")
@@ -33,7 +33,7 @@ def describe_events(filepath, descriptions_map):
     """
     Fills new column "event_description" using descriptions_map (dictionary mapping event_name to template)
     """
-    df = read_dataset(filepath, False)
+    df = read_dataset(filepath, None, False)
     for ev_name, template in descriptions_map.items():
         df = df.with_columns(
             pl.when(pl.col("event_name") == ev_name)

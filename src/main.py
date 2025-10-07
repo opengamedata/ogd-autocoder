@@ -7,9 +7,10 @@ from preprocess import available_features
 from segment import autosegment_by_event_type, segment_ids_for_user, segment_rows
 from label import label_rows, list_seg_labels
 from events import event_filtering, describe_events
+from review import compare_labels, copy_labels, inter_rater_reliability
 from train import train_model
 from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, jsonify, send_file, request, abort
+from flask import Flask, render_template, request, jsonify, send_file, request, abort, after_this_request
 from datetime import datetime
 from functools import wraps
 
@@ -53,6 +54,7 @@ def index():
             for f in os.listdir(UPLOAD_FOLDER)
             if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))
             and not os.path.splitext(f)[0].endswith("_models")
+            and not os.path.splitext(f)[0].endswith("_labels")
             and f.endswith(".tsv")
             and "_" in f
         ]
@@ -102,6 +104,26 @@ def upload_file():
     formatted = (
         filename.split("_", 1)[1] + " " + filename.split("_", 1)[0].replace("T", " ")
     )
+    df = read_dataset(filepath, None, False)
+    cols = set(df.columns)
+    
+    if {"segment_id", "segment_labels"}.issubset(cols):
+        # if loading an already labeled dataset (exported using download btn)
+        labels_cols = ["segment_id", "user_id", "segment_labels"]
+        if "label_justification" in cols:
+            labels_cols.append("label_justification")
+        
+        df_labels = df.select(labels_cols).unique()
+        
+        if "label_justification" not in cols:
+            df_labels = df_labels.with_columns(pl.lit(None).alias("label_justification"))
+
+        df_labels = df_labels.with_columns(pl.lit(request.cookies.get("username")).alias("username"))
+
+        labels_filepath = get_labels_filename(filepath)
+        df_labels = df_labels.select(["username", "segment_id", "user_id", "segment_labels", "label_justification"])
+        df_labels.write_csv(labels_filepath, separator="\t")
+
     return jsonify({"filename": filename, "formatted": formatted})
 
 
@@ -112,7 +134,7 @@ def models_list():
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
 
-    return jsonify({"data": get_models_list(filepath)})
+    return jsonify({"data": get_models_list(filepath, request.cookies.get("username"))})
 
 
 @app.route("/users_list", methods=["POST"])
@@ -121,7 +143,7 @@ def users_list():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    df = read_dataset(filepath)
+    df = read_dataset(filepath, request.cookies.get("username"))
     return jsonify({"users": get_users_list(df)})
 
 
@@ -142,7 +164,7 @@ def dataset_info():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    df = read_dataset(filepath, False)
+    df = read_dataset(filepath, request.cookies.get("username"), False)
     return jsonify({"data": get_dataset_info(df)})
 
 
@@ -163,8 +185,8 @@ def list_segment_ids(user_id):
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-
-    return jsonify({"data": segment_ids_for_user(filepath, user_id)})
+    df = read_dataset(filepath, request.cookies.get("username"))
+    return jsonify({"data": segment_ids_for_user(df, user_id)})
 
 
 @app.route("/labels_value_count", methods=["POST"])
@@ -173,7 +195,7 @@ def labels_value_count():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    df = read_dataset(filepath)
+    df = read_dataset(filepath, request.cookies.get("username"))
     return jsonify({"data": segment_labels_count(df)})
 
 
@@ -183,8 +205,8 @@ def list_labels():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-
-    return jsonify({"data": list_seg_labels(filepath)})
+    df = read_dataset(filepath, request.cookies.get("username"))
+    return jsonify({"data": list_seg_labels(df)})
 
 
 @app.route("/list_available_features", methods=["POST"])
@@ -193,7 +215,7 @@ def list_available_features():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    return jsonify({"data": available_features(filepath)})
+    return jsonify({"data": available_features(filepath, request.cookies.get("username"))})
 
 
 @app.route("/correlation_matrix", methods=["POST"])
@@ -202,7 +224,7 @@ def correlation_matrix():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    return jsonify({"data": correlation(filepath, request.json["include_labels"])})
+    return jsonify({"data": correlation(filepath, request.cookies.get("username"), request.json["include_labels"])})
 
 
 @app.route("/events/<user_id>", methods=["POST"])
@@ -211,7 +233,7 @@ def events(user_id):
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    df = read_dataset(filepath)
+    df = read_dataset(filepath, request.cookies.get("username"))
     user_events = find_by_user_and_segment(
         df, user_id, request.json.get("segment_id")
     )
@@ -244,8 +266,36 @@ def label(user_id):
     segment_labels = request.json.get("segment_labels")
     label_justification = request.json.get("label_justification")
 
-    label_rows(filepath, user_id, segment_id, segment_labels, label_justification)
+    labels_filepath = get_labels_filename(filepath)
+    label_rows(labels_filepath, request.cookies.get("username"), user_id, segment_id, segment_labels, label_justification)
     return jsonify({"success": True})
+
+@app.route("/compare_labels", methods=["POST"])
+@safe
+def compareLabels():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+
+    return jsonify({"data": compare_labels(filepath).fill_null("-").to_dicts()})
+
+@app.route("/copy_labels", methods=["POST"])
+@safe
+def copyLabels():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+
+    return jsonify({"data": copy_labels(filepath, request.json["from_username"], request.cookies.get("username"), request.json["ids"])})
+
+@app.route("/inter_rater_reliability", methods=["POST"])
+@safe
+def interRaterReliability():
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
+    )
+
+    return jsonify({"data": inter_rater_reliability(filepath)})
 
 
 @app.route("/autosegment", methods=["POST"])
@@ -267,7 +317,7 @@ def autoselect():
     )
 
     return jsonify(
-        {"features": autoselect_features(filepath, request.json["include_labels"])}
+        {"features": autoselect_features(filepath, request.cookies.get("username"), request.json["include_labels"])}
     )
 
 
@@ -277,7 +327,7 @@ def infere():
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
-    inference(filepath, request.json["model_path"])
+    inference(filepath, request.cookies.get("username"), request.json["model_path"])
 
     return jsonify({"success": True})
 
@@ -305,6 +355,7 @@ def get_pca_details():
     return jsonify(
         pca_details(
             filepath,
+            request.cookies.get("username"),
             request.json["hyperparameters"],
             request.json["include_labels"],
             request.json["include_features"],
@@ -321,6 +372,7 @@ def train():
     
     output, model_info = train_model(
         filepath,
+        request.cookies.get("username"),
         request.json["model_type"],
         request.json["hyperparameters"],
         request.json["include_labels"],
@@ -345,8 +397,17 @@ def download_file():
     if not os.path.isfile(filepath):
         return abort(404, description="File not found.")
 
+    df = read_dataset(filepath, request.cookies.get("username"), False)
+    temp_path = os.path.join(app.config["UPLOAD_FOLDER"], "download.tsv")
+    df.drop(["predicted_labels", "prediction_confidence"], strict=False).write_csv(temp_path, separator="\t")
+    
+    @after_this_request
+    def remove_temp_file(response):
+        os.remove(temp_path)
+        return response
+
     return send_file(
-        filepath, as_attachment=True, download_name=filename.split("_", maxsplit=1)[1]
+        temp_path, as_attachment=True, download_name=filename.split("_", maxsplit=1)[1]
     )
 
 
