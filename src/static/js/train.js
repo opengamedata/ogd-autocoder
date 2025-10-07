@@ -45,7 +45,7 @@ function fillPCAPlot() {
     let model_type = $('#modelTabs .nav-link.active').attr('id').replace('-tab', '');
     let features = [];
     $('#includedFeatures').children('li').each(function () {
-        features.push($(this).data("event-name"));
+        features.push($(this).data("elem-name"));
     });
     $.ajax({
         url: 'pca_details',
@@ -79,7 +79,7 @@ function trainModel() {
     let model_type = $('#modelTabs .nav-link.active').attr('id').replace('-tab', '');
     let features = [];
     $('#includedFeatures').children('li').each(function () {
-        features.push($(this).data("event-name"));
+        features.push($(this).data("elem-name"));
     });
     $.ajax({
         url: 'train_model',
@@ -343,18 +343,17 @@ function addModel(model_info) {
         }
     }
 }
-
-$("#allToExcluded").on('click', () => {
-    $('#includedFeatures').children("li:visible").each(function () {
-        $(this).find("button").click();
+function addMoveAllElemsHandler(buttonId, fromListId) {
+    $(buttonId).on('click', () => {
+        $(fromListId).children("li:visible").each(function () {
+            $(this).find("button").click();
+        });
     });
-})
-
-$("#allToIncluded").on('click', () => {
-    $('#excludedFeatures').children("li:visible").each(function () {
-        $(this).find("button").click();
-    });
-})
+}
+addMoveAllElemsHandler("#allToExcluded", "#includedFeatures");
+addMoveAllElemsHandler("#allToIncluded", "#excludedFeatures");
+addMoveAllElemsHandler("#allToExcludedEvt", "#includedEvents");
+addMoveAllElemsHandler("#allToIncludedEvt", "#excludedEvents");
 
 /**
  * Fill the input parameters (model type, features, hyperparameters, summary)
@@ -377,13 +376,13 @@ function fillModelParamsFromExisting(model_info) {
     setHyperparameters(model_info["model_type"], model_info["hyperparameters"]);
 
     $('#includedFeatures').children("li").each(function () {
-        if (!model_info["include_features"].includes($(this).data("event-name"))) {
+        if (!model_info["include_features"].includes($(this).data("elem-name"))) {
             // excluding feature
             $(this).find("button").click();
         }
     });
     $('#excludedFeatures').children("li").each(function () {
-        if (model_info["include_features"].includes($(this).data("event-name"))) {
+        if (model_info["include_features"].includes($(this).data("elem-name"))) {
             // include feature
             $(this).find("button").click();
         }
@@ -393,7 +392,7 @@ function fillModelParamsFromExisting(model_info) {
     $('#excludedFeatures button').prop('disabled', true);
     $("#allToExcluded").prop('disabled', true);
     $("#allToIncluded").prop('disabled', true);
-    updateNumSelectedFeatures();
+    updateNumSelected('#includedFeatures', '#excludedFeatures', true);
 
     $('#logisticLambda').prop('disabled', true);
     $('#logisticPenalty').prop('disabled', true);
@@ -655,13 +654,13 @@ $('#autoSelectBtn').on('click', () => {
             $('#spinner').addClass("d-none");
             let autofeatures = response.features;
             $('#includedFeatures').children("li").each(function () {
-                if (!autofeatures.includes($(this).data("event-name"))) {
+                if (!autofeatures.includes($(this).data("elem-name"))) {
                     // excluding feature
                     $(this).find("button").click();
                 }
             });
             $('#excludedFeatures').children("li").each(function () {
-                if (autofeatures.includes($(this).data("event-name"))) {
+                if (autofeatures.includes($(this).data("elem-name"))) {
                     // include feature
                     $(this).find("button").click();
                 }
@@ -685,12 +684,12 @@ async function fillFeatureList() {
             let data = response.data;
             // fillInclExcLists has a handling for updating num selected features (moveEvent function)
             fillInclExcLists(data.included_features, data.excluded_features, "#includedFeatures", "#excludedFeatures");
-            updateNumSelectedFeatures();
+            updateNumSelected('#includedFeatures', '#excludedFeatures', true);
             $('#featureSearch').on('input', function () {
                 const query = $(this).val().toLowerCase();
 
                 $('#includedFeatures').children('li').each(function () {
-                    const featureName = $(this).data("event-name").toLowerCase();
+                    const featureName = $(this).data("elem-name").toLowerCase();
 
                     if (featureName.includes(query)) {
                         $(this).removeClass('d-none');
@@ -700,7 +699,7 @@ async function fillFeatureList() {
                 });
 
                 $('#excludedFeatures').children('li').each(function () {
-                    const featureName = $(this).data("event-name").toLowerCase();
+                    const featureName = $(this).data("elem-name").toLowerCase();
 
                     if (featureName.includes(query)) {
                         $(this).removeClass('d-none');
@@ -708,7 +707,7 @@ async function fillFeatureList() {
                         $(this).addClass('d-none');
                     }
                 });
-                updateNumSelectedFeatures();
+                updateNumSelected('#includedFeatures', '#excludedFeatures', true);
             });
         },
         error: function (xhr, status, error) {
@@ -751,11 +750,11 @@ function recalculateMaxCorrelation() {
     let included_features = [];
     let all_features = [];
     $('#includedFeatures').children('li').each(function () {
-        included_features.push($(this).data("event-name"));
-        all_features.push($(this).data("event-name"));
+        included_features.push($(this).data("elem-name"));
+        all_features.push($(this).data("elem-name"));
     });
     $('#excludedFeatures').children('li').each(function () {
-        all_features.push($(this).data("event-name"));
+        all_features.push($(this).data("elem-name"));
     });
     if (included_features.length < 2) {
         $(`#includedFeatures li`).css("background-color", "white");
@@ -778,17 +777,11 @@ function recalculateMaxCorrelation() {
                     g = Math.round(255 * ((1 - max_corr) * 2));
                 }
 
-                let elem = $(`[data-event-name="${feat}"]`);
+                let elem = $(`[data-elem-name="${feat}"]`);
                 elem.css("background-color", `rgb(${r}, ${g}, ${b}, 0.2)`);
             }
         }
     }
-}
-
-function updateNumSelectedFeatures() {
-    $("#numSelFeatures").text($('#includedFeatures').children().length);
-    $("#countFilteredIncluded").text($('#includedFeatures').children(":visible").length);
-    $("#countFilteredExcluded").text($('#excludedFeatures').children(":visible").length);
 }
 
 function enableTrain() {

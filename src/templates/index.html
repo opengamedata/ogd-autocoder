@@ -99,19 +99,31 @@
             </div>
             
             <div class="d-flex my-3 gap-3 align-items-center">
-              <h5 class="my-0">Event Filtering</h5>
-              <button onclick="filterDataset()" class="btn btn-outline-primary btn-sm">
+              <h5 class="my-0">Event Filtering (Selected: <span id="numSelEvts">0</span>)</h5>
+              <button id="saveFilterBtn" onclick="filterDataset()" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-floppy"></i>
               </button>
             </div>
-
+            <div class="row m-1">
+              <input type="text" id="evTypesSearch" class="form-control" placeholder="Search event types...">
+            </div>
             <div class="row m-1">
               <div class="col border rounded p-2 d-flex flex-column">
-                <h6>Included Events</h6>
+                <h6>
+                  Included Events
+                  <button id="allToExcludedEvt" class="btn btn-sm btn-outline-danger ms-2">
+                    <i class="bi bi-arrow-right"></i> Exclude All Filtered (<span id="countFilteredIncludedEvts">0</span>)
+                  </button>
+                </h6>
                 <ul id="includedEvents" class="list-group overflow-auto" style="max-height: 200px;"></ul>
               </div>
               <div class="col border rounded p-2 d-flex flex-column">
-                <h6>Excluded Events</h6>
+                <h6>
+                  Excluded Events
+                  <button id="allToIncludedEvt" class="btn btn-sm btn-outline-success ms-2">
+                    <i class="bi bi-arrow-left"></i> Include All Filtered (<span id="countFilteredExcludedEvts">0</span>)
+                  </button>
+                </h6>
                 <ul id="excludedEvents" class="list-group overflow-auto" style="max-height: 200px;"></ul>
               </div>
             </div>
@@ -403,7 +415,7 @@
             <select id="trainLabelsDropdown" style="width: 100%;" class="form-control" multiple="multiple"></select>
           </div>
           <div class="mb-3">
-            <label class="form-label fw-bold">Features (Selected: <span id="numSelFeatures">0</span>)</label>
+            <label class="form-label fw-bold">Features (Selected: <span id="numSelFeats">0</span>)</label>
             <button class="btn btn-sm btn-success ms-2" id="autoSelectBtn">
               <i class="bi bi-magic me-1"></i> Autoselect
             </button>
@@ -413,7 +425,7 @@
               <h6>
                 Included
                 <button id="allToExcluded" class="btn btn-sm btn-outline-danger ms-2">
-                  <i class="bi bi-arrow-right"></i> Exclude All Filtered (<span id="countFilteredIncluded">0</span>)
+                  <i class="bi bi-arrow-right"></i> Exclude All Filtered (<span id="countFilteredIncludedFeats">0</span>)
                 </button>
               </h6>
               <ul id="includedFeatures" class="list-group overflow-auto" style="max-height: 200px;"></ul>
@@ -422,7 +434,7 @@
               <h6>
                 Excluded
                 <button id="allToIncluded" class="btn btn-sm btn-outline-success ms-2">
-                  <i class="bi bi-arrow-left"></i> Include All Filtered (<span id="countFilteredExcluded">0</span>)
+                  <i class="bi bi-arrow-left"></i> Include All Filtered (<span id="countFilteredExcludedFeats">0</span>)
                 </button>
               </h6>
               <ul id="excludedFeatures" class="list-group overflow-auto" style="max-height: 200px;"></ul>

@@ -35,4 +35,10 @@
         overflow: auto; /* ensure content scrolls if it’s taller */
     }
 }
+
+#numSelEvts {
+    display: inline-block;
+    min-width: 3ch;
+    text-align: right;
+}
   

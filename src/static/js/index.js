@@ -137,6 +137,8 @@ function onFileChange(filename, load_models) {
     $('span[data-field="filename"]').text(filename);
     $('#datasetsScroll').find('button').removeClass('btn-dark');
     $(`#datasetsScroll button[data-filename="${filename}"]`).addClass('btn-dark');
+    $('#saveFilterBtn').attr('disabled', true);
+    $('#saveFilterBtn').removeClass('btn-outline-primary').addClass('btn-outline-secondary');
 
     let promises = [fillDatasetInfo()];
     resetTrainView();
