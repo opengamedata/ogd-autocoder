@@ -9,13 +9,24 @@
 <script src="static/js/segment.js" defer></script>
 <script src="static/js/index.js" defer></script>
 <script src="static/js/label.js" defer></script>
+<script src="static/js/review.js" defer></script>
 <script src="static/js/train.js" defer></script>
 <script src="static/js/apply.js" defer></script>
 <script src="static/js/on_ready.js" defer></script>
 {% endblock %}
 {% block content %}
 <div class="container py-2">
-  <h2 class="text-center">SE6MEN7AT0R</h2>
+  <div class="d-flex align-items-center justify-content-between position-relative">
+    <div class="d-flex align-items-center">
+      <i class="bi bi-person-circle fs-3 me-2"></i>
+      <span id="username_display" class="fw-semibold"></span>
+      <button id="logout_btn" class="ms-2 btn btn-outline-danger btn-sm d-none" data-toggle="tooltip" title="Log Out">
+        <i class="bi bi-box-arrow-right"></i>
+      </button>
+    </div>
+    <h2 class="position-absolute start-50 translate-middle-x m-0">SE6MEN7AT0R</h2>
+  </div>
+  
   <h5 class="text-center" id="labelsValueCount">&nbsp;</h2>
   
   <div id="spinner" class="d-none position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-50" style="z-index: 10;">
@@ -23,12 +34,23 @@
       <span class="visually-hidden">Loading...</span>
     </div>
   </div>
-
+  <div id="login" class="d-none position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center bg-white bg-opacity-50" style="z-index: 10;">
+    <div class="card p-4 shadow rounded" style="min-width: 300px; max-height: 200px;">
+      <h5 class="text-center mb-3">Welcome!</h5>
+      <form id="login_form">
+        <div class="mb-3">
+          <input type="text" id="login_username" class="form-control" placeholder="Username" required>
+        </div>
+        <button id="login_submit" type="submit" class="btn btn-primary w-100">Start</button>
+      </form>
+    </div>
+  </div>
   <nav id="stages-navigator">
     <div class="nav nav-tabs" id="nav-tab" role="tablist">
       <button class="nav-link active" id="nav-data-tab" data-bs-toggle="tab" data-bs-target="#nav-data" type="button" role="tab" aria-controls="nav-data" aria-selected="true">DATA</button>
       <button class="nav-link disabled" id="nav-segment-tab" data-bs-toggle="tab" data-bs-target="#nav-segment" type="button" role="tab" aria-controls="nav-segment" aria-selected="true">SEGMENT</button>
       <button class="nav-link disabled" id="nav-label-tab" data-bs-toggle="tab" data-bs-target="#nav-label" type="button" role="tab" aria-controls="nav-label" aria-selected="false">LABEL</button>
+      <button class="nav-link disabled" id="nav-review-tab" data-bs-toggle="tab" data-bs-target="#nav-review" type="button" role="tab" aria-controls="nav-review" aria-selected="false">REVIEW</button>
       <button class="nav-link disabled" id="nav-train-tab" data-bs-toggle="tab" data-bs-target="#nav-train" type="button" role="tab" aria-controls="nav-train" aria-selected="false">TRAIN</button>
       <button class="nav-link disabled" id="nav-apply-tab" data-bs-toggle="tab" data-bs-target="#nav-apply" type="button" role="tab" aria-controls="nav-apply" aria-selected="false">APPLY</button>
       <button class="nav-link disabled" id="downloadBtn"><i class="bi bi-download me-1"></i> DOWNLOAD</button>
@@ -265,6 +287,18 @@
           <tbody></tbody>
         </table>
       </div>
+    </div>
+    <!--REVIEW-->
+    <div class="tab-pane fade" id="nav-review" role="tabpanel" aria-labelledby="nav-review-tab">
+      <div id="kappaSummary" class="mt-3">
+        <h6 class="fw-bold mb-2">Inter-rater Reliability (Fleiss & Cohen's Kappas)</h6>
+        <h6>Overall: <span id="fleissCoef"></span></h6>
+        <ul id="kappaList"></ul>
+      </div>
+      <table id="reviewTable" class="table table-bordered table-striped mb-0">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
     </div>
     <!--TRAIN-->
     <div class="tab-pane fade" id="nav-train" role="tabpanel" aria-labelledby="nav-train-tab">
@@ -692,6 +726,25 @@
         <button type="button" class="btn btn-secondary ms-auto" data-bs-dismiss="modal">
           Close
         </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Copy Labels MODAL -->
+<div class="modal fade" id="copyLabelsModal" tabindex="-1" aria-labelledby="copyLabelsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="copyLabelsModalLabel">Confirm Auto Segmentation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+      This will overwrite all of your EXISTING LABELS with labels from user <span id="copyLabelsUser"></span>. Are you sure you want to continue?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmCopyBtn">Yes, Continue</button>
       </div>
     </div>
   </div>

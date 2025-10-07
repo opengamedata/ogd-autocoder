@@ -81,7 +81,8 @@ async function labelRows(seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id = nul
         promises.push(fillLabelDropdowns());
         promises.push(fillLabelsCount());
         // maybe instead use https://stackoverflow.com/questions/37330407/jquery-select2-change-option-text
-        promises.push(fillSegmentDropdown(seg_dropdown_id, false));
+        $('#seg_dropdown_id').data('value-after-update', selectedSegment);
+        promises.push(fillSegmentDropdown(seg_dropdown_id));
 
         Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
     });
@@ -119,14 +120,14 @@ function prevOption(dropdown_id) {
 
 /**
  * Loads and populates the segment dropdown for the current user
- * if reset_value = false - preserves the previously selected segment if available.
  * Once loaded, triggers load events for the segment
- *
+ * IMPORTANT: If data-value-after-update attribute is set, then that value is assigned after filling the dropdown
+ * otherwise - clears the value
+ * 
  * @param {string} dropdown_id - Selector for the segment dropdown to fill.
- * @param {boolean} reset_value - whether to preserves previous value
+ * 
  */
-async function fillSegmentDropdown(dropdown_id, reset_value = true) {
-    const previousValue = $(dropdown_id).val();
+async function fillSegmentDropdown(dropdown_id) {
     $(dropdown_id).empty();
     const user_id = $('#userDropdown').val();
     if (!user_id) {
@@ -144,8 +145,9 @@ async function fillSegmentDropdown(dropdown_id, reset_value = true) {
             $(dropdown_id).append(`<option value="${seg.segment_id}">${seg.segment_id} (${lbl ?? "---"})</option>`);
         });
 
-        if (!reset_value && previousValue && $(`${dropdown_id} option[value="${previousValue}"]`).length > 0) {
-            $(dropdown_id).val(previousValue);
+        if ($(dropdown_id).data('value-after-update')) {
+            $(dropdown_id).val($(dropdown_id).data('value-after-update'));
+            $(dropdown_id).removeData('value-after-update');
         }
 
         $(dropdown_id).trigger('change');

@@ -914,6 +914,7 @@ dependencies = [
     { name = "polars-lts-cpu" },
     { name = "pyarrow" },
     { name = "scikit-learn" },
+    { name = "statsmodels" },
     { name = "torch" },
 ]
 
@@ -938,6 +939,7 @@ requires-dist = [
     { name = "polars-lts-cpu", specifier = ">=1.32.3" },
     { name = "pyarrow", specifier = ">=20.0.0" },
     { name = "scikit-learn", specifier = ">=1.7.0" },
+    { name = "statsmodels", specifier = ">=0.14.5" },
     { name = "torch", specifier = "==2.2" },
 ]
 
