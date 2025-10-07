@@ -21,6 +21,21 @@ $('#labelsDropdown_apply').select2({
 
 $('#segmentDropdown_apply').on('change', function () {
     $('#spinner').removeClass("d-none");
+
+    const options = $(this).find('option');
+    const current = $(this).prop('selectedIndex');
+    if (current == options.length - 1 || $(this).val() == null) {
+        $('#aplNxtSgm').prop('disabled', true);
+    } else {
+        $('#aplNxtSgm').prop('disabled', false);
+    }
+
+    if (current == 0 || $(this).val() == null) {
+        $('#aplPreSgm').prop('disabled', true);
+    } else {
+        $('#aplPreSgm').prop('disabled', false);
+    }
+
     let promises = []
     promises.push(loadEvents('#applyTable', '#segmentDropdown_apply'));
     promises.push(getPredictedLabels());
@@ -34,7 +49,8 @@ async function getPredictedLabels() {
     }
     await send_request('predicted_label', data).then((response) => {
         $("#labelsDropdown_apply").val(response["label"]).trigger('change');
-        $('#confidence').val(parseFloat(response["confidence"]).toFixed(2))
+        let confidence = parseFloat(response["confidence"]).toFixed(2);
+        $('#confidence').val(confidence == "NaN" ? "-" : confidence)
     })
 }
 
