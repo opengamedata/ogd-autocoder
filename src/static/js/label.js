@@ -56,14 +56,15 @@ async function fillLabelDropdowns() {
  * Uses selected segment, labels, and optional justification to update server data,
  * then refreshes label dropdowns, label counts, and the segment dropdown for the given table.
  *
+ * @param {string} user_dropdown_id - Selector for the user dropdown.
  * @param {string} seg_dropdown_id - Selector for the segment dropdown.
  * @param {string} lbl_dropdown_id - Selector for the labels dropdown.
  * @param {string|null} jus_dropdown_id - Selector for justification dropdown (optional).
  */
-async function labelRows(seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id = null) {
-    const user_id = $('#userDropdown').val();
+async function labelRows(user_dropdown_id, seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id = null) {
+    const user_id = $(user_dropdown_id).val();
     if (!user_id) {
-        return;
+        return Promise.reject("No user selected");
     }
 
     let selectedSegment = $(seg_dropdown_id).val();
@@ -81,7 +82,7 @@ async function labelRows(seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id = nul
         promises.push(fillLabelDropdowns());
         promises.push(fillLabelsCount());
         // maybe instead use https://stackoverflow.com/questions/37330407/jquery-select2-change-option-text
-        $('#seg_dropdown_id').data('value-after-update', selectedSegment);
+        $(seg_dropdown_id).data('value-after-update', selectedSegment);
         promises.push(fillSegmentDropdown(seg_dropdown_id));
 
         Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
@@ -103,19 +104,24 @@ async function fillLabelsCount() {
     });
 }
 
-function nextOption(dropdown_id) {
+function nextOption(dropdown_id, silently = false) {
     const select = $(dropdown_id);
     const current = select.prop('selectedIndex');
     const next = current + 1;
+    select.prop('selectedIndex', next);
 
-    select.prop('selectedIndex', next).trigger('change');
+    if (!silently) // this invokes on_change callbacks
+        select.trigger('change');
 }
 
-function prevOption(dropdown_id) {
+function prevOption(dropdown_id, silently = false) {
     const select = $(dropdown_id);
     const current = select.prop('selectedIndex');
     const prev = current - 1;
-    select.prop('selectedIndex', prev).trigger('change');
+    select.prop('selectedIndex', prev);
+    
+    if (!silently) // this invokes on_change callbacks
+        select.trigger('change');
 }
 
 /**
@@ -125,17 +131,17 @@ function prevOption(dropdown_id) {
  * otherwise - clears the value
  * 
  * @param {string} dropdown_id - Selector for the segment dropdown to fill.
- * 
+ * @param {string} unlabeled_only - if true - only show unlabeled segments
  */
-async function fillSegmentDropdown(dropdown_id) {
+async function fillSegmentDropdown(dropdown_id, unlabeled_only = false) {
     $(dropdown_id).empty();
-    const user_id = $('#userDropdown').val();
+    const user_id = unlabeled_only ? $('#applyUserDropdown').val() : $('#userDropdown').val();
     if (!user_id) {
         return Promise.reject("No user selected");
     }
 
     $('#spinner').removeClass("d-none");
-    return send_request(`list_segment_ids/${user_id}`, {}).then((response) => {
+    return send_request(`list_segment_ids/${user_id}`, {unlabeled_only: unlabeled_only}).then((response) => {
         response.data.forEach(seg => {
             let lbl = seg.segment_labels;
             if (seg.job_name) {
@@ -171,7 +177,7 @@ $('#segmentDropdown').on('change', function () {
         $('#lblPreSgm').prop('disabled', false);
     }
 
-    loadEvents('#labelTable', '#segmentDropdown').finally(() => {$('#spinner').addClass("d-none");});
+    loadEvents('#labelTable', '#userDropdown', '#segmentDropdown').finally(() => {$('#spinner').addClass("d-none");});
 });
 
 $('#importLabelsBtn').on('click', function () {

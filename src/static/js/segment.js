@@ -21,7 +21,8 @@ function segmentRows() {
         let next_segment_id = parseInt($("#segmentIdInput").val()) + 1
         $("#segmentIdInput").val(next_segment_id);
         let promises = [];
-        promises.push(fillUsersList(false));
+        $('#userDropdown').data('value-after-update', $('#userDropdown').val());
+        promises.push(fillUsersList('#userDropdown', false));
         promises.push(fillLabelsCount());
 
         Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
@@ -38,7 +39,8 @@ function autoSegment() {
     $('#spinner').removeClass("d-none");
     send_request('autosegment', {sep_event_types: $('#segmentEventTypeDropdown').val()}).then((response) => {
         let promises = [];
-        promises.push(fillUsersList(false));
+        $('#userDropdown').data('value-after-update', $('#userDropdown').val());
+        promises.push(fillUsersList('#userDropdown', false));
         promises.push(fillLabelsCount());
 
         Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});

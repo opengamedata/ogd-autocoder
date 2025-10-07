@@ -256,7 +256,7 @@
     
         <div class="col-md-2">
           <label class="form-label d-block">&nbsp;</label>
-          <button class="btn btn-primary w-100" type="button" onclick="labelRows('#segmentDropdown', '#labelsDropdown', '#labelJustificationInput')">Apply</button>
+          <button class="btn btn-primary w-100" type="button" onclick="labelRows('#userDropdown', '#segmentDropdown', '#labelsDropdown', '#labelJustificationInput')">Apply</button>
         </div>
       </div>
       <div class="card p-3">
@@ -588,14 +588,18 @@
     </div>
     <!--APPLY-->
     <div class="tab-pane fade" id="nav-apply" role="tabpanel" aria-labelledby="nav-apply-tab">
+      <div id="apply_user_panel" class="d-none d-flex align-items-center gap-3 mb-2 py-2">
+        <select class="form-select" id="applyUserDropdown" onchange="userChanged()" style="min-width: 200px;">
+        </select>
+      </div>
       <div class="max-width-500">
         <label for="segmentDropdown_apply" class="form-label">Segment ID</label>
         <div class="d-flex align-items-center">
-          <button id="aplPreUsr" class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" disabled="disabled" onclick="prevOption('#userDropdown')">&lt;&lt;</button>
+          <button id="aplPreUsr" class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" disabled="disabled" onclick="prevOption('#applyUserDropdown')">&lt;&lt;</button>
           <button id="aplPreSgm" class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" disabled="disabled" onclick="prevOption('#segmentDropdown_apply')">&lt;</button>
           <select class="form-control flex-grow-1 me-1" id="segmentDropdown_apply"></select>
           <button id="aplNxtSgm" class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" disabled="disabled" onclick="nextOption('#segmentDropdown_apply')">&gt;</button>
-          <button id="aplNxtUsr" class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" disabled="disabled" onclick="nextOption('#userDropdown')">&gt;&gt;</button>
+          <button id="aplNxtUsr" class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" disabled="disabled" onclick="nextOption('#applyUserDropdown')">&gt;&gt;</button>
         </div>          
       </div>
       <hr/>

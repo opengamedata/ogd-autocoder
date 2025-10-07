@@ -6,11 +6,14 @@ import polars as pl
 from dataset import read_dataset, read_labels_for_username, get_labels_filename
 
 
-def segment_ids_for_user(df, user_id):
+def segment_ids_for_user(df, user_id, unlabeled_only):
     """
     List ordered segment ids with their label for the selected `user_id`
+    if `unlabeled_only` = True - selects only unlabeled segments
     Also adds the `job_name` if column exists
     """
+    if unlabeled_only:
+        df = df.filter(pl.col("segment_labels").is_null())
 
     # cast to int to sort correctly - fixme sort by timestamp
     df_user = df.filter(pl.col("user_id") == user_id).with_columns(

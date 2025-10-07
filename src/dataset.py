@@ -62,10 +62,15 @@ def read_labels_for_username(labels_filename, username):
 
     return df
 
-def get_users_list(df):
+def get_users_list(df, unlabeled_only_cnt):
     """
     List ordered user ids with segments count
+    
+    unlabeled_only_cnt: if True, only users with unlabeled segments are selected
     """
+
+    if unlabeled_only_cnt:
+        df = df.filter(pl.col("segment_labels").is_null())
 
     df = (
         df.drop_nulls("user_id")
@@ -101,7 +106,7 @@ def get_dataset_info(df):
     excluded_events = list(all_events.difference(set(included_events)))
     return {
         "date_range": date_range,
-        "users": get_users_list(df_filtered),
+        "users": get_users_list(df_filtered, False),
         "original": {
             "rows": df.height,
             "users": unique_count(df, ["user_id"]),

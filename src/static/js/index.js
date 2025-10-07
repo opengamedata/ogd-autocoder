@@ -92,8 +92,12 @@ $('#downloadBtn').on('click', function () {
 $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
     // when tab was switched
     const tabId = $('#nav-tab .nav-link.active').attr('id');
+
+    // hiding by default, removeClass('d-none') to show
+    $("#apply_user_panel:not([class*='d-none'])").addClass("d-none");
+    $("#user_panel:not([class*='d-none'])").addClass("d-none");
+
     if (tabId == "nav-data-tab") {
-        $("#user_panel").addClass("d-none");
         fillDatasetInfo();
     } else if (tabId == "nav-segment-tab") {
         $("#user_panel").removeClass("d-none");
@@ -102,11 +106,9 @@ $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
         $("#user_panel").removeClass("d-none");
         userChanged();
     } else if (tabId == "nav-review-tab") {
-        $("#user_panel:not([class*='d-none'])").addClass("d-none");
         $('#spinner').removeClass("d-none");
         reloadReview().finally(() => { $('#spinner').addClass("d-none"); });
     } else if (tabId == "nav-train-tab") {
-        $("#user_panel:not([class*='d-none'])").addClass("d-none");
         if (filename) {
             $('#spinner').removeClass("d-none");
             fillFeatureList().finally(() => {
@@ -122,8 +124,9 @@ $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
         }
     } else {
         // apply tab
-        $("#user_panel").removeClass("d-none");
-        userChanged();
+        $("#apply_user_panel").removeClass("d-none");
+        $('#applyUserDropdown').data('value-after-update', $('#applyUserDropdown').val());
+        fillUsersList('#applyUserDropdown', true);
     }
 });
 
@@ -220,61 +223,55 @@ function onFileChange(filename, load_models) {
 }
 
 /**
- * Populates the #userDropdown with the list of users (display user_id with number of segments)
- * if reset_value = false - preserves the previously selected user if available.
+ * Populates dropdown_id with the list of users (display user_id with number of segments)
+ * preserves previous value
+ * IMPORTANT: If data-value-after-update attribute is set, then that value is assigned after filling the dropdown
+ * otherwise - clears the value
  * 
- *  * @param {boolean} reset_value - whether to preserves previous value
+ *  * @param {boolean} unlabeled_only_cnt - users with unlabeled segments only (for Apply tab)
  */
-async function fillUsersList(reset_value = true) {
-    const previousValue = $('#userDropdown').val();
-    $('#userDropdown').empty().append('<option></option>');
-    await send_request('users_list', {}).then((response) => {
+async function fillUsersList(dropdown_id, unlabeled_only_cnt) {
+    $(dropdown_id).empty().append('<option></option>');
+    await send_request('users_list', {"unlabeled_only_cnt": unlabeled_only_cnt}).then((response) => {
         response.users.forEach(user => {
-            $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
+            $(dropdown_id).append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
         });
 
-        if (!reset_value && previousValue && $(`#userDropdown option[value="${previousValue}"]`).length > 0) {
-            $('#userDropdown').val(previousValue);
+        if ($(dropdown_id).data('value-after-update')) {
+            $(dropdown_id).val($(dropdown_id).data('value-after-update'));
+            $(dropdown_id).removeData('value-after-update');
         }
 
-        $('#userDropdown').trigger('change')
+        $(dropdown_id).trigger('change')
     });
 }
 
-function userChanged() {
-    let select = $('#userDropdown');
+function toggleUserControls(user_dropdown_id, prev_btn_id, next_btn_id) {
+    let select = $(user_dropdown_id);
     const options = select.find('option');
     const current = select.prop('selectedIndex');
 
-    if (current == options.length - 1 || select.val() == null) {
-        $('#lblNxtUsr').prop('disabled', true);
-        $('#aplNxtUsr').prop('disabled', true);
-    } else {
-        $('#lblNxtUsr').prop('disabled', false);
-        $('#aplNxtUsr').prop('disabled', false);
-    }
+    let disablePrev = (current <= 1 || select.val() == null);
+    $(prev_btn_id).prop('disabled', disablePrev);
 
-    if (current <= 1 || select.val() == null) {
-        $('#lblPreUsr').prop('disabled', true);
-        $('#aplPreUsr').prop('disabled', true);
-    } else {
-        $('#lblPreUsr').prop('disabled', false);
-        $('#aplPreUsr').prop('disabled', false);
-    }
+    let disableNext = (current == options.length - 1 || select.val() == null);
+    $(next_btn_id).prop('disabled', disableNext);
+}
+
+function userChanged() {
+    toggleUserControls('#userDropdown', '#lblPreUsr', '#lblNxtUsr');
+    toggleUserControls('#applyUserDropdown', '#aplPreUsr', '#aplNxtUsr');
 
     const tabId = $('#nav-tab .nav-link.active').attr('id');
     if (tabId == "nav-segment-tab") {
         $('#spinner').removeClass("d-none");
-        loadEvents("#segmentTable", null).finally(() => { $('#spinner').addClass("d-none"); });
+        loadEvents("#segmentTable", '#userDropdown', null).finally(() => { $('#spinner').addClass("d-none"); });
     } else if (tabId == "nav-label-tab") {
         $('#spinner').removeClass("d-none");
         fillSegmentDropdown('#segmentDropdown').finally(() => { $('#spinner').addClass("d-none"); });
     } else if (tabId == "nav-apply-tab") {
         $('#spinner').removeClass("d-none");
-        let promises = []
-        promises.push(fillSegmentDropdown('#segmentDropdown_apply'));
-        promises.push(getPredictedLabels());
-        Promise.all(promises).finally(() => { $('#spinner').addClass("d-none"); });
+        fillSegmentDropdown('#segmentDropdown_apply', true).finally(() => { $('#spinner').addClass("d-none"); });
     }
 }
 
@@ -283,9 +280,10 @@ function userChanged() {
  * then populates the given DataTable with the returned data.
  *
  * @param {string} table_id - Selector for the target DataTable (e.g., "#segmentTable").
+ * @param {string} user_dropdown_id - Selector for the user dropdown (e.g., "#userDropdown").
  * @param {string|null} seg_dropdown_id - Selector for the segment dropdown (null for segment tab).
  */
-async function loadEvents(table_id, seg_dropdown_id) {
+async function loadEvents(table_id, user_dropdown_id, seg_dropdown_id) {
     const table = $(table_id).DataTable();
     table.clear();
 
@@ -294,14 +292,14 @@ async function loadEvents(table_id, seg_dropdown_id) {
         segment_id = $(seg_dropdown_id).val()
         if (!segment_id) {
             table.draw();
-            return;
+            return Promise.reject("No select selected");
         }
     }
 
-    const user_id = $('#userDropdown').val();
+    const user_id = $(user_dropdown_id).val();
     if (!user_id) {
         table.draw();
-        return;
+        return Promise.reject("No user selected");
     }
     await send_request(`events/${user_id}`, {segment_id}).then((response) => {
         response.data.forEach(row => {
