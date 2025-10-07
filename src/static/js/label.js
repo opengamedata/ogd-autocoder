@@ -37,27 +37,17 @@ async function fillLabelDropdowns() {
     }
 
     $('#spinner').removeClass("d-none");
-    await $.ajax({
-        url: 'list_labels',
-        method: "POST",
-        contentType: "application/json",
-        success: function (response) {
-            for (let dropdown_id of dropdown_ids) {
-                response.data.forEach(label => {
-                    if ($(`${dropdown_id} option[value="${label}"]`).length === 0) {
-                        // don't repeat codebook options
-                        $(dropdown_id).append(`<option value="${label}">${label}</option>`);
-                    }
-                    $(dropdown_id).trigger('change');
-                });
-            }
-
-            $('#spinner').addClass("d-none");
-        },
-        error: function (xhr, status, error) {
-            console.error("Label options loading failed:", status, error);
-            console.log("Server response:", xhr.responseText);
+    return send_request('list_labels', {}).then((response) => {
+        for (let dropdown_id of dropdown_ids) {
+            response.data.forEach(label => {
+                if ($(`${dropdown_id} option[value="${label}"]`).length === 0) {
+                    // don't repeat codebook options
+                    $(dropdown_id).append(`<option value="${label}">${label}</option>`);
+                }
+                $(dropdown_id).trigger('change');
+            });
         }
+        $('#spinner').addClass("d-none");
     });
 }
 
@@ -70,40 +60,30 @@ async function fillLabelDropdowns() {
  * @param {string} lbl_dropdown_id - Selector for the labels dropdown.
  * @param {string|null} jus_dropdown_id - Selector for justification dropdown (optional).
  */
-function labelRows(seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id = null) {
+async function labelRows(seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id = null) {
     const user_id = $('#userDropdown').val();
     if (!user_id) {
         return;
     }
 
-    $('#spinner').removeClass("d-none");
     let selectedSegment = $(seg_dropdown_id).val();
     let selectedLabels = $(lbl_dropdown_id).val().join(', ');
     let justification = jus_dropdown_id ? $(jus_dropdown_id).val() : null;
-    $.ajax({
-        url: `label/${user_id}`,
-        method: "POST",
-        // select the index and the time column (will be the row identifier)
-        data: JSON.stringify({
-            segment_id: selectedSegment,
-            segment_labels: selectedLabels,
-            label_justification: justification
-        }),
-        contentType: "application/json",
-        success: function (response) {
-            $(jus_dropdown_id).val("")
-            let promises = [];
-            promises.push(fillLabelDropdowns());
-            promises.push(fillLabelsCount());
-            // maybe instead use https://stackoverflow.com/questions/37330407/jquery-select2-change-option-text
-            promises.push(fillSegmentDropdown(seg_dropdown_id, false));
+    let data = {
+        segment_id: selectedSegment,
+        segment_labels: selectedLabels,
+        label_justification: justification
+    };
+    $('#spinner').removeClass("d-none");
+    return send_request(`label/${user_id}`, data).then((response) => {
+        $(jus_dropdown_id).val("");
+        let promises = [];
+        promises.push(fillLabelDropdowns());
+        promises.push(fillLabelsCount());
+        // maybe instead use https://stackoverflow.com/questions/37330407/jquery-select2-change-option-text
+        promises.push(fillSegmentDropdown(seg_dropdown_id, false));
 
-            Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
-        },
-        error: function (xhr, status, error) {
-            console.error("Labeling failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+        Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
     });
 }
 
@@ -112,40 +92,29 @@ function labelRows(seg_dropdown_id, lbl_dropdown_id, jus_dropdown_id = null) {
  * "Labels count: label1 (count), label2 (count), ..."
  */
 async function fillLabelsCount() {
-    await $.ajax({
-        url: 'labels_value_count',
-        method: "POST",
-        success: function (response) {
-            let text = "";
-            response.data.forEach(label => {
-                text += `${label.segment_labels} (${label.count}), `;
-            });
-            text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : "&nbsp;";
-            $("#labelsValueCount").html(text);
-        },
-        error: function (xhr, status, error) {
-            console.error("User list loading failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+    return send_request('labels_value_count', {}).then((response) => {
+        let text = "";
+        response.data.forEach(label => {
+            text += `${label.segment_labels} (${label.count}), `;
+        });
+        text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : "&nbsp;";
+        $("#labelsValueCount").html(text);
     });
 }
 
 function nextOption(dropdown_id) {
     const select = $(dropdown_id);
-    const options = select.find('option');
     const current = select.prop('selectedIndex');
-    const next = (current + 1) % options.length;
+    const next = current + 1;
 
     select.prop('selectedIndex', next).trigger('change');
 }
 
 function prevOption(dropdown_id) {
     const select = $(dropdown_id);
-    const options = select.find('option');
     const current = select.prop('selectedIndex');
-    const next = (options.length + (current - 1)) % options.length;
-
-    select.prop('selectedIndex', next).trigger('change');
+    const prev = current - 1;
+    select.prop('selectedIndex', prev).trigger('change');
 }
 
 /**
@@ -160,37 +129,46 @@ async function fillSegmentDropdown(dropdown_id, reset_value = true) {
     const previousValue = $(dropdown_id).val();
     $(dropdown_id).empty();
     const user_id = $('#userDropdown').val();
-    if (user_id) {
-        $('#spinner').removeClass("d-none");
-        await $.ajax({
-            url: `list_segment_ids/${user_id}`,
-            method: "POST",
-            success: async function (response) {
-                response.data.forEach(seg => {
-                    let lbl = seg.segment_labels;
-                    if (seg.job_name) {
-                        lbl = lbl ? (seg.job_name + ", " + lbl) : seg.job_name;
-                    }
-                    
-                    $(dropdown_id).append(`<option value="${seg.segment_id}">${seg.segment_id} (${lbl ?? "---"})</option>`);
-                });
-
-                if (!reset_value && previousValue && $(`${dropdown_id} option[value="${previousValue}"]`).length > 0) {
-                    $(dropdown_id).val(previousValue);
-                }
-
-                $(dropdown_id).trigger('change');
-            },
-            error: function (xhr, status, error) {
-                console.error("Segment options loading failed:", status, error);
-                console.log("Server response:", xhr.responseText);
-            }
-        });
+    if (!user_id) {
+        return Promise.reject("No user selected");
     }
+
+    $('#spinner').removeClass("d-none");
+    return send_request(`list_segment_ids/${user_id}`, {}).then((response) => {
+        response.data.forEach(seg => {
+            let lbl = seg.segment_labels;
+            if (seg.job_name) {
+                lbl = lbl ? (seg.job_name + ", " + lbl) : seg.job_name;
+            }
+            
+            $(dropdown_id).append(`<option value="${seg.segment_id}">${seg.segment_id} (${lbl ?? "---"})</option>`);
+        });
+
+        if (!reset_value && previousValue && $(`${dropdown_id} option[value="${previousValue}"]`).length > 0) {
+            $(dropdown_id).val(previousValue);
+        }
+
+        $(dropdown_id).trigger('change');
+    });
 }
 
 $('#segmentDropdown').on('change', function () {
     $('#spinner').removeClass("d-none");
+
+    const options = $(this).find('option');
+    const current = $(this).prop('selectedIndex');
+    if (current == options.length - 1 || $(this).val() == null) {
+        $('#lblNxtSgm').prop('disabled', true);
+    } else {
+        $('#lblNxtSgm').prop('disabled', false);
+    }
+
+    if (current == 0 || $(this).val() == null) {
+        $('#lblPreSgm').prop('disabled', true);
+    } else {
+        $('#lblPreSgm').prop('disabled', false);
+    }
+
     loadEvents('#labelTable', '#segmentDropdown').finally(() => {$('#spinner').addClass("d-none");});
 });
 
@@ -228,7 +206,10 @@ $('#importLabelsFile').on('change', function (event) {
                 }
             });
         } catch (err) {
-            alert('Invalid JSON file, please check the format, e.g. {"code": "struggle", "definition": "player does not understand sth"}.');
+            $('#errorsModalBody').text(
+                'Invalid JSON file, please check the format, e.g. {"code": "struggle", "definition": "player does not understand sth"}.'
+            )
+            $('#errorsModal').modal('show');
         }
     };
 

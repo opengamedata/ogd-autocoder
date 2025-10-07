@@ -12,8 +12,9 @@ $('#userDropdown').select2({
 
 // 2. tables initialization (3 similar tables)
 for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
+    let select = table_id === "#segmentTable" ? { style: 'multi+shift' } : null;
     $(table_id).DataTable({
-        select: { style: 'multi' },
+        select: select,
         order: [[4, 'asc']],
         paging: false,
         scrollY: '400px',
@@ -25,6 +26,52 @@ for (let table_id of ["#labelTable", "#segmentTable", "#applyTable"]) {
         dom: '<"top d-flex justify-content-between align-items-center"fB>rt<"bottom"ip>',
         buttons: ['colvis'],
     });
+    if (select) {
+        // drag and select
+        let isDragging = false;
+        let table = $(table_id).DataTable();
+        let $container = $(table.table().container()).find(".dt-scroll-body");
+        let scrollTimer = null;
+
+        $container.on("mousedown", "tr", function(e) {
+            isDragging = true;
+        });
+
+        $(document).on("mouseup", function(e) {
+            isDragging = false;
+            if (scrollTimer) {
+                clearInterval(scrollTimer);
+                scrollTimer = null;
+            }
+        });
+
+        $container.on("mouseover", "tr", function(e) {
+            if (isDragging) {
+                table.row(this).select();
+            }
+        });
+
+        $(document).on("mousemove", function(e) {
+            if (!isDragging) return;
+
+            let offset = $container.offset();
+            let top = offset.top + 100;
+            let bottom = offset.top + $container.outerHeight() - 100;
+        
+            // Auto-scroll up/down
+            if (e.pageY < top || e.pageY > bottom) {
+                if (!scrollTimer) {
+                    scrollTimer = setInterval(() => {
+                        let value = e.pageY < top ? -20 : 20;
+                        $container[0].scrollBy({ top: value, behavior: "auto" });
+                    }, 100);
+                }
+            } else if (scrollTimer) {
+                clearInterval(scrollTimer);
+                scrollTimer = null;
+            }
+        });
+    }
 }
 
 function triggerFilePicker() {
@@ -96,14 +143,12 @@ function uploadFile() {
         success: function (response) {
             filename = response.filename;
             document.cookie = `filename=${filename}`;
-            let $btn = $('<button></button>')
-                .addClass('btn btn-light w-100 text-start mb-2')
-                .attr('data-filename', filename)
-                .text(response.formatted);
-            $btn.on('click', () => {
-                loadExisting(response.filename);
-            });
-            $('#datasetsScroll').prepend($btn)
+            let newDataset = $(`<div class="d-flex align-items-center w-100 mb-2">
+                <button class="btn btn-light flex-grow-1 text-start" data-filename="${response.filename}" onclick="loadExisting('${response.filename}')">${response.formatted}</button>
+                <button class="btn btn-sm btn-danger ms-2" onclick="showDeleteFileModal('${response.filename}')"><i class="bi bi-trash text-white"></i></button>
+            </div>`)
+
+            $('#datasetsScroll').prepend(newDataset)
 
             onFileChange(filename, false);
         },
@@ -135,14 +180,15 @@ function loadExisting(existing_filename) {
  */
 function onFileChange(filename, load_models) {
     $('span[data-field="filename"]').text(filename);
-    $('#datasetsScroll').find('button').removeClass('btn-dark');
-    $(`#datasetsScroll button[data-filename="${filename}"]`).addClass('btn-dark');
+    $('#datasetsScroll').find('.btn-light').removeClass('btn-dark');
+    $(`#datasetsScroll .btn-light[data-filename="${filename}"]`).addClass('btn-dark');
     $('#saveFilterBtn').attr('disabled', true);
     $('#saveFilterBtn').removeClass('btn-outline-primary').addClass('btn-outline-secondary');
 
     let promises = [fillDatasetInfo()];
     resetTrainView();
     resetApplyView();
+    $('span[data-field="models"]').text(0);
     if (load_models) {
         promises.push(fillModelsList());
     }
@@ -178,29 +224,40 @@ function onFileChange(filename, load_models) {
 async function fillUsersList(reset_value = true) {
     const previousValue = $('#userDropdown').val();
     $('#userDropdown').empty().append('<option></option>');
-    await $.ajax({
-        url: 'users_list',
-        method: "POST",
-        contentType: "application/json",
-        success: function (response) {
-            response.users.forEach(user => {
-                $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
-            });
+    await send_request('users_list', {}).then((response) => {
+        response.users.forEach(user => {
+            $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
+        });
 
-            if (!reset_value && previousValue && $(`#userDropdown option[value="${previousValue}"]`).length > 0) {
-                $('#userDropdown').val(previousValue);
-            }
-
-            $('#userDropdown').trigger('change')
-        },
-        error: function (xhr, status, error) {
-            console.error("User list loading failed:", status, error);
-            console.log("Server response:", xhr.responseText);
+        if (!reset_value && previousValue && $(`#userDropdown option[value="${previousValue}"]`).length > 0) {
+            $('#userDropdown').val(previousValue);
         }
+
+        $('#userDropdown').trigger('change')
     });
 }
 
 function userChanged() {
+    let select = $('#userDropdown');
+    const options = select.find('option');
+    const current = select.prop('selectedIndex');
+
+    if (current == options.length - 1 || select.val() == null) {
+        $('#lblNxtUsr').prop('disabled', true);
+        $('#aplNxtUsr').prop('disabled', true);
+    } else {
+        $('#lblNxtUsr').prop('disabled', false);
+        $('#aplNxtUsr').prop('disabled', false);
+    }
+
+    if (current <= 1 || select.val() == null) {
+        $('#lblPreUsr').prop('disabled', true);
+        $('#aplPreUsr').prop('disabled', true);
+    } else {
+        $('#lblPreUsr').prop('disabled', false);
+        $('#aplPreUsr').prop('disabled', false);
+    }
+
     const tabId = $('#nav-tab .nav-link.active').attr('id');
     if (tabId == "nav-segment-tab") {
         $('#spinner').removeClass("d-none");
@@ -242,46 +299,33 @@ async function loadEvents(table_id, seg_dropdown_id) {
         table.draw();
         return;
     }
+    await send_request(`events/${user_id}`, {segment_id}).then((response) => {
+        response.data.forEach(row => {
+            const values = [
+                row.index,
+                row.event_name,
+                row.event_description,
+                row.job_name,
+                row.timestamp,
+                row.segment_id,
+                row.segment_labels,
+                row.label_justification,
+                row.session_id,
+                row.app_id,
+                row.event_data,
+                row.event_source,
+                row.app_version,
+                row.app_branch,
+                row.log_version,
+                row.offset,
+                row.user_id,
+                row.user_data,
+                row.game_state
+            ].map(v => v ?? '-'); // in case there are null values
+            table.row.add(values);
+        });
 
-    await $.ajax({
-        url: `events/${user_id}`,
-        method: "POST",
-        data: JSON.stringify({ segment_id: segment_id }),
-        contentType: "application/json",
-        success: function (response) {
-            let data = response.data;
-
-            data.forEach(row => {
-                const values = [
-                    row.index,
-                    row.event_name,
-                    row.event_description,
-                    row.job_name,
-                    row.timestamp,
-                    row.segment_id,
-                    row.segment_labels,
-                    row.label_justification,
-                    row.session_id,
-                    row.app_id,
-                    row.event_data,
-                    row.event_source,
-                    row.app_version,
-                    row.app_branch,
-                    row.log_version,
-                    row.offset,
-                    row.user_id,
-                    row.user_data,
-                    row.game_state
-                ].map(v => v ?? '-'); // in case there are null values
-                table.row.add(values);
-            });
-
-            table.draw();
-        },
-        error: function (xhr, status, error) {
-            console.error("Event data load failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+        table.draw();
     });
 }
 
@@ -305,21 +349,12 @@ $('#eventDescriptionsFile').on('change', function (event) {
     reader.onload = function (e) {
         try {
             const mapping = JSON.parse(e.target.result);
-            $.ajax({
-                url: 'update_event_descriptions',
-                method: "POST",
-                data: JSON.stringify({"descriptions_map": mapping}),
-                contentType: "application/json",
-                success: function (response) {
-
-                },
-                error: function (xhr, status, error) {
-                    console.error("Event description update failed:", status, error);
-                    console.log("Server response:", xhr.responseText);
-                }
-            });
+            send_request('update_event_descriptions', {"descriptions_map": mapping});
         } catch (err) {
-            alert('Invalid JSON file, please check the format, e.g. {"switch_job": "Switched from job A to job B", "complete_task": "Completed task 1 within job A"}.');
+            $('#errorsModalBody').text(
+                'Invalid JSON file, please check the format, e.g. {"switch_job": "Switched from job A to job B", "complete_task": "Completed task 1 within job A"}.'
+            )
+            $('#errorsModal').modal('show');
         }
     };
 

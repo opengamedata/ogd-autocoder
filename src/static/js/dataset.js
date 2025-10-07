@@ -6,62 +6,51 @@ let labelChart, segmentChart;
 async function fillDatasetInfo() {
     $('#datasetInfo').removeClass('d-none');
 
-    await $.ajax({
-        url: 'dataset_info',
-        method: "POST",
-        contentType: "application/json",
-        success: function (response) {
-            let data = response.data;
-            let percentage = Math.trunc(100 * data.filtered.rows / data.original.rows, 2)
+    await send_request('dataset_info', {}).then((response) => {
+        let data = response.data;
+        let percentage = Math.trunc(100 * data.filtered.rows / data.original.rows, 2)
 
-            $('span[data-field="date-range"]').text(data.date_range);
-            $('span[data-field="models"]').text(data.models_count);
+        $('span[data-field="date-range"]').text(data.date_range);
+        $('td[data-field="rows-filtered"]').text(data.filtered.rows.toLocaleString() + " (" + percentage + " %)");
+        $('td[data-field="segments-filtered"]').text(data.filtered.segments.toLocaleString());
+        $('td[data-field="users-filtered"]').text(data.filtered.users.toLocaleString());
+        $('td[data-field="sessions-filtered"]').text(data.filtered.sessions.toLocaleString());
 
-            $('td[data-field="rows-filtered"]').text(data.filtered.rows.toLocaleString() + " (" + percentage + " %)");
-            $('td[data-field="segments-filtered"]').text(data.filtered.segments.toLocaleString());
-            $('td[data-field="users-filtered"]').text(data.filtered.users.toLocaleString());
-            $('td[data-field="sessions-filtered"]').text(data.filtered.sessions.toLocaleString());
+        $('td[data-field="rows-original"]').text(data.original.rows.toLocaleString());
+        $('td[data-field="segments-original"]').text(data.original.segments.toLocaleString());
+        $('td[data-field="users-original"]').text(data.original.users.toLocaleString());
+        $('td[data-field="sessions-original"]').text(data.original.sessions.toLocaleString());
 
-            $('td[data-field="rows-original"]').text(data.original.rows.toLocaleString());
-            $('td[data-field="segments-original"]').text(data.original.segments.toLocaleString());
-            $('td[data-field="users-original"]').text(data.original.users.toLocaleString());
-            $('td[data-field="sessions-original"]').text(data.original.sessions.toLocaleString());
+        // fillUsersList
+        $('#userDropdown').empty().append('<option></option>');
+        data.users.forEach(user => {
+            $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
+        });
+        $('#userDropdown').trigger('change');
 
-            // fillUsersList
-            $('#userDropdown').empty().append('<option></option>');
-            data.users.forEach(user => {
-                $('#userDropdown').append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
-            });
-            $('#userDropdown').trigger('change');
+        // fillEventTypes
+        $('#segmentEventTypeDropdown').empty();
+        data.included_events.forEach(event => {
+            $('#segmentEventTypeDropdown').append(`<option value="${event.name}">${event.name}</option>`);
+        });
+        $('#segmentEventTypeDropdown').show();
 
-            // fillEventTypes
-            $('#segmentEventTypeDropdown').empty();
-            data.events_types.forEach(event_type => {
-                $('#segmentEventTypeDropdown').append(`<option value="${event_type}">${event_type}</option>`);
-            });
-            $('#segmentEventTypeDropdown').show();
+        // fillLabelsCount
+        let text = "";
+        data.labels_distribution.forEach(label => {
+            text += `${label.segment_labels} (${label.count}), `;
+        });
+        text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : "&nbsp;";
+        $("#labelsValueCount").html(text);
 
-            // fillLabelsCount
-            let text = "";
-            data.labels_distribution.forEach(label => {
-                text += `${label.segment_labels} (${label.count}), `;
-            });
-            text = text.length > 0 ? "Labels count: " + text.substring(0, text.length - 2) : "&nbsp;";
-            $("#labelsValueCount").html(text);
-
-            fillLabelDistPie(data.labels_distribution);
-            let labelSegCount = data.labels_distribution.reduce((sum, item) => sum + parseInt(item.count), 0);
-            let notLabeled = data.filtered.segments - labelSegCount;
-            let notSelected = data.original.segments - notLabeled - labelSegCount;
-            // labels are ["Labeled", "Not Labeled", "Not Selected"]
-            segmentChart.data.datasets[0].data = [labelSegCount, notLabeled, notSelected];
-            segmentChart.update();
-            fillInclExcLists(data.included_events, data.excluded_events, "#includedEvents", "#excludedEvents")
-        },
-        error: function (xhr, status, error) {
-            console.error("User list loading failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+        fillLabelDistPie(data.labels_distribution);
+        let labelSegCount = data.labels_distribution.reduce((sum, item) => sum + parseInt(item.count), 0);
+        let notLabeled = data.filtered.segments - labelSegCount;
+        let notSelected = data.original.segments - notLabeled - labelSegCount;
+        // labels are ["Labeled", "Not Labeled", "Not Selected"]
+        segmentChart.data.datasets[0].data = [labelSegCount, notLabeled, notSelected];
+        segmentChart.update();
+        fillInclExcLists(data.included_events, data.excluded_events, "#includedEvents", "#excludedEvents")
     });
 }
 
@@ -80,6 +69,11 @@ function fillInclExcLists(includedElems, excludedElems, includedId, excludedId) 
     });
     $('[data-toggle="tooltip"]').tooltip();
     updateNumSelected('#includedEvents', '#excludedEvents', false);
+}
+
+function increaseModelsCount(incVal) {
+    let value = parseInt($('span[data-field="models"]').text());
+    $('span[data-field="models"]').text(value + incVal)
 }
 
 function fillLabelDistPie(labelData) {
@@ -148,26 +142,54 @@ function updateNumSelected(includedId, excludedId, is_feature) {
     $("#countFilteredExcluded" + suffix).text($(excludedId).children(":visible").length);
 }
 
+function showDeleteFileModal(selected_filename) {
+    $('#deleteFileModal').modal('show');
+    $('#deleteFileName').text(selected_filename);
+
+    $('#deleteFileAccept').off('click').on('click', function() {
+        deleteFile(selected_filename);
+    });
+}
+
+function deleteFile(selected_filename) {
+    $('#deleteFileModal').modal('hide');
+    $('#spinner').removeClass("d-none");
+    let deletingSelected = $(`#datasetsScroll .btn-dark[data-filename="${selected_filename}"]`)
+    if (deletingSelected.length) {
+        // if the deleting file is the one selected
+        filename = null;
+        document.cookie = "";
+        $('#datasetInfo').addClass("d-none");
+        $('.nav-link').addClass('disabled');
+        $('#labelsValueCount').html("&nbsp;");
+    }
+
+    $.ajax({
+        url: 'delete_file',
+        method: "POST",
+        contentType: "application/json",
+        data: JSON.stringify({
+            filename_to_delete: selected_filename
+        }),
+        success: function (response) {
+            $(`#datasetsScroll button[data-filename="${selected_filename}"]`).parent().remove();
+            $('#spinner').addClass("d-none");
+        },
+        error: function (xhr, status, error) {
+            console.error("File deletion failed:", status, error);
+            console.log("Server response:", xhr.responseText);
+        }
+    });
+}
+
 function filterDataset() {
     $('#spinner').removeClass("d-none");
     const included_events = $("#includedEvents li").map(function() {
         return $(this).data("elem-name");
     }).get();
 
-    $.ajax({
-        url: 'dataset_filter',
-        method: "POST",
-        contentType: "application/json",
-        data: JSON.stringify({ 
-            included_events: included_events
-        }),
-        success: function (response) {
-            onFileChange(filename, true);
-        },
-        error: function (xhr, status, error) {
-            console.error("Filtering failed:", status, error);
-            console.log("Server response:", xhr.responseText);
-        }
+    send_request('dataset_filter', {included_events}).then((response) => {
+        onFileChange(filename, true);
     });
 }
 
@@ -222,7 +244,7 @@ segmentChart = new Chart(ctxSG, {
         maintainAspectRatio: false,
         plugins: {
             legend: { position: "top" },
-            title: { display: true, text: "Labeled Segments" },
+            title: { display: true, text: "Labeling Progress" },
             datalabels: {
                 color: "#fff",
                 font: { weight: "bold", size: 16 },
