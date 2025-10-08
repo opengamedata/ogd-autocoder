@@ -6,7 +6,7 @@ import polars as pl
 from dataset import read_dataset, read_labels_for_username, get_labels_filename
 
 
-def segment_ids_for_user(df, user_id, unlabeled_only):
+def segment_ids_for_user(df, user_id, unlabeled_only, confidence_threshold = None):
     """
     List ordered segment ids with their label for the selected `user_id`
     if `unlabeled_only` = True - selects only unlabeled segments
@@ -14,6 +14,9 @@ def segment_ids_for_user(df, user_id, unlabeled_only):
     """
     if unlabeled_only:
         df = df.filter(pl.col("segment_labels").is_null())
+
+    if confidence_threshold is not None and "prediction_confidence" in df.columns:
+        df = df.filter(pl.col("prediction_confidence") > confidence_threshold)
 
     # cast to int to sort correctly - fixme sort by timestamp
     df_user = df.filter(pl.col("user_id") == user_id).with_columns(

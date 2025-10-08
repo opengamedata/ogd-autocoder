@@ -95,7 +95,8 @@ function acceptLabel() {
         $('#segmentDropdown_apply').data('value-after-update', nextSegment);
         $('#applyUserDropdown').data('value-after-update', nextUser);
 
-        promises.push(fillUsersList('#applyUserDropdown', true));
+        let confidenceThd = parseFloat($('#confidenceThd').val());
+        promises.push(fillUsersList('#applyUserDropdown', true, confidenceThd));
         promises.push(fillLabelsCount());
 
         Promise.all(promises).finally(() => {$('#spinner').addClass("d-none");});
@@ -103,6 +104,13 @@ function acceptLabel() {
         numAccepts++;
         $('#accept-count').text(`Accepts: ${numAccepts}`);
     });
+}
+
+function reloadConfidenceChanged () {
+    $('#spinner').removeClass("d-none");
+    let confidenceThd = parseFloat($('#confidenceThd').val());
+
+    fillUsersList('#applyUserDropdown', true, confidenceThd).finally(() => {$('#spinner').addClass("d-none");});
 }
 
 function rejectLabel() {

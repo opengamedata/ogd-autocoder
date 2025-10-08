@@ -126,7 +126,8 @@ $('#nav-tab .nav-link').on('shown.bs.tab', function (event) {
         // apply tab
         $("#apply_user_panel").removeClass("d-none");
         $('#applyUserDropdown').data('value-after-update', $('#applyUserDropdown').val());
-        fillUsersList('#applyUserDropdown', true);
+        let confidenceThd = parseFloat($('#confidenceThd').val());
+        fillUsersList('#applyUserDropdown', true, confidenceThd);
     }
 });
 
@@ -228,11 +229,12 @@ function onFileChange(filename, load_models) {
  * IMPORTANT: If data-value-after-update attribute is set, then that value is assigned after filling the dropdown
  * otherwise - clears the value
  * 
- *  * @param {boolean} unlabeled_only_cnt - users with unlabeled segments only (for Apply tab)
+ * @param {boolean} unlabeled_only_cnt - users with unlabeled segments only (for Apply tab)
+ * @param {boolean} confidence_threshold - if set, count segments with predicted_confidence greater then this
  */
-async function fillUsersList(dropdown_id, unlabeled_only_cnt) {
+async function fillUsersList(dropdown_id, unlabeled_only_cnt, confidence_threshold = null) {
     $(dropdown_id).empty().append('<option></option>');
-    await send_request('users_list', {"unlabeled_only_cnt": unlabeled_only_cnt}).then((response) => {
+    await send_request('users_list', {"unlabeled_only_cnt": unlabeled_only_cnt, "confidence_threshold": confidence_threshold}).then((response) => {
         response.users.forEach(user => {
             $(dropdown_id).append(`<option value="${user.user_id}">${user.user_id} (${user.segment_count} ${user.segment_count == 1 ? "segment" : "segments"})</option>`);
         });
@@ -271,7 +273,8 @@ function userChanged() {
         fillSegmentDropdown('#segmentDropdown').finally(() => { $('#spinner').addClass("d-none"); });
     } else if (tabId == "nav-apply-tab") {
         $('#spinner').removeClass("d-none");
-        fillSegmentDropdown('#segmentDropdown_apply', true).finally(() => { $('#spinner').addClass("d-none"); });
+        let confidenceThd = parseFloat($('#confidenceThd').val());
+        fillSegmentDropdown('#segmentDropdown_apply', true, confidenceThd).finally(() => { $('#spinner').addClass("d-none"); });
     }
 }
 

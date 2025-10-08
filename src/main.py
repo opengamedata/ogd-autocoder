@@ -144,7 +144,7 @@ def users_list():
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
     df = read_dataset(filepath, request.cookies.get("username"))
-    return jsonify({"users": get_users_list(df, request.json["unlabeled_only_cnt"])})
+    return jsonify({"users": get_users_list(df, request.json["unlabeled_only_cnt"], request.json["confidence_threshold"])})
 
 
 @app.route("/update_event_descriptions", methods=["POST"])
@@ -186,7 +186,7 @@ def list_segment_ids(user_id):
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
     df = read_dataset(filepath, request.cookies.get("username"))
-    return jsonify({"data": segment_ids_for_user(df, user_id, request.json["unlabeled_only"])})
+    return jsonify({"data": segment_ids_for_user(df, user_id, request.json["unlabeled_only"], request.json["confidence_threshold"])})
 
 
 @app.route("/labels_value_count", methods=["POST"])

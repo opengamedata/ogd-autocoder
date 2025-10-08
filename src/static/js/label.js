@@ -133,7 +133,7 @@ function prevOption(dropdown_id, silently = false) {
  * @param {string} dropdown_id - Selector for the segment dropdown to fill.
  * @param {string} unlabeled_only - if true - only show unlabeled segments
  */
-async function fillSegmentDropdown(dropdown_id, unlabeled_only = false) {
+async function fillSegmentDropdown(dropdown_id, unlabeled_only = false, confidence_threshold = null) {
     $(dropdown_id).empty();
     const user_id = unlabeled_only ? $('#applyUserDropdown').val() : $('#userDropdown').val();
     if (!user_id) {
@@ -141,7 +141,7 @@ async function fillSegmentDropdown(dropdown_id, unlabeled_only = false) {
     }
 
     $('#spinner').removeClass("d-none");
-    return send_request(`list_segment_ids/${user_id}`, {unlabeled_only: unlabeled_only}).then((response) => {
+    return send_request(`list_segment_ids/${user_id}`, {unlabeled_only: unlabeled_only, confidence_threshold: confidence_threshold}).then((response) => {
         response.data.forEach(seg => {
             let lbl = seg.segment_labels;
             if (seg.job_name) {

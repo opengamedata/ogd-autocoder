@@ -308,9 +308,9 @@
             <label class="form-label fw-bold mb-3">General Parameters</label>
             <div class="mb-3 d-flex align-items-center">
               <label for="trainTestSplit" class="form-label me-3 mb-0" style="white-space: nowrap;">
-                Ratio of training to test data: <span id="trainTestSplitValue">80%</span>
+                Ratio of training to test data: <span id="trainTestSplitValue">80</span>%
               </label>
-              <input type="range" oninput="updateLabelFromValue()" onchange="updateLabelFromValue()" class="form-range flex-grow-1" min="0.1" max="0.9" step="0.05" value="0.8" id="trainTestSplit" style="max-width: 300px;">
+              <input type="range" oninput="updateLabelFromSlider('#trainTestSplit', '#trainTestSplitValue')" onchange="updateLabelFromSlider('#trainTestSplit', '#trainTestSplitValue')" class="form-range flex-grow-1" min="0.1" max="0.9" step="0.05" value="0.8" id="trainTestSplit" style="max-width: 300px;">
             </div>
             <div class="form-check form-switch">
               <input class="form-check-input me-2" checked="true" type="checkbox" id="balanceClassesCheckbox">
@@ -592,15 +592,28 @@
         <select class="form-select" id="applyUserDropdown" onchange="userChanged()" style="min-width: 200px;">
         </select>
       </div>
-      <div class="max-width-500">
-        <label for="segmentDropdown_apply" class="form-label">Segment ID</label>
-        <div class="d-flex align-items-center">
-          <button id="aplPreUsr" class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" disabled="disabled" onclick="prevOption('#applyUserDropdown')">&lt;&lt;</button>
-          <button id="aplPreSgm" class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" disabled="disabled" onclick="prevOption('#segmentDropdown_apply')">&lt;</button>
-          <select class="form-control flex-grow-1 me-1" id="segmentDropdown_apply"></select>
-          <button id="aplNxtSgm" class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" disabled="disabled" onclick="nextOption('#segmentDropdown_apply')">&gt;</button>
-          <button id="aplNxtUsr" class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" disabled="disabled" onclick="nextOption('#applyUserDropdown')">&gt;&gt;</button>
-        </div>          
+      <div class="row g-3 align-items-end">
+        <div class="col-md-6">
+          <label for="segmentDropdown_apply" class="form-label">Segment ID</label>
+          <div class="d-flex align-items-center">
+            <button id="aplPreUsr" class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev User" disabled="disabled" onclick="prevOption('#applyUserDropdown')">&lt;&lt;</button>
+            <button id="aplPreSgm" class="btn btn-primary me-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Prev Segment" disabled="disabled" onclick="prevOption('#segmentDropdown_apply')">&lt;</button>
+            <select class="form-control flex-grow-1 me-1" id="segmentDropdown_apply"></select>
+            <button id="aplNxtSgm" class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next Segment" disabled="disabled" onclick="nextOption('#segmentDropdown_apply')">&gt;</button>
+            <button id="aplNxtUsr" class="btn btn-primary ms-1" type="button" data-toggle="tooltip" data-bs-placement="bottom" title="Next User" disabled="disabled" onclick="nextOption('#applyUserDropdown')">&gt;&gt;</button>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label for="confidenceThd" class="form-label" style="white-space: nowrap;">
+            Only predictions with confidence over: 0.<span id="confidenceThdValue">10</span> (max: 1)
+          </label>
+          <div class="d-flex align-items-center gap-3">
+            <input type="range" oninput="updateLabelFromSlider('#confidenceThd', '#confidenceThdValue')" onchange="updateLabelFromSlider('#confidenceThd', '#confidenceThdValue')" class="form-range flex-grow-1" min="0.1" max="0.9" step="0.05" value="0.1" id="confidenceThd">
+            <button onclick="reloadConfidenceChanged()" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" type="button" onclick="">
+              <i class="bi bi-arrow-clockwise"></i><span>Refresh</span>
+            </button>            
+          </div>
+        </div>
       </div>
       <hr/>
       <div class="mb-3 row g-3 align-items-end">

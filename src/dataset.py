@@ -62,15 +62,18 @@ def read_labels_for_username(labels_filename, username):
 
     return df
 
-def get_users_list(df, unlabeled_only_cnt):
+def get_users_list(df, unlabeled_only_cnt, confidence_threshold = None):
     """
     List ordered user ids with segments count
     
     unlabeled_only_cnt: if True, only users with unlabeled segments are selected
+    confidence_threshold: if not None, filter by `prediction_confidence` > confidence_threshold
     """
 
     if unlabeled_only_cnt:
         df = df.filter(pl.col("segment_labels").is_null())
+    if confidence_threshold is not None and "prediction_confidence" in df.columns:
+        df = df.filter(pl.col("prediction_confidence") > confidence_threshold)
 
     df = (
         df.drop_nulls("user_id")
