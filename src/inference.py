@@ -27,6 +27,11 @@ def get_models_list(filepath, username):
 def get_predicted_label(filepath, user_id, segment_id):
     """
     Get predicted label for selected `user_id` and `segment_id`
+    
+    :param filepath:
+    :param user_id:
+    :param segment_id:
+    :return:(str, float)
     """
     df = read_dataset(filepath, None)
     if ("predicted_labels" not in df.columns) or (segment_id is None):
@@ -52,6 +57,15 @@ def find_model_info(filepath, model_path):
 
 
 def inference(filepath, username, model_path):
+    """
+    Predicts and stores the labels and the confidences in the
+    `predicted_labels` and `prediction_confidence` columns in `filepath`.
+
+    :param filepath:
+    :param username:
+    :param model_path:
+    :return:
+    """
     df_processed = preprocess_df(filepath, username)
     model_info = find_model_info(filepath, model_path)
 

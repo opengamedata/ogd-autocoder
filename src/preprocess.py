@@ -4,9 +4,7 @@ from dataset import read_dataset
 
 
 def get_game_id(filepath):
-    """
-    read first row for app_id
-    """
+    #read first row for app_id
     df = pl.read_csv(
         filepath, n_rows=1, separator="\t", dtypes={"segment_id": pl.String}
     )
@@ -14,8 +12,8 @@ def get_game_id(filepath):
 
 
 def available_features(filepath, username):
-    # preprocess without using ogd pipeline to save some calculations
     columns = (
+        # preprocess without using ogd pipeline to save some calculations
         preprocess_df_no_ogd(filepath, username)
         .drop(["segment_labels", "segment_id", "user_id"])
         .columns
@@ -33,6 +31,10 @@ def available_features(filepath, username):
 def preprocess_df(filepath, username):
     """
     Gets the ready-for-training df (ogd features included)
+    
+    :param filepath:
+    :param username:
+    :return: df
     """
     df_no_ogd = preprocess_df_no_ogd(filepath, username)
     game_id = get_game_id(filepath)
@@ -55,6 +57,10 @@ def preprocess_df(filepath, username):
 def preprocess_df_no_ogd(filepath, username):
     """
     Preprocess using one hot encoding (no ogd features)
+
+    :param filepath:
+    :param username:
+    :return: df
     """
     # segment_id is the new task_id, segment_labels is the target
     df = read_dataset(filepath, username)

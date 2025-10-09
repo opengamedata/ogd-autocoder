@@ -9,8 +9,12 @@ from dataset import read_dataset, read_labels_for_username, get_labels_filename
 def segment_ids_for_user(df, user_id, unlabeled_only, confidence_threshold = None):
     """
     List ordered segment ids with their label for the selected `user_id`
-    if `unlabeled_only` = True - selects only unlabeled segments
-    Also adds the `job_name` if column exists
+
+    :param df:
+    :param user_id:
+    :param unlabeled_only: if True - selects only unlabeled segments
+    :param confidence_threshold: if not None, filter by `prediction_confidence` > `confidence_threshold`
+    :return: dict
     """
     if unlabeled_only:
         df = df.filter(pl.col("segment_labels").is_null())
@@ -41,6 +45,12 @@ def segment_rows(filepath, user_id, segment_id, selected_rows):
     """
     For a `user_id` apply segment_id on selected_rows (row identifiers => index + session_id columns)
     Clears segment labels for all affected segments
+
+    :param filepath:
+    :param user_id:
+    :param segment_id:
+    :param selected_rows:
+    :return:
     """
 
     labels_filename = get_labels_filename(filepath)
@@ -110,7 +120,9 @@ def autosegment_by_event_type(filepath, sep_event_types):
     Autosegments the whole dataframe.
     IMPORTANT: Clears segment_labels
 
-    sep_event_types: list of event types by which we should separate ito segments
+    :param filepath:
+    :param sep_event_types: list of event types by which we should separate ito segments
+    :return:
     """
 
     labels_filename = get_labels_filename(filepath)
