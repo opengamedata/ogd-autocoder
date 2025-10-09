@@ -1,9 +1,11 @@
+/**
+ * Sends an asynchronous HTTP request and shows an error modal if the request fails.
+ *
+ * @param {string} url - The request URL.
+ * @param {Object} raw_data_object - The request data object (not JSON-stringified).
+ * @returns {Promise<Response>} A promise that resolves with the fetch response.
+ */
 async function send_request(url, raw_data_object) {
-    /**
-     * General wrapper to send an ajax request and show the errors modal if it fails
-     * @param {string} url - request url
-     * @param {Object} raw_data_object - NOT jsonified request data
-     */
     let deferred = $.Deferred();
 
     $.ajax({

@@ -184,6 +184,7 @@ function loadExisting(existing_filename) {
  * Handles logic when file is switched (to existing or new)
  * Populates users list, event types, labels count, and optionally models list.
  *
+ * @param {string} filename - selected filename
  * @param {boolean} load_models - to avoid loading models for newly uploaded files
  */
 function onFileChange(filename, load_models) {
@@ -222,15 +223,16 @@ function onFileChange(filename, load_models) {
             console.error("Error loading existing file:", err);
         });
 }
-
 /**
  * Populates dropdown_id with the list of users (display user_id with number of segments)
- * preserves previous value
- * IMPORTANT: If data-value-after-update attribute is set, then that value is assigned after filling the dropdown
- * otherwise - clears the value
- * 
- * @param {boolean} unlabeled_only_cnt - users with unlabeled segments only (for Apply tab)
- * @param {boolean} confidence_threshold - if set, count segments with predicted_confidence greater then this
+ *
+ * If the `data-value-after-update` attribute is set, that value is restored after updating.
+ * Otherwise, the dropdown selection is cleared.
+ *
+ * @param {string} dropdown_id - Selector for the user dropdown element.
+ * @param {boolean} unlabeled_only_cnt - If true, includes only users with unlabeled segments (used in the Apply tab).
+ * @param {?number} confidence_threshold - If provided, only counts segments with predicted confidence greater than this value.
+ * @returns {Promise<void>} A promise that resolves when the dropdown is populated.
  */
 async function fillUsersList(dropdown_id, unlabeled_only_cnt, confidence_threshold = null) {
     $(dropdown_id).empty().append('<option></option>');
@@ -248,6 +250,14 @@ async function fillUsersList(dropdown_id, unlabeled_only_cnt, confidence_thresho
     });
 }
 
+/**
+ * Enables or disables "previous" and "next" navigation buttons based on the
+ * current selection in the given user dropdown.
+ *
+ * @param {string} user_dropdown_id - Selector for the user dropdown element.
+ * @param {string} prev_btn_id - Selector for the "previous user" button.
+ * @param {string} next_btn_id - Selector for the "next user" button.
+ */
 function toggleUserControls(user_dropdown_id, prev_btn_id, next_btn_id) {
     let select = $(user_dropdown_id);
     const options = select.find('option');
@@ -260,6 +270,9 @@ function toggleUserControls(user_dropdown_id, prev_btn_id, next_btn_id) {
     $(next_btn_id).prop('disabled', disableNext);
 }
 
+/**
+ * Handles user selection changes across tabs.
+ */
 function userChanged() {
     toggleUserControls('#userDropdown', '#lblPreUsr', '#lblNxtUsr');
     toggleUserControls('#applyUserDropdown', '#aplPreUsr', '#aplNxtUsr');

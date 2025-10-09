@@ -6,27 +6,26 @@ $(document).ready(function () {
         e.preventDefault();
         $('#login').addClass('d-none');
 
-        let new_login = $('#login_username').val();
+        const new_login = $('#login_username').val();
 
         $('#username_display').text(new_login);
-
         localStorage.setItem("login", new_login);
 
-        // set cookie to send on each request
+        // Set cookie to send username on each request
         document.cookie = "username=" + new_login;
 
         $('#logout_btn').removeClass('d-none');
     });
 
-
     if (!localStorage.getItem("login")) {
         $('#login').removeClass('d-none');
     } else {
-        $('#username_display').text(localStorage.getItem("login"));
+        const saved_login = localStorage.getItem("login");
+        $('#username_display').text(saved_login);
         $('#logout_btn').removeClass('d-none');
 
         // set cookie to send on each request
-        document.cookie = "username=" + localStorage.getItem("login");
+        document.cookie = "username=" + saved_login;
     }
 
     $('#logout_btn').on('click', function () {
@@ -36,5 +35,4 @@ $(document).ready(function () {
         $('#login_username').val('');
         $('#username_display').text('');
     });
-    
 });

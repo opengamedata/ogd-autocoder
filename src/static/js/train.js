@@ -4,7 +4,7 @@ let metricsByLabel = {};
 let applyModelPath = null;
 let bestModel = { test_accuracy: 0, path: null }; // best selected by test accuracy
 let correlationMatrix = null; // used for correlations
-let avoidOnChange = false; // if true dont run trainLabelsDropdown onchange
+let avoidOnChange = false; // if true dont run trainLabelsDropdown onchange (correlation loading)
 
 let isResizing = false;
 // resizing sidebars
