@@ -57,8 +57,13 @@ async function loadKappa() {
     return send_request('inter_rater_reliability', {}).then((response) => {
         $('#kappaList').empty();
         for (let row of response.data) {
+            
             if (row.users === "overall") {
-                $('#fleissCoef').text(`${row.value.toFixed(3)} (nulls: ${row.dropped})`);
+                if (row.value == "null") {
+                    $('#fleissCoef').text('No Data');
+                } else {
+                    $('#fleissCoef').text(`${row.value.toFixed(3)} (nulls: ${row.dropped})`);
+                }
             } else {
                 $('#kappaList').append(
                     $('<li>').html(`<strong>${row.users}</strong>: ${row.value.toFixed(3)} (nulls: ${row.dropped})`)

@@ -21,7 +21,7 @@ def read_dataset(filepath, username, filtered_only=True):
 
     columns = df.columns
     if "segment_id" not in columns:
-        df = df.with_columns(pl.lit(None).alias("segment_id"))
+        df = df.with_columns(pl.lit(None).cast(pl.String).alias("segment_id"))
 
     if "event_description" not in columns:
         df = df.with_columns(pl.col("event_name").alias("event_description"))
@@ -61,11 +61,11 @@ def read_labels_for_username(labels_filename, username):
     :param username: filter by username (take all if None)
     :return: DataFrame
     """
-    if os.path.exists(labels_filename):
-        df = pl.read_csv(labels_filename, separator="\t", dtypes={"segment_id": pl.String})
-    else:
-        df = pl.DataFrame(schema={"username": pl.String, "segment_id": pl.String, "user_id": pl.String, "segment_labels": pl.String, "label_justification": pl.String})
+    if not os.path.exists(labels_filename):
+        return pl.DataFrame(schema={"username": pl.String, "segment_id": pl.String, "user_id": pl.String, "segment_labels": pl.String, "label_justification": pl.String})
 
+    df = pl.read_csv(labels_filename, separator="\t", dtypes={"segment_id": pl.String})
+    
     if username is not None:
         df = df.filter(pl.col("username") == username)
 
@@ -97,7 +97,7 @@ def get_users_list(df, unlabeled_only_cnt, confidence_threshold = None):
 
 
 def unique_count(df, cols):
-    return df.select(pl.struct(cols).drop_nulls().n_unique()).item()
+    return df.select(cols).drop_nulls().n_unique()
 
 
 def get_dataset_info(df):

@@ -367,7 +367,8 @@ $('#eventDescriptionsFile').on('change', function (event) {
     reader.onload = function (e) {
         try {
             const mapping = JSON.parse(e.target.result);
-            send_request('update_event_descriptions', {"descriptions_map": mapping});
+            $('#spinner').removeClass("d-none");
+            send_request('update_event_descriptions', {"descriptions_map": mapping}).finally(() => { $('#spinner').addClass("d-none"); });
         } catch (err) {
             $('#errorsModalBody').text(
                 'Invalid JSON file, please check the format, e.g. {"switch_job": "Switched from job A to job B", "complete_task": "Completed task 1 within job A"}.'

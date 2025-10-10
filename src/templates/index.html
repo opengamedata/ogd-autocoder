@@ -77,7 +77,11 @@
             <div id="datasetsScroll" class="overflow-auto flex-grow-1 min-vh-0">
               {% for file in uploaded_files %}
               <div class="d-flex align-items-center w-100 mb-2">
-                <button class="btn btn-light flex-grow-1 text-start" data-filename="{{ file.fullname }}" onclick="loadExisting('{{ file.fullname }}')">{{ file.formatted }}</button>
+                <button class="btn btn-light flex-grow-1 text-start text-wrap" style="white-space: normal; word-break: break-word;" 
+                        data-filename="{{ file.fullname }}" 
+                        onclick="loadExisting('{{ file.fullname }}')">
+                  {{ file.formatted }}
+                </button>
                 <button class="btn btn-sm btn-danger ms-2" onclick="showDeleteFileModal('{{ file.fullname }}')"><i class="bi bi-trash text-white"></i></button>
               </div>
               {% endfor %}

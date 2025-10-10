@@ -2,7 +2,7 @@ import polars as pl
 from dataset import read_labels_for_username, get_labels_filename
 from sklearn.metrics import cohen_kappa_score
 from statsmodels.stats.inter_rater import aggregate_raters, fleiss_kappa
-
+from numpy import isnan
 
 def compare_labels(filepath):
     """
@@ -72,7 +72,8 @@ def inter_rater_reliability(filepath):
     no_nulls_df = compare_df[usernames].dropna()
     dropped = compare_df.shape[0] - no_nulls_df.shape[0]
     arr, cat = aggregate_raters(no_nulls_df)
-    cohen_kappas.append({"users": f"overall", "value": fleiss_kappa(arr, method='fleiss'), "dropped": dropped})
+    fleiss_k = fleiss_kappa(arr, method='fleiss')
+    cohen_kappas.append({"users": f"overall", "value": "null" if isnan(fleiss_k) else fleiss_k, "dropped": dropped})
 
     # sort in descending order
     return sorted(cohen_kappas, key=lambda x: x["value"], reverse=True)
