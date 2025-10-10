@@ -3,12 +3,15 @@ Code related to labeling the dataframe
 """
 
 import polars as pl
-from dataset import get_labels_filename, read_labels_for_username
+from dataset import read_labels_for_username
 
 
 def list_seg_labels(df):
     """
     List unique values of the `segment_labels` column
+
+    :param df:
+    :return:
     """
 
     unique_labels = (
@@ -25,8 +28,16 @@ def list_seg_labels(df):
 
 def label_rows(labels_filepath, username, user_id, segment_id, segment_labels, label_justification):
     """
-    For a `user_id` and `segment_id` apply segment_labels and label_justification
+    For a `user_id` and `segment_id` apply `segment_labels` and `label_justification`
     If `segment_id` is specified, also filter by `segment_id`
+
+    :param labels_filepath:
+    :param username:
+    :param user_id:
+    :param segment_id:
+    :param segment_labels:
+    :param label_justification:
+    :return:
     """
     df_labels = read_labels_for_username(labels_filepath, None)
 

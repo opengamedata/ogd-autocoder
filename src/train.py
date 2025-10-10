@@ -23,6 +23,24 @@ RANDOM_STATE = 13
 def train_model(
     filepath, username, model_type, hyperparameters, include_labels, include_features, models_dir
 ):
+    """
+    Train a machine learning model on the dataset, apply optional preprocessing, 
+    and save the trained model and pipeline.
+
+    This function supports logistic regression, random forest, and neural networks. 
+    It handles label encoding, optional scaling and PCA, one-hot encoding for neural networks, 
+    and saves benchmark metrics for model comparison.
+
+    :param filepath:
+    :param username:
+    :param model_type: Supported: 'logistic', 'random-forest', 'neural-net'.
+    :param hyperparameters: Dictionary of model hyperparameters and preprocessing options.
+    :param include_labels: Only rows with labels in this list are used.
+    :param include_features:
+    :param models_dir:
+
+    :returns: A tuple containing a human-readable training summary and model metadata.
+    """
     start_time = time.time()
 
     train_df = preprocess_df(filepath, username).to_pandas()

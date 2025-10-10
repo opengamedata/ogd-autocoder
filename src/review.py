@@ -2,12 +2,14 @@ import polars as pl
 from dataset import read_labels_for_username, get_labels_filename
 from sklearn.metrics import cohen_kappa_score
 from statsmodels.stats.inter_rater import aggregate_raters, fleiss_kappa
-
+from numpy import isnan
 
 def compare_labels(filepath):
     """
-    Returns labels made by each <username>
-    for each segment
+    Returns labels made by each `username` for each segment
+
+    :param filepath:
+    :return: df
     """
     labels_path = get_labels_filename(filepath)
     all_labels = read_labels_for_username(labels_path, None)
@@ -17,8 +19,12 @@ def compare_labels(filepath):
 def copy_labels(filepath, from_username, to_username, ids):
     """
     Copy labels from one username to another
-    
-    `ids` are user_id + "_" + segment_id absolute row id
+
+    :param filepath:
+    :param from_username:
+    :param to_username:
+    :param ids: list of `user_id` + "_" + `segment_id` absolute row ids
+    :return:
     """
 
     labels_path = get_labels_filename(filepath)
@@ -43,7 +49,11 @@ def copy_labels(filepath, from_username, to_username, ids):
 
 def inter_rater_reliability(filepath):
     """
-    Using cohen_kappa_score and fleiss score to calculate pairwise and overall inter-rater reliability
+    Using Cohen's Kappa and Fleiss' Kappa to calculate pairwise and overall inter-rater reliability
+    For each evaluated pair, `dropped` means number of dropped rows with null values (needed to enable the algorithm to work properly)
+
+    :param filepath:
+    :return:list(objects)
     """
     compare_df = compare_labels(filepath).to_pandas()
     usernames = [col for col in compare_df.columns if col not in ["user_id", "segment_id"]]
@@ -62,7 +72,8 @@ def inter_rater_reliability(filepath):
     no_nulls_df = compare_df[usernames].dropna()
     dropped = compare_df.shape[0] - no_nulls_df.shape[0]
     arr, cat = aggregate_raters(no_nulls_df)
-    cohen_kappas.append({"users": f"overall", "value": fleiss_kappa(arr, method='fleiss'), "dropped": dropped})
+    fleiss_k = fleiss_kappa(arr, method='fleiss')
+    cohen_kappas.append({"users": f"overall", "value": "null" if isnan(fleiss_k) else fleiss_k, "dropped": dropped})
 
     # sort in descending order
     return sorted(cohen_kappas, key=lambda x: x["value"], reverse=True)

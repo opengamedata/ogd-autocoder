@@ -2,7 +2,7 @@ import os
 import traceback
 from dataset import *
 from dim_reduction import pca_details, autoselect_features, correlation
-from inference import get_models_list, get_predicted_label, inference
+from inference import get_models_list, get_models_filename, get_predicted_label, inference
 from preprocess import available_features
 from segment import autosegment_by_event_type, segment_ids_for_user, segment_rows
 from label import label_rows, list_seg_labels
@@ -74,15 +74,16 @@ def delete_file():
     )
 
     # removing models and preprocessors
-    for model in get_models_list(filepath):
+    for model in get_models_list(filepath, request.cookies.get("username")):
         remove_if_found(model["model_path"])
         print(f"Model removed: {model["model_path"]}")
         if "preprocessor_path" in model and model["preprocessor_path"]:
             remove_if_found(model["preprocessor_path"])
             print(f"Preprocesor removed: {model["preprocessor_path"]}")
 
-    # removing the models info and dataset
+    # removing the models info and dataset and labels
     remove_if_found(get_models_filename(filepath))
+    remove_if_found(get_labels_filename(filepath))
     os.remove(filepath)
     print(f"Dataset removed: {filepath}")
 
@@ -144,7 +145,7 @@ def users_list():
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
     df = read_dataset(filepath, request.cookies.get("username"))
-    return jsonify({"users": get_users_list(df)})
+    return jsonify({"users": get_users_list(df, request.json["unlabeled_only_cnt"], request.json["confidence_threshold"])})
 
 
 @app.route("/update_event_descriptions", methods=["POST"])
@@ -186,7 +187,7 @@ def list_segment_ids(user_id):
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
     df = read_dataset(filepath, request.cookies.get("username"))
-    return jsonify({"data": segment_ids_for_user(df, user_id)})
+    return jsonify({"data": segment_ids_for_user(df, user_id, request.json["unlabeled_only"], request.json["confidence_threshold"])})
 
 
 @app.route("/labels_value_count", methods=["POST"])

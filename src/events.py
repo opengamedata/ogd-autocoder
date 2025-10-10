@@ -9,7 +9,11 @@ from dataset import read_dataset
 
 def event_filtering(filepath, included_events):
     """
-    Updates filtered_in column setting to `True` if event_name in the included_events list
+    Updates filtered_in column setting to `True` if `event_name` in the included_events list
+
+    :param filepath:
+    :param included_events:
+    :return:
     """
     df = read_dataset(filepath, None, False)
 
@@ -31,7 +35,11 @@ def safe_format_description(template, ev_data, g_state):
 
 def describe_events(filepath, descriptions_map):
     """
-    Fills new column "event_description" using descriptions_map (dictionary mapping event_name to template)
+    Fills new column `event_description` using descriptions_map (dictionary mapping event_name to template)
+    
+    :param filepath:
+    :param descriptions_map:
+    :return:
     """
     df = read_dataset(filepath, None, False)
     for ev_name, template in descriptions_map.items():

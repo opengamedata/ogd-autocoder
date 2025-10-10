@@ -10,13 +10,18 @@ def read_dataset(filepath, username, filtered_only=True):
     Returns the whole or filtered (by default) dataset
     Adds auxiliary columns - which are NOT written back to the file (unless you do it outside)
 
-    IMPORTANT: Set username = None and filtered_only = False if you want to write_csv afterwards
+    IMPORTANT: Set `username` = None and `filtered_only` = False if you want to write_csv afterwards
+
+    :param filepath:
+    :param username: Username for filtering (None = no filter)
+    :param filtered_only: Return only filtered rows (default True)
+    :return: DataFrame
     """
     df = pl.read_csv(filepath, separator="\t", dtypes={"segment_id": pl.String})
 
     columns = df.columns
     if "segment_id" not in columns:
-        df = df.with_columns(pl.lit(None).alias("segment_id"))
+        df = df.with_columns(pl.lit(None).cast(pl.String).alias("segment_id"))
 
     if "event_description" not in columns:
         df = df.with_columns(pl.col("event_name").alias("event_description"))
@@ -50,22 +55,36 @@ def read_labels_for_username(labels_filename, username):
     """
     Reads the file with the labels for a certain username (if username is not None).
 
-    IMPORTANT: Set username = None if you want to write_csv afterwards
-    """
-    if os.path.exists(labels_filename):
-        df = pl.read_csv(labels_filename, separator="\t", dtypes={"segment_id": pl.String})
-    else:
-        df = pl.DataFrame(schema={"username": pl.String, "segment_id": pl.String, "user_id": pl.String, "segment_labels": pl.String, "label_justification": pl.String})
+    IMPORTANT: Set `username` = None if you want to write_csv afterwards
 
+    :param labels_filename:
+    :param username: filter by username (take all if None)
+    :return: DataFrame
+    """
+    if not os.path.exists(labels_filename):
+        return pl.DataFrame(schema={"username": pl.String, "segment_id": pl.String, "user_id": pl.String, "segment_labels": pl.String, "label_justification": pl.String})
+
+    df = pl.read_csv(labels_filename, separator="\t", dtypes={"segment_id": pl.String})
+    
     if username is not None:
         df = df.filter(pl.col("username") == username)
 
     return df
 
-def get_users_list(df):
+def get_users_list(df, unlabeled_only_cnt, confidence_threshold = None):
     """
     List ordered user ids with segments count
+    
+    :param df:
+    :param unlabeled_only_cnt: if True, only users with unlabeled segments are selected
+    :param confidence_threshold: if not None, filter by `prediction_confidence` > `confidence_threshold`
+    :return: dict
     """
+
+    if unlabeled_only_cnt:
+        df = df.filter(pl.col("segment_labels").is_null())
+    if confidence_threshold is not None and "prediction_confidence" in df.columns:
+        df = df.filter(pl.col("prediction_confidence") > confidence_threshold)
 
     df = (
         df.drop_nulls("user_id")
@@ -78,12 +97,15 @@ def get_users_list(df):
 
 
 def unique_count(df, cols):
-    return df.select(pl.struct(cols).drop_nulls().n_unique()).item()
+    return df.select(cols).drop_nulls().n_unique()
 
 
 def get_dataset_info(df):
     """
     Returns useful dataset info such as row count, segments count, user session count
+
+    :param df:
+    :return: dict
     """
     df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))
     timestamp_min = df.select(pl.col("timestamp").drop_nulls().min()).item()
@@ -101,7 +123,7 @@ def get_dataset_info(df):
     excluded_events = list(all_events.difference(set(included_events)))
     return {
         "date_range": date_range,
-        "users": get_users_list(df_filtered),
+        "users": get_users_list(df_filtered, False),
         "original": {
             "rows": df.height,
             "users": unique_count(df, ["user_id"]),
@@ -122,7 +144,10 @@ def get_dataset_info(df):
 
 def segment_labels_count(df):
     """
-    For each label - number of segments with that label
+    For each `segment_labels` unique value - number of segments with that label
+
+    :param df:
+    :return: dict
     """
 
     df = (
@@ -138,8 +163,11 @@ def segment_labels_count(df):
 
 def find_by_user_and_segment(df, user_id, segment_id):
     """
-    List events for `user id`
-    If `segment_id` is specified, also filter by `segment_id`
+    List events for `user_id`
+
+    :param user_id:
+    :param segment_id: filter by segment_id (take all if not specified, used for segment tab)
+    :return: dict
     """
 
     df = df.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, strict=False))

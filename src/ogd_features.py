@@ -28,7 +28,7 @@ broken_features = ["EventList", "SessionDuration"]
 
 def list_ogd_features(app_id):
     features = []
-    generators = GeneratorCollectionConfig.FromFile(app_id)
+    generators = GeneratorCollectionConfig.Load(app_id)
     for feat in broken_features:
         generators.Extractors.AggregateExtractors.pop(feat, None)
 
@@ -52,7 +52,7 @@ def list_ogd_features(app_id):
 
 
 def calculate_ogd_features(app_id, filepath):
-    generators = GeneratorCollectionConfig.FromFile(app_id)
+    generators = GeneratorCollectionConfig.Load(app_id)
 
     for feat in broken_features:
         generators.Extractors.AggregateExtractors.pop(feat, None)
@@ -64,17 +64,15 @@ def calculate_ogd_features(app_id, filepath):
     fromDT = DataTableConfig(
         name="default",
         table_location=None,
-        store_name=None,
-        store_config=FileStoreConfig("", filepath, None),
-        schema_name="OGD_EVENT_FILE",
+        store=FileStoreConfig("", filepath, None),
+        table_schema="OGD_EVENT_FILE",
     )
 
     toDT = DataTableConfig(
         name="default",
         table_location=None,
-        store_name=None,
-        store_config=DictionaryStoreConfig("", None, None),
-        schema_name="OGD_FEATURE_FILE",
+        store=DictionaryStoreConfig("", None, None),
+        table_schema="OGD_FEATURE_FILE",
     )
     r = Request(
         {ExportMode.PLAYER},
@@ -91,34 +89,23 @@ def calculate_ogd_features(app_id, filepath):
         ),
         custom_dataset_key=DatasetKey(game_id=app_id, full_file=filepath),
     )
-    r.Interfaces["default"]._data.drop(
-        columns=[
-            "segment_id",
-            "segment_labels",
-            "label_justification",
-            "filtered_in",
-            "job_name",
-            "predicted_labels",
-            "prediction_confidence",
-            "event_description",
-        ],
-        errors="ignore",
-        inplace=True,
-    )
-    r.Interfaces["default"]._data.dropna(inplace=True)
-    ExportManager(CoreConfig.Default()).ExecuteRequest(r)
-    dict_out = r.Outerfaces["default"]._out
 
+    em = ExportManager(CoreConfig.Default())
+    result = em.ExecuteRequest(r)
+    if result.Status != 2:
+        print(result.Message)
+    dict_out = em._feats_out["default"]._out
     processed_out = {}
     for entry in dict_out["players"]["vals"]:
-        metrics = entry[7]
-        values = entry[8]
+        print(entry)
+        feature_name = entry[0]
+        value = entry[7]
         user_id = entry[5]
 
         if user_id not in processed_out:
             processed_out[user_id] = {"user_id": user_id}
 
-        processed_out[user_id].update(dict(zip(metrics, values)))
+        processed_out[user_id][feature_name] = value
 
     df = pl.DataFrame(list(processed_out.values()))
 

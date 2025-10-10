@@ -23,6 +23,17 @@ RANDOM_STATE = 13
 
 
 def pca_details(filepath, username, hyperparameters, include_labels, include_features):
+    """
+    Returns a list with cumulative and explained variance after applying PCA
+
+    :param filepath:
+    :param username:
+    :param hyperparameters:
+    :param include_labels:
+    :param include_features:
+    :return: dict
+    """
+
     df = preprocess_df(filepath, username).to_pandas()
     df = df[df["segment_labels"].isin(include_labels)]
     cols = [c for c in include_features if c in df.columns]
@@ -50,6 +61,14 @@ def pca_details(filepath, username, hyperparameters, include_labels, include_fea
 
 
 def correlation(filepath, username, include_labels):
+    """
+    Returns the correlation matrix of the features (target is excluded)
+
+    :param filepath:
+    :param username:
+    :param include_labels:
+    :return: dict
+    """
     df = preprocess_df(filepath, username).drop(["segment_id"])
     # FIXME - calculated on whole dataframe, no splitting in train/test
     df = df.filter(pl.col("segment_labels").is_in(include_labels))
@@ -62,13 +81,21 @@ def correlation(filepath, username, include_labels):
 
 
 def autoselect_features(filepath, username, include_labels):
+    """
+    Returns the features that are selected if a logistic regression with lasso is performed
+
+    :param filepath:
+    :param username:
+    :param include_labels:
+    :return: dict
+    """
     df = preprocess_df(filepath, username)
     # fixme maybe we should also use the target col?
     df = df.filter(pl.col("segment_labels").is_in(include_labels))
     df = df.to_pandas()
     X, y = df.drop(columns=["segment_labels", "segment_id"]), df["segment_labels"]
     # fixme, maybe differ for each model_type
-    selector = SelectFromModel(LogisticRegression(random_state=RANDOM_STATE))
+    selector = SelectFromModel(LogisticRegression(random_state=RANDOM_STATE, penalty='l1'))
     selector.fit(X, y)
 
     selected_features = X.columns[selector.get_support()].tolist()
