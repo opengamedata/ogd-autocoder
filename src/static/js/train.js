@@ -605,6 +605,7 @@ modelHistChart = new Chart(ctx, {
             },
             datalabels: {
                 color: 'black',
+                display: 'auto',
                 anchor: 'end',
                 align: 'end',
                 offset: 0,

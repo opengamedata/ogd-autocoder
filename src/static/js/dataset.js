@@ -257,6 +257,7 @@ labelChart = new Chart(ctxLD, {
             title: { display: true, text: "Labels Count" },
             datalabels: {
                 color: "#fff",
+                display: 'auto',
                 font: { weight: "bold", size: 16 },
                 formatter: value => (value > 0 ? value : "")
             }
@@ -284,6 +285,7 @@ segmentChart = new Chart(ctxSG, {
             title: { display: true, text: "Labeling Progress" },
             datalabels: {
                 color: "#fff",
+                display: 'auto',
                 font: { weight: "bold", size: 16 },
                 formatter: value => (value > 0 ? value : "")
             }
