@@ -56,12 +56,11 @@ async function reloadReview() {
 async function loadKappa() {
     return send_request('inter_rater_reliability', {}).then((response) => {
         $('#kappaList').empty();
+        $('#fleissCoef').text('-');
         for (let row of response.data) {
             
             if (row.users === "overall") {
-                if (row.value == "null") {
-                    $('#fleissCoef').text('No Data');
-                } else {
+                if (row.value != "null") {
                     $('#fleissCoef').text(`${row.value.toFixed(3)} (nulls: ${row.dropped})`);
                 }
             } else {
@@ -156,7 +155,7 @@ async function loadReviewTableData() {
                         });
                     } else if (missing) {
                         $(row).find('td').each(function() {
-                            $(this).css('background-color', '#f0f0f0');
+                            $(this).css('background-color', '#c0c0c0');
                         });
                     }
                 }

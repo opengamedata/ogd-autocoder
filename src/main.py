@@ -278,7 +278,7 @@ def compareLabels():
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
 
-    return jsonify({"data": compare_labels(filepath).fill_null("-").to_dicts()})
+    return jsonify({"data": compare_labels(filepath, request.cookies.get("username")).fill_null("-").to_dicts()})
 
 @app.route("/copy_labels", methods=["POST"])
 @safe
@@ -296,7 +296,7 @@ def interRaterReliability():
         app.config["UPLOAD_FOLDER"], request.cookies.get("filename")
     )
 
-    return jsonify({"data": inter_rater_reliability(filepath)})
+    return jsonify({"data": inter_rater_reliability(filepath, request.cookies.get("username"))})
 
 
 @app.route("/autosegment", methods=["POST"])

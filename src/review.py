@@ -4,7 +4,7 @@ from sklearn.metrics import cohen_kappa_score
 from statsmodels.stats.inter_rater import aggregate_raters, fleiss_kappa
 from numpy import isnan
 
-def compare_labels(filepath):
+def compare_labels(filepath, username):
     """
     Returns labels made by each `username` for each segment
 
@@ -14,6 +14,10 @@ def compare_labels(filepath):
     labels_path = get_labels_filename(filepath)
     all_labels = read_labels_for_username(labels_path, None)
     pivot_df = all_labels.pivot("username", index=["segment_id", "user_id"], values="segment_labels")
+    
+    if not username in pivot_df.columns:
+        pivot_df = pivot_df.with_columns(pl.lit(None).cast(pl.String).alias(username))
+
     return pivot_df
 
 def copy_labels(filepath, from_username, to_username, ids):
@@ -47,7 +51,7 @@ def copy_labels(filepath, from_username, to_username, ids):
     all_labels = pl.concat([all_labels, from_labels])
     all_labels.write_csv(labels_path, separator="\t")
 
-def inter_rater_reliability(filepath):
+def inter_rater_reliability(filepath, username):
     """
     Using Cohen's Kappa and Fleiss' Kappa to calculate pairwise and overall inter-rater reliability
     For each evaluated pair, `dropped` means number of dropped rows with null values (needed to enable the algorithm to work properly)
@@ -55,7 +59,7 @@ def inter_rater_reliability(filepath):
     :param filepath:
     :return:list(objects)
     """
-    compare_df = compare_labels(filepath).to_pandas()
+    compare_df = compare_labels(filepath, username).to_pandas()
     usernames = [col for col in compare_df.columns if col not in ["user_id", "segment_id"]]
     cohen_kappas = []
     for username1 in usernames:
@@ -66,14 +70,16 @@ def inter_rater_reliability(filepath):
                 # avoid symmetric
                 y1 = no_nulls_df[username1]
                 y2 = no_nulls_df[username2]
-                cohen_kappas.append({"users": f"{username1} / {username2}", "value": cohen_kappa_score(y1, y2), "dropped": dropped})
+                if no_nulls_df.shape[0]:
+                    cohen_kappas.append({"users": f"{username1} / {username2}", "value": cohen_kappa_score(y1, y2), "dropped": dropped})
 
     # overall
     no_nulls_df = compare_df[usernames].dropna()
-    dropped = compare_df.shape[0] - no_nulls_df.shape[0]
-    arr, cat = aggregate_raters(no_nulls_df)
-    fleiss_k = fleiss_kappa(arr, method='fleiss')
-    cohen_kappas.append({"users": f"overall", "value": "null" if isnan(fleiss_k) else fleiss_k, "dropped": dropped})
+    if no_nulls_df.shape[0]:
+        dropped = compare_df.shape[0] - no_nulls_df.shape[0]
+        arr, cat = aggregate_raters(no_nulls_df)
+        fleiss_k = fleiss_kappa(arr, method='fleiss')
+        cohen_kappas.append({"users": f"overall", "value": "null" if isnan(fleiss_k) else fleiss_k, "dropped": dropped})
 
     # sort in descending order
     return sorted(cohen_kappas, key=lambda x: x["value"], reverse=True)
