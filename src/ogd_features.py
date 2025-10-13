@@ -97,7 +97,6 @@ def calculate_ogd_features(app_id, filepath):
     dict_out = em._feats_out["default"]._out
     processed_out = {}
     for entry in dict_out["players"]["vals"]:
-        print(entry)
         feature_name = entry[0]
         value = entry[7]
         user_id = entry[5]

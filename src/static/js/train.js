@@ -88,9 +88,9 @@ function fillPCAPlot() {
     send_request('pca_details', data).then((response) => {
         $('#spinner').addClass("d-none");
 
-        pcaChart.data.datasets[0].data = response.details["explained_variance"];
-        pcaChart.data.datasets[1].data = response.details["cumulative"];
-        pcaChart.data.labels = response.details["explained_variance"].map((val, ind) => ind + 1);
+        pcaChart.data.datasets[0].data = response["explained_variance"];
+        pcaChart.data.datasets[1].data = response["cumulative"];
+        pcaChart.data.labels = response["explained_variance"].map((val, ind) => ind + 1);
         pcaChart.update();
     });
 }
