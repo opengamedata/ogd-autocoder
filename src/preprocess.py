@@ -1,5 +1,5 @@
 import polars as pl
-from ogd_features import calculate_ogd_features, list_ogd_features
+# from ogd_features import calculate_ogd_features, list_ogd_features
 from dataset import read_dataset
 
 
@@ -20,8 +20,8 @@ def available_features(filepath, username):
     )
 
     # load also OGD features
-    game_id = get_game_id(filepath)
-    ogd_columns = list_ogd_features(game_id)
+    # game_id = get_game_id(filepath)
+    ogd_columns = []#list_ogd_features(game_id)
     return {
         "included_features": [{"name": c} for c in columns],
         "excluded_features": ogd_columns,
@@ -37,13 +37,13 @@ def preprocess_df(filepath, username):
     :return: df
     """
     df_no_ogd = preprocess_df_no_ogd(filepath, username)
-    game_id = get_game_id(filepath)
+    # game_id = get_game_id(filepath)
 
-    df_features = calculate_ogd_features(game_id, filepath)
-    if len(df_features):
-        clean_agg_df_ogd = df_no_ogd.join(df_features, how="left", on=["user_id"])
-    else:
-        clean_agg_df_ogd = df_no_ogd
+    # df_features = calculate_ogd_features(game_id, filepath)
+    # if len(df_features):
+    #    clean_agg_df_ogd = df_no_ogd.join(df_features, how="left", on=["user_id"])
+    # else:
+    clean_agg_df_ogd = df_no_ogd
 
     # fixme - the ID is the segment_id + user_id
     clean_agg_df_ogd = clean_agg_df_ogd.with_columns(

@@ -81,7 +81,7 @@ def inference(filepath, username, model_path):
             model_info["hyperparameters"]["units_per_layer"],
             len(model_info["include_labels"]),
         )
-        model.load_state_dict(torch.load(model_info["model_path"]))
+        model.load_state_dict(torch.load(model_info["model_path"], weights_only=True))
         model.eval()
 
         with torch.no_grad():

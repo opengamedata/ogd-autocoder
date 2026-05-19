@@ -95,7 +95,7 @@ def autoselect_features(filepath, username, include_labels):
     df = df.to_pandas()
     X, y = df.drop(columns=["segment_labels", "segment_id"]), df["segment_labels"]
     # fixme, maybe differ for each model_type
-    selector = SelectFromModel(LogisticRegression(random_state=RANDOM_STATE, penalty='l1'))
+    selector = SelectFromModel(LogisticRegression(random_state=RANDOM_STATE))
     selector.fit(X, y)
 
     selected_features = X.columns[selector.get_support()].tolist()
